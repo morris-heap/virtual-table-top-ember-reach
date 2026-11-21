@@ -2,6 +2,7 @@
 name: wt
 description: Start work in a fresh git worktree on a VTTER-<n>-slug branch from origin/main. Takes a VTTER key, a Jira URL, or a description of the work; with no key, asks for one or a description and creates the Jira work item first. Use when the user types "wt" or "/wt", or asks to start work on a ticket in a worktree.
 argument-hint: "[VTTER-<n> | description of the work]"
+model: haiku
 ---
 
 # /wt: create a worktree for a VTTER work item
@@ -43,29 +44,31 @@ without a key is the request to create one.
 
 ### Move it to In Progress
 
-If the item's status category is "To Do", find the "In Progress" transition (`discover` → `listJiraIssueTransitions`,
-then `transitionJiraIssue`) and apply it. If the workflow has no such transition, skip this and say so.
+If the item's status category is "To Do", call `transitionJiraIssue` with `transitionName: "In Progress"`.
+VTTER's transitions are named after their target statuses, so there's no need to list them first.
+If the call fails, say so and carry on.
 
 ## 2. Create the worktree
 
 Make the branch name `VTTER-<n>-<slug>`. Build the slug from the summary: lowercase, 2 to 5 meaningful words,
 kebab-case, ASCII only (for example `VTTER-55-portrait-upload`).
 
-Run this from the repo in Bash. It works from the main checkout or from any existing worktree:
+Run this as **one** Bash call. It works from the main checkout or from any existing worktree, copies the optional
+`.env` (local Jira tooling values only; never print it), and verifies the result:
 
 ```bash
 MAIN=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") &&
-cd "$MAIN" &&
-BRANCH="VTTER-<n>-<slug>" &&
-git fetch origin main &&
-git worktree add -b "$BRANCH" ".claude/worktrees/$BRANCH" origin/main &&
-echo "$MAIN/.claude/worktrees/$BRANCH"
+BRANCH="VTTER-<n>-<slug>" && WT="$MAIN/.claude/worktrees/$BRANCH" &&
+git -C "$MAIN" fetch -q origin main &&
+git -C "$MAIN" worktree add -q -b "$BRANCH" "$WT" origin/main &&
+{ [ -f "$MAIN/.env" ] && cp "$MAIN/.env" "$WT/.env"; true; } &&
+git -C "$WT" status -sb && git -C "$WT" log -1 --oneline && echo "$WT"
 ```
 
 - Always branch from `origin/main`. The main checkout is usually parked on another ticket's branch.
 - If the branch already exists (`fatal: a branch named ... already exists`), check `git worktree list`.
   If it's already checked out in a worktree, enter that one. Otherwise run
-  `git worktree add ".claude/worktrees/$BRANCH" "$BRANCH"` (with no `-b`) to resume it.
+  `git -C "$MAIN" worktree add "$WT" "$BRANCH"` (with no `-b`) to resume it.
   Never delete or reset an existing branch.
 
 Then switch the session into it with `EnterWorktree(path="<printed path>")`.
@@ -74,23 +77,14 @@ Then switch the session into it with `EnterWorktree(path="<printed path>")`.
 every Vitest file that imports a local module fail with "Cannot read properties of undefined (reading 'config')".
 If `git rev-parse` gives back a lowercase drive letter, uppercase it before you pass it to `EnterWorktree`.
 
-## 3. Bootstrap what a fresh checkout lacks
+## 3. Install dependencies only where needed
 
-A worktree only holds tracked files. Restore what's missing:
+A worktree only holds tracked files, so `node_modules` is missing. Run `npm ci` only in the packages
+(`app/`, `api/`, `infra/`) that the described work clearly touches, in parallel Bash calls. If that isn't clear yet,
+install nothing: install a package when you first need to test it (`/cw` also runs `npm ci` when `node_modules` is missing).
+The app and API need no secrets. AWS access is the `ember-reach` CLI profile in `~/.aws`, which works from any folder.
 
-1. **`.env`**: optional, and it holds only local Jira tooling values. Copy it only if it exists:
-   `[ -f "$MAIN/.env" ] && cp "$MAIN/.env" "$WT/.env"`. Never print it. The app and API need no secrets.
-   AWS access is the `ember-reach` CLI profile, which lives in `~/.aws` and works from any folder.
-2. **Dependencies**: run `npm ci` in each package the work will touch: `app/`, `api/`, `infra/`.
-   Each has its own `package-lock.json`. If you can't tell which ones yet, install all three.
-   Run the installs in parallel Bash calls.
-
-## 4. Verify and report
-
-```bash
-git status -sb            # on VTTER-<n>-<slug>, clean, tracking nothing yet
-git log -1 --oneline      # matches origin/main
-```
+## 4. Report
 
 Report in a few lines: the work item (key, summary, link), the branch, the worktree path, and which packages
 were installed. Then start the work if the user described it, or wait for them if not.
