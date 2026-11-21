@@ -2,7 +2,7 @@
 
 Live: https://emberreach.morris-heap.com/
 
-A static web app (Vite + React + TypeScript), deployed to GitHub Pages by
+A static web app (Vite + React + TypeScript), deployed to Cloudflare Pages by
 [.github/workflows/app.yml](../.github/workflows/app.yml) on every push to `main` that touches `app/` or `data/`.
 
 ## Commands (run in `app/`)

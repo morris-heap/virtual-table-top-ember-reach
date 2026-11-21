@@ -1,4 +1,4 @@
-name: App CI and Pages deploy
+name: App CI and Cloudflare Pages deploy
 
 on:
   pull_request:
@@ -32,21 +32,13 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
-      - uses: actions/upload-pages-artifact@v3
-        if: github.event_name != 'pull_request'
+      # Deploy to Cloudflare Pages (project "emberreach", custom domain emberreach.morris-heap.com; VTTER-60).
+      # Needs the repo secret CLOUDFLARE_API_TOKEN (Account > Cloudflare Pages > Edit) and the variable CLOUDFLARE_ACCOUNT_ID.
+      - name: Deploy to Cloudflare Pages
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: cloudflare/wrangler-action@v3
         with:
-          path: app/dist
-
-  deploy:
-    needs: build
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: app
+          command: pages deploy dist --project-name=emberreach --branch=main --commit-dirty=true

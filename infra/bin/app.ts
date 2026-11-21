@@ -14,8 +14,8 @@ const app = new App()
 // The ember-reach project: one AWS account, Region fixed by the new AWS experience.
 const env = { account: '913427211898', region: 'us-east-2' }
 
-// The app is served at https://emberreach.morris-heap.com/ (GitHub Pages custom domain, DNS at Cloudflare; VTTER-60).
-// The old github.io project URL redirects there; keep it allowed until every open tab has moved over.
+// The app is served at https://emberreach.morris-heap.com/ (Cloudflare Pages custom domain; VTTER-60).
+// Keep the old GitHub Pages URL allowed until GitHub Pages is switched off.
 const APP_ORIGIN = 'https://emberreach.morris-heap.com'
 const OLD_PAGES_ORIGIN = 'https://morris-heap.github.io'
 const OLD_BASE = '/virtual-table-top-ember-reach/'
