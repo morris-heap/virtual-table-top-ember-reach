@@ -40,11 +40,14 @@ async function tokenRequest(cfg: AuthConfig, body: URLSearchParams): Promise<unk
   return json
 }
 
-/** Sends the browser to the managed login page (sign in, create account, or Google if enabled). */
-export async function signIn(cfg: AuthConfig): Promise<void> {
+/**
+ * Sends the browser to the managed login page: the sign-in form, or the create-account form with
+ * `screen: 'signup'`. Either way Cognito returns to the app with a code (or Google, if enabled).
+ */
+export async function signIn(cfg: AuthConfig, screen: 'signin' | 'signup' = 'signin'): Promise<void> {
   const pending: Pending = { state: randomString(), nonce: randomString(), verifier: randomString(48) }
   store(PENDING, pending)
-  window.location.assign(authorizeUrl(cfg, { ...pending, challenge: await pkceChallenge(pending.verifier) }))
+  window.location.assign(authorizeUrl(cfg, { ...pending, challenge: await pkceChallenge(pending.verifier), screen }))
 }
 
 let completing: Promise<User | null> | null = null

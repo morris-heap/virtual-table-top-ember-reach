@@ -39,6 +39,13 @@ describe('URLs', () => {
       state: 's1', nonce: 'n1', code_challenge: 'c1', code_challenge_method: 'S256',
     })
   })
+  it('opens the create-account page with the same OAuth parameters', () => {
+    const p = { state: 's1', nonce: 'n1', challenge: 'c1' }
+    const u = new URL(authorizeUrl(cfg, { ...p, screen: 'signup' }))
+    expect(u.origin + u.pathname).toBe(`https://${cfg.domain}/signup`)
+    expect(u.search).toBe(new URL(authorizeUrl(cfg, p)).search)
+    expect(new URL(authorizeUrl(cfg, { ...p, screen: 'signin' })).pathname).toBe('/oauth2/authorize')
+  })
   it('builds the logout URL back to the app', () => {
     const u = new URL(logoutUrl(cfg))
     expect(u.pathname).toBe('/logout')
