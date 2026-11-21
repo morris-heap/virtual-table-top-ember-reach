@@ -90,7 +90,7 @@ Optilogic Postgres (schema `emberreach`). Deployed by `.github/workflows/api.yml
 - Commands (run in `api/`): `npm test`, `npm run typecheck`, `npm run dev` (local Worker on the real DB),
   `npm run db:check`, `npm run db:migrate`, `npm run db:allow-cloudflare`, `npm run hyperdrive [-- --update]`,
   `npm run secrets`, `npm run deploy`. **Run test and typecheck before you commit API changes.**
-- Secrets live in the repo-root `.env` (git-ignored) and in Cloudflare (`OPTILOGIC_APP_KEY` Worker secret).
+- Secrets live in the repo-root `.env` (git-ignored; template in `.env.example`, keep it in sync) and in Cloudflare (`OPTILOGIC_APP_KEY` Worker secret).
   **Never print, log or commit them.** Scripts read `.env` and pass values without echoing them, and call
   wrangler without a shell, because cmd.exe rewrites `^ & | < > %` in passwords.
 - Schema changes are new files in `api/migrations/` (never edit an applied one). Sheet fields are real columns

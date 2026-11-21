@@ -9,7 +9,7 @@ push to `main` that touches `api/` or `data/`. Background: [ADR 0002](../docs/ad
 ## Setup
 
 1. `npm install`
-2. Add to the repo-root `.env` (git-ignored, **never commit or print it**):
+2. Copy [`.env.example`](../.env.example) to the repo-root `.env` (git-ignored, **never commit or print it**) and fill in:
    - `OPTILOGIC_CONNECTION_STRING`: the Optilogic JSON (`{"host":…,"port":…,"dbname":…,"user":…,"password":…,"sslmode":"require"}`) or a `postgresql://` URL
    - `OPTILOGIC_APP_KEY`: used to update the Optilogic database firewall
 3. `npm run db:check` checks the connection. If the firewall blocks you, it allowlists your IP and retries.
