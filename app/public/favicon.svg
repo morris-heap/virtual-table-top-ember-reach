@@ -1,13 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="10" fill="#1c1c1e"/>
-
-  <!-- hexagon frame -->
-  <path d="M32 7 L53.7 19.5 L53.7 44.5 L32 57 L10.3 44.5 L10.3 19.5 Z"
-        fill="none" stroke="#f5f5f5" stroke-width="3.5" stroke-linejoin="round"/>
-
-  <!-- flame -->
-  <path d="M32 18 C34.5 24 42 28.5 42 37 C42 42.8 37.5 46.5 32 46.5 C26.5 46.5 22 42.8 22 37 C22 32.5 24.5 29.5 26.5 26.5 C27.3 29.5 28.5 31 30 31.5 C29.5 27 30 22 32 18 Z"
-        fill="#f26b1d"/>
-  <path d="M32.5 33 C34 36 36.5 37.8 36.5 40.6 C36.5 43.2 34.5 45 32 45 C29.5 45 27.5 43.2 27.5 40.6 C27.5 37.8 30.5 36.2 32.5 33 Z"
-        fill="#ffb27a"/>
+  <!-- Same drawing as Logo in app/src/Landing.tsx, with the landing-page nav colour (#ffb347) for the hexagon. -->
+  <defs>
+    <linearGradient id="ember-fill" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#d9531e"/>
+      <stop offset="1" stop-color="#ffb347"/>
+    </linearGradient>
+  </defs>
+  <path d="M32 3 57 17.5v29L32 61 7 46.5v-29Z" fill="none" stroke="#ffb347" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M32 15c3 7 11 11 11 21a11 11 0 0 1-22 0c0-5 3-8 5-10 0 4 2 6 4 6-1-6 0-12 2-17Z" fill="url(#ember-fill)"/>
 </svg>
