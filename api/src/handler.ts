@@ -6,8 +6,8 @@ export interface CharacterStore {
   ping(): Promise<void>
   list(ownerId: string): Promise<CharacterSummary[]>
   get(ownerId: string, id: string): Promise<CharacterRecord | null>
-  /** Insert or replace the whole sheet. Returns null if the id exists but belongs to another owner. */
-  save(ownerId: string, id: string, sheet: CharacterSheet): Promise<CharacterRecord | null>
+  /** Insert or replace the whole sheet. Keys are (owner, id), so one owner can never touch another's hero. */
+  save(ownerId: string, id: string, sheet: CharacterSheet): Promise<CharacterRecord>
   delete(ownerId: string, id: string): Promise<boolean>
 }
 
@@ -21,7 +21,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 // Temporary owner id until real users exist (VTTER-53): a client-generated UUID sent as X-Owner-Id.
 const OWNER = UUID
 
-/** Thrown by the store when it can't reach the database (the Worker may be repairing the firewall). */
+/** Thrown by the store when the database is briefly unavailable (throttled or a transient AWS error). */
 export class DatabaseUnavailable extends Error {}
 
 class HttpError extends Error {
@@ -103,10 +103,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         return json(c, 200, cors)
       }
       case 'PUT': {
-        const c = await deps.store.save(owner, id, parseSheet(await readJson(req)))
-        // Someone else's id: answer 404 so ids can't be probed.
-        if (!c) throw new HttpError(404, 'Character not found')
-        return json(c, 200, cors)
+        return json(await deps.store.save(owner, id, parseSheet(await readJson(req))), 200, cors)
       }
       case 'DELETE': {
         if (!(await deps.store.delete(owner, id))) throw new HttpError(404, 'Character not found')
@@ -119,7 +116,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (err instanceof HttpError) return json({ error: err.message }, err.status, cors)
     if (err instanceof ValidationError) return json({ error: err.message }, 400, cors)
     if (err instanceof DatabaseUnavailable) {
-      return json({ error: 'Database temporarily unavailable. Try again in a minute.' }, 503, { ...cors, 'Retry-After': '60' })
+      return json({ error: 'Database temporarily unavailable. Try again shortly.' }, 503, { ...cors, 'Retry-After': '5' })
     }
     console.error('Unhandled error', err)
     return json({ error: 'Internal error' }, 500, cors)

@@ -1,7 +1,7 @@
 # ADR 0001: Companion app stack and rules-data format
 
 - **Status:** Accepted (2026-11-19). The "no backend" part is amended by
-  [ADR 0002](0002-backend-postgres.md) (Cloudflare Worker + Optilogic Postgres).
+  [ADR 0003](0003-backend-dynamodb-lambda.md) (AWS Lambda + DynamoDB, which replaced [ADR 0002](0002-backend-postgres.md)).
 - **Jira:** KAN-32
 
 ## Context

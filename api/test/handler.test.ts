@@ -8,8 +8,10 @@ const B = '22222222-2222-4222-8222-222222222222'
 const HERO = '33333333-3333-4333-8333-333333333333'
 
 class MemoryStore implements CharacterStore {
+  // Keyed like the DynamoDB table: (owner, id).
   rows = new Map<string, CharacterRecord>()
   down = false
+  private key = (ownerId: string, id: string) => `${ownerId}/${id}`
   async ping() {
     if (this.down) throw new Error('down')
   }
@@ -18,21 +20,17 @@ class MemoryStore implements CharacterStore {
       .map(({ id, name, level, ancestry, calling, updatedAt }) => ({ id, name, level, ancestry, calling, updatedAt }))
   }
   async get(ownerId: string, id: string) {
-    const r = this.rows.get(id)
-    return r && r.ownerId === ownerId ? r : null
+    return this.rows.get(this.key(ownerId, id)) ?? null
   }
   async save(ownerId: string, id: string, sheet: CharacterSheet) {
-    const existing = this.rows.get(id)
-    if (existing && existing.ownerId !== ownerId) return null
+    const existing = this.rows.get(this.key(ownerId, id))
     const now = new Date().toISOString()
     const r = { ...sheet, id, ownerId, createdAt: existing?.createdAt ?? now, updatedAt: now }
-    this.rows.set(id, r)
+    this.rows.set(this.key(ownerId, id), r)
     return r
   }
   async delete(ownerId: string, id: string) {
-    const r = this.rows.get(id)
-    if (!r || r.ownerId !== ownerId) return false
-    return this.rows.delete(id)
+    return this.rows.delete(this.key(ownerId, id))
   }
 }
 
@@ -124,10 +122,12 @@ describe('characters', () => {
     const s = new MemoryStore()
     await call(s, 'PUT', `/characters/${HERO}`, { owner: A, body: kestrel })
     expect((await call(s, 'GET', `/characters/${HERO}`, { owner: B })).status).toBe(404)
-    expect((await call(s, 'PUT', `/characters/${HERO}`, { owner: B, body: { ...kestrel, name: 'Stolen' } })).status).toBe(404)
     expect((await call(s, 'DELETE', `/characters/${HERO}`, { owner: B })).status).toBe(404)
     expect((await body(call(s, 'GET', '/characters', { owner: B }))).characters).toHaveLength(0)
-    expect(s.rows.get(HERO)?.name).toBe('Kestrel Ashvane')
+    // Saving under A's id only creates B's own hero; A's is untouched.
+    await call(s, 'PUT', `/characters/${HERO}`, { owner: B, body: { ...kestrel, name: 'Copy' } })
+    expect((await body(call(s, 'GET', `/characters/${HERO}`, { owner: A }))).name).toBe('Kestrel Ashvane')
+    expect((await body(call(s, 'GET', `/characters/${HERO}`, { owner: B }))).name).toBe('Copy')
   })
 
   it('rejects bad bodies with 400 / 413', async () => {
