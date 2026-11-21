@@ -72,7 +72,7 @@ relevant ones before answering design questions or making edits:
 
 ## Companion app (`/app`)
 
-Vite + React + TypeScript static site, deployed to https://emberreach.morrisheap.com/ (GitHub Pages custom domain; DNS at Cloudflare)
+Vite + React + TypeScript static site, deployed to https://emberreach.morris-heap.com/ (GitHub Pages custom domain; DNS at Cloudflare)
 by `.github/workflows/app.yml` on pushes to `main`. See [docs/adr/0001-companion-app-stack.md](docs/adr/0001-companion-app-stack.md).
 
 - Commands (run in `app/`): `npm install`, `npm run dev`, `npm test`, `npm run lint`, `npm run build`.

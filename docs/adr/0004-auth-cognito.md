@@ -25,7 +25,7 @@ Auth0). The backend is now on AWS ([ADR 0003](0003-backend-dynamodb-lambda.md)),
   and CloudFormation resolves it at deploy time. Without the context value, only email sign-in is offered.
 - **Flow: OAuth 2.0 authorization code grant with PKCE (S256)**, plus `state` and an OIDC `nonce`. One public app
   client (`emberreach-web`, no client secret), scopes `openid email profile`. Callback and sign-out URLs are the
-  app URL (`https://emberreach.morrisheap.com/`) and the local dev URL, both with the Vite base `/`. The old
+  app URL (`https://emberreach.morris-heap.com/`) and the local dev URL, both with the Vite base `/`. The old
   github.io project URL (base `/virtual-table-top-ember-reach/`) stays allowed during the move (VTTER-60).
 - **App:** a small hand-written PKCE client in `app/src/auth/` (no Amplify; it's about 200 lines and tested).
   Tokens are kept in `sessionStorage`, so they go away when the tab closes; Cognito's session cookie makes the next

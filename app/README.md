@@ -1,6 +1,6 @@
 # Emberreach companion app
 
-Live: https://emberreach.morrisheap.com/
+Live: https://emberreach.morris-heap.com/
 
 A static web app (Vite + React + TypeScript), deployed to GitHub Pages by
 [.github/workflows/app.yml](../.github/workflows/app.yml) on every push to `main` that touches `app/` or `data/`.
