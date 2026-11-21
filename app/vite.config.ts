@@ -1,7 +1,7 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
 
-// Served from https://emberreach.morris-heap.com/ (Cloudflare Pages custom domain, VTTER-60)
+// Served from https://emberreach.morris-heap.com/ (Cloudflare Worker custom domain, VTTER-60)
 export default defineConfig({
   base: '/',
   plugins: [react()],

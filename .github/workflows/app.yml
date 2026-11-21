@@ -1,4 +1,4 @@
-name: App CI and Cloudflare Pages deploy
+name: App CI
 
 on:
   pull_request:
@@ -8,11 +8,12 @@ on:
     paths: ['app/**', 'data/**', '.github/workflows/app.yml']
   workflow_dispatch:
 
+# Deploys are done by Cloudflare Workers Builds, not here (app/wrangler.jsonc, VTTER-60).
 permissions:
   contents: read
 
 concurrency:
-  group: pages-${{ github.ref }}
+  group: app-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -32,15 +33,3 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
-      # Deploy to Cloudflare Pages (project "emberreach", custom domain emberreach.morris-heap.com; VTTER-60).
-      # Needs the repo secret CLOUDFLARE_API_TOKEN (Account > Cloudflare Pages > Edit) and the variable CLOUDFLARE_ACCOUNT_ID.
-      - name: Deploy to Cloudflare Pages
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: app
-          # Creates the project on the first run; later runs just see it already exists.
-          preCommands: npx wrangler pages project create emberreach --production-branch=main || true
-          command: pages deploy dist --project-name=emberreach --branch=main --commit-dirty=true

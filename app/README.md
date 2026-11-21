@@ -2,8 +2,8 @@
 
 Live: https://emberreach.morris-heap.com/
 
-A static web app (Vite + React + TypeScript), deployed to Cloudflare Pages by
-[.github/workflows/app.yml](../.github/workflows/app.yml) on every push to `main` that touches `app/` or `data/`.
+A static web app (Vite + React + TypeScript), deployed to Cloudflare by Workers Builds on every push to `main`
+([wrangler.jsonc](wrangler.jsonc)). [.github/workflows/app.yml](../.github/workflows/app.yml) checks pull requests.
 
 ## Commands (run in `app/`)
 

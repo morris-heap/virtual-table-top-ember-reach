@@ -8,7 +8,7 @@ Codex reads `AGENTS.md` directly. Claude Code reads `CLAUDE.md`, which imports t
 
 **Emberreach** (working title) is an original fantasy tabletop RPG in the classic dungeon-crawl
 structure: a GM, 3–5 players, d20 Tests, ancestries, callings (classes), and levels 1–10.
-The repo holds the game design (Markdown), a companion web app (`/app`, Cloudflare Pages) and its API
+The repo holds the game design (Markdown), a companion web app (`/app`, Cloudflare) and its API
 (`/api`, an AWS Lambda function on DynamoDB, deployed with CDK from `/infra`). The rules files stay the source of truth for the code.
 
 ## Read before changing anything
@@ -62,7 +62,7 @@ relevant ones before answering design questions or making edits:
 ## Git and Jira
 
 - Default branch `main`. Commit only when the user asks. Branch from an up-to-date `main` and open a PR;
-  merging to `main` deploys (the app to Cloudflare Pages, the API to AWS).
+  merging to `main` deploys (the app to Cloudflare, the API to AWS).
 - Work is tracked in Jira project **VTTER** (Virtual Table Top Ember Reach) at morris-heap.atlassian.net.
   Name branches `VTTER-<n>-short-slug`, and mention the VTTER key(s) in commit messages and PR titles.
   (Older history uses the previous project key, KAN.)
@@ -72,9 +72,9 @@ relevant ones before answering design questions or making edits:
 
 ## Companion app (`/app`)
 
-Vite + React + TypeScript static site on **Cloudflare Pages** (project `emberreach`), served at https://emberreach.morris-heap.com/.
-`.github/workflows/app.yml` tests, builds and deploys it on pushes to `main` (repo secret `CLOUDFLARE_API_TOKEN`, variable
-`CLOUDFLARE_ACCOUNT_ID`). The domain `morris-heap.com` and its DNS are at Cloudflare. See [docs/adr/0001-companion-app-stack.md](docs/adr/0001-companion-app-stack.md).
+Vite + React + TypeScript static site, served at https://emberreach.morris-heap.com/ by a Cloudflare Worker with static
+assets (`app/wrangler.jsonc`). Cloudflare Workers Builds deploys it from `main` (build `npm ci && npm test && npm run build`
+in `app/`, then `npx wrangler deploy`); `.github/workflows/app.yml` checks pull requests. The domain `morris-heap.com` and its DNS are at Cloudflare. See [docs/adr/0001-companion-app-stack.md](docs/adr/0001-companion-app-stack.md).
 
 - Commands (run in `app/`): `npm install`, `npm run dev`, `npm test`, `npm run lint`, `npm run build`.
   **Run test, lint and build before you commit app changes.**
