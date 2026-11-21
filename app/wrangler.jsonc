@@ -1,10 +1,16 @@
 // Cloudflare Worker that serves the built app as static assets (VTTER-60, docs/adr/0001-companion-app-stack.md).
-// Cloudflare Workers Builds runs this from app/: build `npm ci && npm test && npm run build`, deploy `npx wrangler deploy`.
+// Cloudflare Workers Builds runs this from app/: build `npm ci && npm test && npm run build`, deploy `npx wrangler deploy`,
+// and on preview branches `npx wrangler versions upload`.
 // `name` must match the Worker's name in the Cloudflare dashboard.
 {
   "$schema": "https://unpkg.com/wrangler@4/config-schema.json",
   "name": "virtual-table-top-ember-reach",
   "compatibility_date": "2026-11-01",
+  // Every deploy applies these, overriding the dashboard toggles (VTTER-64).
+  // No public workers.dev URL for production: the live site is only at the custom domain below.
+  "workers_dev": false,
+  // A *.workers.dev link for each preview version, so PR builds can be opened.
+  "preview_urls": true,
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"
