@@ -12,7 +12,7 @@ ships the work (commit, push, PR, Jira) and tidies the repo.
 Pushing, opening a PR, commenting in Jira, and deleting a worktree all reach outside this machine or
 can't be undone. So **gather everything first, show one plan, and act only after the user approves
 it.** Running `/cw` counts as asking for a commit and a PR, but not as approval of the plan.
-**Never merge the PR.** Merging to `main` deploys the app to Pages and the API to AWS, so the user
+**Never merge the PR.** Merging to `main` deploys the app to Cloudflare and the API to AWS, so the user
 merges it.
 
 Jira: `cloudId` is `morris-heap.atlassian.net`, and the project is **VTTER**.

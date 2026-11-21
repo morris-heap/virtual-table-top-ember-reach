@@ -76,6 +76,13 @@ Vite + React + TypeScript static site, served at https://emberreach.morris-heap.
 assets (`app/wrangler.jsonc`). Cloudflare Workers Builds deploys it from `main` (build `npm ci && npm test && npm run build`
 in `app/`, then `npx wrangler deploy`); `.github/workflows/app.yml` checks pull requests. The domain `morris-heap.com` and its DNS are at Cloudflare. See [docs/adr/0001-companion-app-stack.md](docs/adr/0001-companion-app-stack.md).
 
+- **PR previews:** each pull request gets a Cloudflare preview build (`npx wrangler preview`), which posts a `*.workers.dev`
+  Preview URL on the PR. Sign-in doesn't work there (the preview origin isn't a Cognito callback URL).
+- **Root `wrangler.toml` is a workaround, not a duplicate:** Cloudflare's preview builds ignore the dashboard's root
+  directory, build command and Preview command, and run from the repo root. The root file builds `app/` and uploads
+  `app/dist`. Keep its `name`, `compatibility_date` and assets settings in step with `app/wrangler.jsonc`, and don't
+  delete it until Cloudflare fixes preview builds (VTTER-67). Both files need a `previews` block.
+
 - Commands (run in `app/`): `npm install`, `npm run dev`, `npm test`, `npm run lint`, `npm run build`.
   **Run test, lint and build before you commit app changes.**
 - Game logic goes in `app/src/engine/` as pure functions with an injectable RNG, and every rule gets unit tests.
