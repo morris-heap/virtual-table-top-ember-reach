@@ -48,7 +48,14 @@ export async function pkceChallenge(verifier: string): Promise<string> {
   return base64url(new Uint8Array(digest))
 }
 
-export function authorizeUrl(cfg: AuthConfig, p: { state: string; nonce: string; challenge: string }): string {
+/**
+ * The managed login URL. `screen: 'signup'` opens the create-account form (Cognito's /signup page, which takes
+ * the same OAuth parameters and returns through the same code + PKCE redirect).
+ */
+export function authorizeUrl(
+  cfg: AuthConfig,
+  p: { state: string; nonce: string; challenge: string; screen?: 'signin' | 'signup' },
+): string {
   const q = new URLSearchParams({
     response_type: 'code',
     client_id: cfg.clientId,
@@ -59,7 +66,7 @@ export function authorizeUrl(cfg: AuthConfig, p: { state: string; nonce: string;
     code_challenge: p.challenge,
     code_challenge_method: 'S256',
   })
-  return `https://${cfg.domain}/oauth2/authorize?${q}`
+  return `https://${cfg.domain}/${p.screen === 'signup' ? 'signup' : 'oauth2/authorize'}?${q}`
 }
 
 /** Ends the Cognito managed login session, then returns to the app. */
