@@ -1,67 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <defs>
-    <radialGradient id="bg" cx="50%" cy="45%" r="70%">
-      <stop offset="0" stop-color="#3b1254"/>
-      <stop offset="1" stop-color="#0f0418"/>
-    </radialGradient>
-    <linearGradient id="horn" x1="0" y1="1" x2="0" y2="0">
-      <stop offset="0" stop-color="#a8977a"/>
-      <stop offset="1" stop-color="#f4ead2"/>
-    </linearGradient>
-    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#6e1022"/>
-      <stop offset="1" stop-color="#2a0510"/>
-    </linearGradient>
-    <linearGradient id="fire" x1="0" y1="1" x2="0" y2="0">
-      <stop offset="0" stop-color="#ff7a00"/>
-      <stop offset="0.6" stop-color="#ff3a00"/>
-      <stop offset="1" stop-color="#b3001e"/>
-    </linearGradient>
-    <linearGradient id="fireCore" x1="0" y1="1" x2="0" y2="0">
-      <stop offset="0" stop-color="#fff1a0"/>
-      <stop offset="0.5" stop-color="#ffc21a"/>
-      <stop offset="1" stop-color="#ff6a00"/>
-    </linearGradient>
-    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="0.4"/>
-    </filter>
-    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="1.6"/>
-    </filter>
-  </defs>
+  <rect width="64" height="64" rx="10" fill="#1c1c1e"/>
 
-  <rect width="64" height="64" rx="12" fill="url(#bg)"/>
+  <!-- hexagon frame -->
+  <path d="M32 7 L53.7 19.5 L53.7 44.5 L32 57 L10.3 44.5 L10.3 19.5 Z"
+        fill="none" stroke="#f5f5f5" stroke-width="3.5" stroke-linejoin="round"/>
 
-  <!-- flames -->
-  <path id="flame" d="M22 60 C12 55 5 45 8 33 C9 37 11 39 13 40 C10 31 11 23 16 17 C16 21 18 24 20 25 C19 17 22 10 27 5 C27 10 28 13 30 15 C30 10 31 6 32 2 C33 6 34 10 34 15 C36 13 37 10 37 5 C42 10 45 17 44 25 C46 24 48 21 48 17 C53 23 54 31 51 40 C53 39 55 37 56 33 C59 45 52 55 42 60 Z"
-        fill="url(#fire)" filter="url(#soft)"/>
-  <use href="#flame" fill="url(#fireCore)" transform="translate(32 50) scale(0.8 0.82) translate(-32 -50)"/>
-
-  <!-- horns -->
-  <path d="M21 28 C13 23 7 14 6 2 C12 11 20 16 29 20 Z" fill="url(#horn)"/>
-  <path d="M43 28 C51 23 57 14 58 2 C52 11 44 16 35 20 Z" fill="url(#horn)"/>
-
-  <!-- head -->
-  <path d="M32 16 C44 16 51 24 51 34 C51 45 42 54 32 61 C22 54 13 45 13 34 C13 24 20 16 32 16 Z"
-        fill="url(#face)" stroke="#1a0410" stroke-width="1.5"/>
-
-  <!-- eye glow -->
-  <g fill="#ff1a1a" filter="url(#glow)" opacity="0.9">
-    <path d="M18 32 L29 37 L27 41 L19 38 Z"/>
-    <path d="M46 32 L35 37 L37 41 L45 38 Z"/>
-  </g>
-  <!-- eyes -->
-  <g fill="#ff2b2b">
-    <path d="M18 32 L29 37 L27 41 L19 38 Z"/>
-    <path d="M46 32 L35 37 L37 41 L45 38 Z"/>
-  </g>
-  <g fill="#ffb3a0">
-    <circle cx="24" cy="37.5" r="1"/>
-    <circle cx="40" cy="37.5" r="1"/>
-  </g>
-
-  <!-- mouth and fangs -->
-  <path d="M21 47 L43 47 L38 53 L26 53 Z" fill="#0c0206"/>
-  <path d="M24.5 47 L28.5 47 L26.5 52 Z" fill="#f4ead2"/>
-  <path d="M35.5 47 L39.5 47 L37.5 52 Z" fill="#f4ead2"/>
+  <!-- flame -->
+  <path d="M32 18 C34.5 24 42 28.5 42 37 C42 42.8 37.5 46.5 32 46.5 C26.5 46.5 22 42.8 22 37 C22 32.5 24.5 29.5 26.5 26.5 C27.3 29.5 28.5 31 30 31.5 C29.5 27 30 22 32 18 Z"
+        fill="#f26b1d"/>
+  <path d="M32.5 33 C34 36 36.5 37.8 36.5 40.6 C36.5 43.2 34.5 45 32 45 C29.5 45 27.5 43.2 27.5 40.6 C27.5 37.8 30.5 36.2 32.5 33 Z"
+        fill="#ffb27a"/>
 </svg>
