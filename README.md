@@ -48,7 +48,7 @@ who can carry light into the dark and bring treasure back.
 - **Before any public release:** run a formal trademark search on the name "Emberreach".
 - **v0.3:** levels 6–10 talents, more spells, magic items, a second adventure.
 - **Digital companion (in progress):** the Test roller and Momentum tracker are live. The API for saved
-  characters is live. Next: the character sheet with guided creation (VTTER-47), then login (VTTER-53).
+  characters is live. Next: the character sheet with guided creation (VTTER-47), then login (VTTER-53, Cognito sign-in, in progress).
 - **Later:** initiative tracker, a shared table, print layout, art direction.
 
 ## Working with AI agents

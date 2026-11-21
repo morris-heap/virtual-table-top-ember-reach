@@ -25,17 +25,17 @@ const store: CharacterStore = {
 describe('Lambda adapter', () => {
   it('builds a Request with the path, query, headers and a decoded base64 body', async () => {
     const req = toRequest(event('PUT', '/characters/x', {
-      rawQueryString: 'a=1', headers: { 'x-owner-id': 'abc' },
+      rawQueryString: 'a=1', headers: { authorization: 'Bearer abc' },
       body: Buffer.from('{"name":"K"}').toString('base64'), isBase64Encoded: true,
     }))
     expect(req.url).toBe('https://api.example/characters/x?a=1')
     expect(req.method).toBe('PUT')
-    expect(req.headers.get('X-Owner-Id')).toBe('abc')
+    expect(req.headers.get('Authorization')).toBe('Bearer abc')
     expect(await req.json()).toEqual({ name: 'K' })
   })
 
   it('returns status, CORS headers and body from the handler', async () => {
-    const h = makeHandler({ store, allowedOrigins: [ORIGIN] })
+    const h = makeHandler({ store, allowedOrigins: [ORIGIN], verifyToken: async () => null })
     const res = await h(event('GET', '/health'))
     expect(res.statusCode).toBe(200)
     expect(res.headers?.['access-control-allow-origin']).toBe(ORIGIN)
@@ -43,7 +43,7 @@ describe('Lambda adapter', () => {
   })
 
   it('answers the CORS preflight with 204', async () => {
-    const res = await makeHandler({ store, allowedOrigins: [ORIGIN] })(event('OPTIONS', '/characters'))
+    const res = await makeHandler({ store, allowedOrigins: [ORIGIN], verifyToken: async () => null })(event('OPTIONS', '/characters'))
     expect(res.statusCode).toBe(204)
     expect(res.body).toBe('')
   })
