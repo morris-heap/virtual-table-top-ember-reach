@@ -5,6 +5,12 @@ import type { Construct } from 'constructs'
 export interface GithubDeployStackProps extends StackProps {
   /** owner/name of the GitHub repository allowed to deploy. */
   repo: string
+  /**
+   * The repository's immutable OIDC subject prefix, `repo:<owner>@<owner id>/<name>@<repo id>`. This repo has
+   * "use immutable subject" on, so tokens carry this form instead of `repo:<owner>/<name>`. Read it with
+   * `gh api repos/<owner>/<name>/actions/oidc/customization/sub` (field sub_claim_prefix).
+   */
+  immutableSubPrefix?: string
 }
 
 /**
@@ -27,7 +33,11 @@ export class GithubDeployStack extends Stack {
       assumedBy: new WebIdentityPrincipal(provider.attrArn, {
         StringEquals: {
           [`${host}:aud`]: 'sts.amazonaws.com',
-          [`${host}:sub`]: `repo:${props.repo}:environment:aws`,
+          // Accept both subject formats, each pinned to this repo and the "aws" environment.
+          [`${host}:sub`]: [
+            `repo:${props.repo}:environment:aws`,
+            ...(props.immutableSubPrefix ? [`${props.immutableSubPrefix}:environment:aws`] : []),
+          ],
         },
       }),
     })
