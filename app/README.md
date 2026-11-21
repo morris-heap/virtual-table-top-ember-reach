@@ -1,16 +1,16 @@
 # Emberreach companion app
 
-Live: https://morris-heap.github.io/virtual-table-top-ember-reach/
+Live: https://emberreach.morris-heap.com/
 
-A static web app (Vite + React + TypeScript), deployed to GitHub Pages by
-[.github/workflows/app.yml](../.github/workflows/app.yml) on every push to `main` that touches `app/` or `data/`.
+A static web app (Vite + React + TypeScript), deployed to Cloudflare by Workers Builds on every push to `main`
+([wrangler.jsonc](wrangler.jsonc)). [.github/workflows/app.yml](../.github/workflows/app.yml) checks pull requests.
 
 ## Commands (run in `app/`)
 
 | Command | What it does |
 |---|---|
 | `npm install` | Install dependencies |
-| `npm run dev` | Local dev server (http://localhost:5173/virtual-table-top-ember-reach/) |
+| `npm run dev` | Local dev server (http://localhost:5173/) |
 | `npm test` | Unit tests (Vitest) |
 | `npm run lint` | Lint (oxlint) |
 | `npm run build` | Type-check and production build to `dist/` |

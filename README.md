@@ -34,7 +34,7 @@ who can carry light into the dark and bring treasure back.
 | [rules/core-rules.md](rules/core-rules.md) | Core rules: the roll, characters, combat, magic, advancement |
 | [rules/gm-guide.md](rules/gm-guide.md) | Running the game: foes, encounter building, a starter adventure |
 | [sheets/character-sheet.md](sheets/character-sheet.md) | Printable/fillable character sheet template |
-| [app/](app/) | Online companion app, live at https://morris-heap.github.io/virtual-table-top-ember-reach/ |
+| [app/](app/) | Online companion app, live at https://emberreach.morris-heap.com/ |
 | [api/](api/) | Companion API (AWS Lambda + DynamoDB, us-east-2) for saved characters |
 | [infra/](infra/) | AWS CDK app that deploys the API and its table |
 | [data/](data/) | Game numbers as JSON, shared by the app and API and checked against the rules |

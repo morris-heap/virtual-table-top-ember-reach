@@ -1,0 +1,14 @@
+// Cloudflare Worker that serves the built app as static assets (VTTER-60, docs/adr/0001-companion-app-stack.md).
+// Cloudflare Workers Builds runs this from app/: build `npm ci && npm test && npm run build`, deploy `npx wrangler deploy`.
+// `name` must match the Worker's name in the Cloudflare dashboard.
+{
+  "$schema": "https://unpkg.com/wrangler@4/config-schema.json",
+  "name": "virtual-table-top-ember-reach",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  },
+  // Wrangler creates the DNS record and certificate for this. Don't also keep a manual CNAME for it.
+  "routes": [{ "pattern": "emberreach.morris-heap.com", "custom_domain": true }]
+}
