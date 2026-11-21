@@ -20,10 +20,13 @@ Live: https://7ybva8z4v3.execute-api.us-east-2.amazonaws.com (check it at `/heal
 |---|---|
 | `npm test` / `npm run typecheck` | Unit tests (Vitest) and type check. Run both before committing |
 | `npm run dev` | Local server on the real table |
+| `npm run claim -- <old-uuid> <cognito-sub> [--apply]` | Moves heroes saved under an old `X-Owner-Id` UUID to a signed-in user (dry run without `--apply`) |
 
 ## Routes
 
-All `/characters` routes need an `X-Owner-Id` header (a UUID) until real login exists (VTTER-53).
+All `/characters` routes need `Authorization: Bearer <access token>` from a Cognito sign-in (VTTER-53,
+[ADR 0004](../docs/adr/0004-auth-cognito.md)). The token's `sub` is the owner. No token or a bad one gets 401.
+For `npm run dev`, set `USER_POOL_ID` and `USER_POOL_CLIENT_ID` (the `EmberreachAuth` outputs).
 
 | Route | Does |
 |---|---|
@@ -37,7 +40,8 @@ Another owner's hero gets 404. If DynamoDB throttles, routes return 503 with `Re
 
 ## Layout
 
-- `src/handler.ts`: routing, CORS, errors (pure, so it's unit-tested with an in-memory store)
+- `src/handler.ts`: routing, CORS, errors (pure, so it's unit-tested with an in-memory store and a fake token verifier)
+- `src/auth.ts`: Cognito access-token verification (`aws-jwt-verify`)
 - `src/sheet.ts`: the `CharacterSheet` shape and its validation (values from `../data/`)
 - `src/store.ts`: DynamoDB reads and writes (one item per hero, key `ownerId` + `id`)
 - `src/lambda.ts`: the Lambda entry point (API Gateway HTTP API events ↔ `Request`/`Response`)

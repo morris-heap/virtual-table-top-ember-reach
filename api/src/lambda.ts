@@ -4,6 +4,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from 'aws-lambda'
+import { cognitoVerifier } from './auth.ts'
 import { handle, type Deps } from './handler.ts'
 import { DynamoCharacterStore } from './store.ts'
 
@@ -38,6 +39,7 @@ const deps: Deps = {
     process.env.TABLE_NAME ?? 'emberreach-characters',
   ),
   allowedOrigins: (process.env.ALLOWED_ORIGINS ?? '').split(',').map(s => s.trim()).filter(Boolean),
+  verifyToken: cognitoVerifier(process.env.USER_POOL_ID, process.env.USER_POOL_CLIENT_ID),
 }
 
 export const handler = makeHandler(deps)

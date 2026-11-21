@@ -24,7 +24,7 @@ Region **us-east-2**, Free plan with credits) and want the whole backend in one 
   route goes to the function. Routing, validation and CORS are unchanged in `api/src/handler.ts`, and
   `api/src/lambda.ts` adapts API Gateway events to it. The stage is throttled to 10 requests/s (burst 20) because
   anyone can call it until login exists. The function's role can only Get, Query, Update and Delete items in the table.
-- **Owners until users exist:** unchanged: `X-Owner-Id` (a client UUID) until VTTER-53. Because the owner is
+- **Owners until users exist:** unchanged: `X-Owner-Id` (a client UUID) until VTTER-53 (now replaced by Cognito sign-in, [ADR 0004](0004-auth-cognito.md)). Because the owner is
   part of the key, one owner can't read, change or delete another's hero. Saving under an id another owner uses
   just creates your own hero with that id.
 - **Infrastructure as code:** AWS CDK (TypeScript) in `infra/`, with three stacks: `EmberreachData` (table, with

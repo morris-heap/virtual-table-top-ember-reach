@@ -24,7 +24,7 @@ relevant ones before answering design questions or making edits:
 | [rules/gm-guide.md](rules/gm-guide.md) | Foe stat blocks, encounter budgets, starter adventure |
 | [sheets/character-sheet.md](sheets/character-sheet.md) | Character sheet template (must match the rules) |
 | [data/](data/) | Machine-readable game numbers used by the app and API (`core.json`, `character.json`). Must match the rules files |
-| [docs/adr/](docs/adr/) | Architecture decisions: [0001](docs/adr/0001-companion-app-stack.md) app stack, [0003](docs/adr/0003-backend-dynamodb-lambda.md) backend (replaced [0002](docs/adr/0002-backend-postgres.md)) |
+| [docs/adr/](docs/adr/) | Architecture decisions: [0001](docs/adr/0001-companion-app-stack.md) app stack, [0003](docs/adr/0003-backend-dynamodb-lambda.md) backend (replaced [0002](docs/adr/0002-backend-postgres.md)), [0004](docs/adr/0004-auth-cognito.md) sign-in |
 | [docs/mockups/](docs/mockups/) | Character sheet UI mockups (view and guided-creation edit mode) for VTTER-47 |
 
 ## How we establish rules (workflow)
@@ -67,7 +67,7 @@ relevant ones before answering design questions or making edits:
   Name branches `VTTER-<n>-short-slug`, and mention the VTTER key(s) in commit messages and PR titles.
   (Older history uses the previous project key, KAN.)
 - Current epics: VTTER-46 UI / UX (VTTER-47 Character Sheet UI), VTTER-51 Backend
-  (VTTER-53 login, VTTER-55 portraits, VTTER-56 app ↔ API still to do).
+  (VTTER-53 login in progress, VTTER-55 portraits, VTTER-56 app ↔ API still to do).
 - Write commit messages in the imperative and say which rules changed (for example "Rebalance Hexer Grit to 8 + 3/level").
 
 ## Companion app (`/app`)
@@ -101,8 +101,11 @@ through GitHub OIDC (role `emberreach-github-deploy`, environment `aws`).
 - The function's role gets only the DynamoDB actions `api/src/store.ts` uses. If you add a call, add its action in
   `infra/lib/api-stack.ts`.
 - Don't rename CDK construct ids in `infra/lib/data-stack.ts`. That replaces the table. Always `cdk diff` first.
-- Until real login (VTTER-53), heroes are scoped by an `X-Owner-Id` UUID header. That isn't authentication,
-  so keep only test data in the table and clean up any items you create when testing.
+- Sign-in is Cognito (stack `EmberreachAuth`, [ADR 0004](docs/adr/0004-auth-cognito.md)): OAuth 2.0 code + PKCE from the app,
+  and the API verifies the access token (`api/src/auth.ts`) and uses its `sub` as `ownerId`. Never trust an owner id from the
+  request. Keep the app client public (no secret), and keep `/health` and CORS preflights unauthenticated.
+- Don't rename construct ids in `infra/lib/auth-stack.ts` either: replacing the user pool deletes every account.
+- Keep only test data in the table and test users in the pool, and clean up anything you create when testing.
 - On Windows, run Vitest from a path that starts with an uppercase drive letter (`C:\…`). A lowercase `c:\…`
   working directory makes every test file that imports a local module fail with
   "Cannot read properties of undefined (reading 'config')". CI (Linux) isn't affected.

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import core from '../../data/core.json'
+import AccountBar from './auth/AccountBar.tsx'
 import { DEGREE_HINT, DEGREE_LABEL, endScene, MAX_STEPS, netModifierDie, rollTest, type TestResult } from './engine/dice'
 
 const MOMENTUM_MAX = core.momentum.max
@@ -44,6 +45,7 @@ export default function App() {
   return (
     <main>
       <header>
+        <AccountBar />
         <p className="eyebrow">Emberreach · v{core.version}</p>
         <h1>Test Roller</h1>
         <p className="sub">d20 + Attribute + Skill vs DC. Boons and Banes cancel one for one.</p>
