@@ -16,7 +16,7 @@ const store = new DynamoCharacterStore(
   DynamoDBDocumentClient.from(new DynamoDBClient({}), { marshallOptions: { removeUndefinedValues: true } }),
   process.env.TABLE_NAME ?? 'emberreach-characters',
 )
-const allowedOrigins = ['http://localhost:5173', 'https://emberreach.morris-heap.com', 'https://morris-heap.github.io']
+const allowedOrigins = ['http://localhost:5173', 'https://emberreach.morris-heap.com']
 const verifyToken = cognitoVerifier(process.env.USER_POOL_ID, process.env.USER_POOL_CLIENT_ID)
 
 createServer(async (req, res) => {
