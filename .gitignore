@@ -21,3 +21,6 @@ node_modules/
 __pycache__/
 .venv/
 .env
+
+# Agent worktrees (/wt skill)
+.claude/worktrees/
