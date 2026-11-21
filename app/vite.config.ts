@@ -1,9 +1,9 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
 
-// Served from https://morris-heap.github.io/virtual-table-top-ember-reach/
+// Served from https://emberreach.morrisheap.com/ (GitHub Pages custom domain, VTTER-60)
 export default defineConfig({
-  base: '/virtual-table-top-ember-reach/',
+  base: '/',
   plugins: [react()],
   // Rules data lives in ../data (shared with the rulebook)
   server: { fs: { allow: ['..'] } },

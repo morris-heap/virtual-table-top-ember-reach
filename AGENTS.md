@@ -72,7 +72,7 @@ relevant ones before answering design questions or making edits:
 
 ## Companion app (`/app`)
 
-Vite + React + TypeScript static site, deployed to https://morris-heap.github.io/virtual-table-top-ember-reach/
+Vite + React + TypeScript static site, deployed to https://emberreach.morrisheap.com/ (GitHub Pages custom domain; DNS at Cloudflare)
 by `.github/workflows/app.yml` on pushes to `main`. See [docs/adr/0001-companion-app-stack.md](docs/adr/0001-companion-app-stack.md).
 
 - Commands (run in `app/`): `npm install`, `npm run dev`, `npm test`, `npm run lint`, `npm run build`.
@@ -80,7 +80,7 @@ by `.github/workflows/app.yml` on pushes to `main`. See [docs/adr/0001-companion
 - Game logic goes in `app/src/engine/` as pure functions with an injectable RNG, and every rule gets unit tests.
 - **Game numbers come from `/data/*.json`, never hard-coded.** When a rule's numbers change,
   update `rules/*.md` **and** `/data` in the same change (this is part of the ripple check above).
-- Vite `base` is `/virtual-table-top-ember-reach/`. Use relative or base-aware paths for assets.
+- Vite `base` is `/`. Still use relative or base-aware paths (`import.meta.env.BASE_URL`) for assets.
 
 ## API (`/api`) and infrastructure (`/infra`)
 

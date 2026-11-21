@@ -7,7 +7,7 @@ import {
 const cfg: AuthConfig = {
   domain: 'emberreach-login.auth.us-east-2.amazoncognito.com',
   clientId: 'client123',
-  redirectUri: 'https://morris-heap.github.io/virtual-table-top-ember-reach/',
+  redirectUri: 'https://emberreach.morrisheap.com/',
 }
 const ISS = 'https://cognito-idp.us-east-2.amazonaws.com/us-east-2_AbCdEfGhI'
 const NOW = 1_800_000_000_000
