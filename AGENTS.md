@@ -67,7 +67,7 @@ relevant ones before answering design questions or making edits:
   Name branches `VTTER-<n>-short-slug`, and mention the VTTER key(s) in commit messages and PR titles.
   (Older history uses the previous project key, KAN.)
 - Current epics: VTTER-46 UI / UX (VTTER-47 Character Sheet UI), VTTER-51 Backend
-  (VTTER-53 login in progress, VTTER-55 portraits, VTTER-56 app ↔ API still to do).
+  (VTTER-53 Cognito login done; VTTER-55 portraits and VTTER-56 app ↔ API still to do).
 - Write commit messages in the imperative and say which rules changed (for example "Rebalance Hexer Grit to 8 + 3/level").
 
 ## Companion app (`/app`)
