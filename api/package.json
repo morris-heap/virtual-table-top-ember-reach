@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "tsx src/dev.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "claim": "tsx scripts/claim-heroes.ts"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1175.0",
-    "@aws-sdk/lib-dynamodb": "^3.1175.0"
+    "@aws-sdk/lib-dynamodb": "^3.1175.0",
+    "aws-jwt-verify": "^5.2.1"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.164",

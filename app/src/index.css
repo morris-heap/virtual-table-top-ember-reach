@@ -101,3 +101,13 @@ footer a { color: var(--ember); }
 @media (max-width: 420px) {
   .total { font-size: 2.4rem; min-width: 60px; }
 }
+
+/* Account bar (VTTER-53) */
+.account { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; min-height: 40px; margin-bottom: 8px; font-size: .9rem; color: var(--muted); }
+.account-name { display: grid; line-height: 1.2; text-align: right; min-width: 0; }
+.account-name b { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 40vw; }
+.account-name small { color: var(--muted); }
+.avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; background: var(--ember-soft); color: var(--ember); font-weight: 700; flex: none; }
+.account-btn { border: 1px solid var(--border); background: var(--panel); border-radius: 999px; padding: 6px 14px; min-height: 36px; }
+.account-btn.primary { background: var(--ember); border-color: var(--ember); color: #fff; font-weight: 600; }
+.account-error { color: var(--bad); flex-basis: 100%; text-align: right; }

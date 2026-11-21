@@ -48,16 +48,21 @@ const kestrel = {
   contacts: 'A rival academic', notes: '',
 }
 
-function call(store: CharacterStore, method: string, path: string, opts: { owner?: string; body?: unknown; origin?: string } = {}) {
+// Stand-in for the Cognito verifier: "token-<id>" is a valid token for user <id>, anything else is rejected.
+const verifyToken = async (token: string) => (token.startsWith('token-') ? token.slice('token-'.length) : null)
+
+function call(store: CharacterStore, method: string, path: string,
+  opts: { owner?: string; auth?: string; body?: unknown; origin?: string } = {}) {
   const headers: Record<string, string> = { Origin: opts.origin ?? ORIGIN }
-  if (opts.owner) headers['X-Owner-Id'] = opts.owner
+  if (opts.owner) headers.Authorization = `Bearer token-${opts.owner}`
+  if (opts.auth) headers.Authorization = opts.auth
   if (opts.body !== undefined) headers['Content-Type'] = 'application/json'
   const req = new Request(`https://api.test${path}`, {
     method,
     headers,
     body: opts.body === undefined ? undefined : typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body),
   })
-  return handle(req, { store, allowedOrigins: [ORIGIN, 'http://localhost:5173'] })
+  return handle(req, { store, allowedOrigins: [ORIGIN, 'http://localhost:5173'], verifyToken })
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -83,6 +88,7 @@ describe('CORS', () => {
     const res = await call(new MemoryStore(), 'OPTIONS', '/characters')
     expect(res.status).toBe(204)
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe(ORIGIN)
+    expect(res.headers.get('Access-Control-Allow-Headers')).toContain('Authorization')
   })
   it('sends no CORS headers to other origins', async () => {
     const res = await call(new MemoryStore(), 'GET', '/health', { origin: 'https://evil.example' })
@@ -91,9 +97,29 @@ describe('CORS', () => {
 })
 
 describe('characters', () => {
-  it('requires a UUID owner id', async () => {
-    expect((await call(new MemoryStore(), 'GET', '/characters')).status).toBe(401)
-    expect((await call(new MemoryStore(), 'GET', '/characters', { owner: 'bob' })).status).toBe(401)
+  it('requires a valid bearer token', async () => {
+    const s = new MemoryStore()
+    const missing = await call(s, 'GET', '/characters')
+    expect(missing.status).toBe(401)
+    expect(missing.headers.get('WWW-Authenticate')).toBe('Bearer')
+    expect(missing.headers.get('Access-Control-Allow-Origin')).toBe(ORIGIN)
+    const bad = await call(s, 'GET', '/characters', { auth: 'Bearer forged' })
+    expect(bad.status).toBe(401)
+    expect(bad.headers.get('WWW-Authenticate')).toContain('invalid_token')
+    expect((await call(s, 'GET', '/characters', { auth: `token-${A}` })).status).toBe(401) // no "Bearer"
+    expect((await call(s, 'PUT', `/characters/${HERO}`, { auth: 'Bearer nope', body: kestrel })).status).toBe(401)
+    expect(s.rows.size).toBe(0)
+  })
+
+  it('ignores the old X-Owner-Id header', async () => {
+    const req = new Request('https://api.test/characters', { headers: { 'X-Owner-Id': A } })
+    expect((await handle(req, { store: new MemoryStore(), allowedOrigins: [], verifyToken })).status).toBe(401)
+  })
+
+  it('uses the verified user id as the owner', async () => {
+    const s = new MemoryStore()
+    await call(s, 'PUT', `/characters/${HERO}`, { auth: `Bearer token-${A.toUpperCase()}`, body: kestrel })
+    expect([...s.rows.values()][0].ownerId).toBe(A)
   })
 
   it('creates, reads, lists, updates and deletes', async () => {

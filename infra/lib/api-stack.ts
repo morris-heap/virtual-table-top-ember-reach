@@ -6,8 +6,10 @@ import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations
 import { TableV2 } from 'aws-cdk-lib/aws-dynamodb'
 import { Architecture, Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda'
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs'
+import { StringParameter } from 'aws-cdk-lib/aws-ssm'
 import type { Construct } from 'constructs'
 import { buildSync } from 'esbuild'
+import { AUTH_PARAMS } from './auth-stack.ts'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -63,6 +65,9 @@ export class ApiStack extends Stack {
       environment: {
         TABLE_NAME: props.tableName,
         ALLOWED_ORIGINS: props.allowedOrigins.join(','),
+        // Published by EmberreachAuth; CloudFormation resolves them on every deploy of this stack.
+        USER_POOL_ID: StringParameter.valueForStringParameter(this, AUTH_PARAMS.userPoolId),
+        USER_POOL_CLIENT_ID: StringParameter.valueForStringParameter(this, AUTH_PARAMS.userPoolClientId),
         NODE_OPTIONS: '--enable-source-maps',
       },
       logGroup: new LogGroup(this, 'HandlerLogs', {
@@ -79,7 +84,7 @@ export class ApiStack extends Stack {
       // Every route and the CORS preflight go to the function; it answers OPTIONS itself.
       defaultIntegration: new HttpLambdaIntegration('Lambda', fn),
     })
-    // Throttle the whole API: anyone can call it until real login (VTTER-53).
+    // Throttle the whole API. /characters needs a Cognito access token (VTTER-53), verified in the function.
     const stage = api.defaultStage!.node.defaultChild as CfnStage
     stage.defaultRouteSettings = { throttlingRateLimit: 10, throttlingBurstLimit: 20 }
 

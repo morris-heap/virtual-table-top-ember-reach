@@ -68,5 +68,5 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::913427211898:role/emberreach-github-deploy
           aws-region: us-east-2
-      - run: npx cdk deploy EmberreachData EmberreachApi --require-approval never
+      - run: npx cdk deploy EmberreachData EmberreachAuth EmberreachApi --require-approval never
         working-directory: infra
