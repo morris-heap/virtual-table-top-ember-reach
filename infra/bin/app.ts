@@ -21,7 +21,12 @@ const BASE = '/virtual-table-top-ember-reach/' // the Vite base in app/vite.conf
 // Optional Google sign-in: `-c googleClientId=…` (or "googleClientId" in cdk.json context). See infra/README.md.
 const googleClientId = app.node.tryGetContext('googleClientId') as string | undefined
 
-new GithubDeployStack(app, 'EmberreachGithubDeploy', { env, repo: 'morris-heap/virtual-table-top-ember-reach' })
+new GithubDeployStack(app, 'EmberreachGithubDeploy', {
+  env,
+  repo: 'morris-heap/virtual-table-top-ember-reach',
+  // The repo uses GitHub's immutable OIDC subjects (owner and repo ids in the sub claim).
+  immutableSubPrefix: 'repo:morris-heap@359005383/virtual-table-top-ember-reach@1465011793',
+})
 new DataStack(app, 'EmberreachData', { env, terminationProtection: true })
 new AuthStack(app, 'EmberreachAuth', {
   env,
