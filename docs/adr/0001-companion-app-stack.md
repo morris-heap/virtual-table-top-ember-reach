@@ -36,7 +36,11 @@ in one place (the route in `wrangler.jsonc` creates them).
 - **Why:** GitHub Pages caps a site at 1 GB and about 100 GB of traffic a month. Requests for static assets on Workers
   are free and unlimited. The backend stays on AWS ([ADR 0003](0003-backend-dynamodb-lambda.md)).
 - **Deploy:** Cloudflare Workers Builds is connected to the GitHub repo. On pushes to `main` it runs, in `app/`,
-  `npm ci && npm test && npm run build` and then `npx wrangler deploy`, so a failing test stops the deploy. Other branches
-  get preview versions. GitHub Actions (`.github/workflows/app.yml`) still runs lint, test and build on pull requests.
+  `npm ci && npm test && npm run build` and then `npx wrangler deploy`, so a failing test stops the deploy.
+  GitHub Actions (`.github/workflows/app.yml`) still runs lint, test and build on pull requests.
   No Cloudflare token is stored in GitHub.
+- **PR previews (VTTER-67):** other branches get a Worker Preview through `npx wrangler preview`, and Cloudflare posts its
+  `*.workers.dev` URL on the pull request. Production keeps `workers_dev: false` (VTTER-64). Preview builds ignore the
+  dashboard's root directory and build command and run from the repo root, so a root `wrangler.toml` builds `app/` and
+  uploads `app/dist`. Remove it once Cloudflare fixes this.
 - **Limits to know:** 20,000 files and 25 MiB per file on the free plan.
