@@ -1,6 +1,6 @@
 // Cloudflare Worker that serves the built app as static assets (VTTER-60, docs/adr/0001-companion-app-stack.md).
 // Cloudflare Workers Builds runs this from app/: build `npm ci && npm test && npm run build`, deploy `npx wrangler deploy`,
-// and on preview branches `npx wrangler versions upload`.
+// and on preview branches `npx wrangler preview`.
 // `name` must match the Worker's name in the Cloudflare dashboard.
 {
   "$schema": "https://unpkg.com/wrangler@4/config-schema.json",
@@ -11,6 +11,9 @@
   "workers_dev": false,
   // A *.workers.dev link for each preview version, so PR builds can be opened.
   "preview_urls": true,
+  // Required by `wrangler preview`, which Workers Builds runs for PR branches (VTTER-67). Empty means
+  // previews inherit the top-level settings (assets, compatibility date).
+  "previews": {},
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"

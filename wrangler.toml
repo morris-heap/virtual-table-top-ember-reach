@@ -1,0 +1,20 @@
+# Workaround for Workers Builds preview builds only (VTTER-67). Production builds use app/wrangler.jsonc.
+#
+# Preview builds for pull requests ignore the dashboard's root directory (app), build command and
+# Preview command, and run plain `npx wrangler preview` from the repo root. This file lets that work:
+# Wrangler runs [build] to build the app, then uploads app/dist. Keep name, compatibility_date and
+# assets in step with app/wrangler.jsonc. Delete this file once Cloudflare fixes preview builds.
+name = "virtual-table-top-ember-reach"
+compatibility_date = "2026-11-01"
+workers_dev = false
+preview_urls = true
+
+[build]
+command = "cd app && npm ci && npm test && npm run build"
+
+[assets]
+directory = "./app/dist"
+not_found_handling = "single-page-application"
+
+# Required by `wrangler preview`. Empty: previews use the settings above.
+[previews]
