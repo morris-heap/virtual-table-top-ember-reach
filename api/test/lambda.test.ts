@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { CharacterStore } from '../src/handler.ts'
 import { makeHandler, toRequest } from '../src/lambda.ts'
 
-const ORIGIN = 'https://morris-heap.github.io'
+const ORIGIN = 'https://emberreach.morris-heap.com'
 
 function event(method: string, path: string, opts: Partial<APIGatewayProxyEventV2> = {}): APIGatewayProxyEventV2 {
   return {

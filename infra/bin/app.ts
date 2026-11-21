@@ -15,10 +15,7 @@ const app = new App()
 const env = { account: '913427211898', region: 'us-east-2' }
 
 // The app is served at https://emberreach.morris-heap.com/ (Cloudflare Worker custom domain; VTTER-60).
-// Keep the old GitHub Pages URL allowed until GitHub Pages is switched off.
 const APP_ORIGIN = 'https://emberreach.morris-heap.com'
-const OLD_PAGES_ORIGIN = 'https://morris-heap.github.io'
-const OLD_BASE = '/virtual-table-top-ember-reach/'
 const DEV_ORIGIN = 'http://localhost:5173'
 const BASE = '/' // the Vite base in app/vite.config.ts
 
@@ -36,7 +33,7 @@ new AuthStack(app, 'EmberreachAuth', {
   env,
   terminationProtection: true,
   domainPrefix: 'emberreach-login',
-  appUrls: [`${APP_ORIGIN}${BASE}`, `${DEV_ORIGIN}${BASE}`, `${OLD_PAGES_ORIGIN}${OLD_BASE}`, `${DEV_ORIGIN}${OLD_BASE}`],
+  appUrls: [`${APP_ORIGIN}${BASE}`, `${DEV_ORIGIN}${BASE}`],
   google: googleClientId ? { clientId: googleClientId, clientSecretName: 'emberreach/google-oauth-client-secret' } : undefined,
 })
 // The API finds the table by name and the Cognito ids through SSM rather than cross-stack exports,
@@ -44,5 +41,5 @@ new AuthStack(app, 'EmberreachAuth', {
 new ApiStack(app, 'EmberreachApi', {
   env,
   tableName: TABLE_NAME,
-  allowedOrigins: [APP_ORIGIN, DEV_ORIGIN, OLD_PAGES_ORIGIN],
+  allowedOrigins: [APP_ORIGIN, DEV_ORIGIN],
 })

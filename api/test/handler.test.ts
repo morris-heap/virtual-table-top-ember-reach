@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { handle, MAX_BODY_BYTES, type CharacterStore } from '../src/handler.ts'
 import { parseSheet, type CharacterRecord, type CharacterSheet } from '../src/sheet.ts'
 
-const ORIGIN = 'https://morris-heap.github.io'
+const ORIGIN = 'https://emberreach.morris-heap.com'
 const A = '11111111-1111-4111-8111-111111111111'
 const B = '22222222-2222-4222-8222-222222222222'
 const HERO = '33333333-3333-4333-8333-333333333333'
