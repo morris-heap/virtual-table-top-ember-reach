@@ -1,11 +1,11 @@
-name: API CI and Cloudflare deploy
+name: API CI and AWS deploy
 
 on:
   pull_request:
-    paths: ['api/**', 'data/**', '.github/workflows/api.yml']
+    paths: ['api/**', 'infra/**', 'data/**', '.github/workflows/api.yml']
   push:
     branches: [main]
-    paths: ['api/**', 'data/**', '.github/workflows/api.yml']
+    paths: ['api/**', 'infra/**', 'data/**', '.github/workflows/api.yml']
   workflow_dispatch:
 
 permissions:
@@ -13,45 +13,60 @@ permissions:
 
 concurrency:
   group: api-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: api
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: api/package-lock.json
+          cache-dependency-path: |
+            api/package-lock.json
+            infra/package-lock.json
       - run: npm ci
+        working-directory: api
       - run: npm run typecheck
+        working-directory: api
       - run: npm test
+        working-directory: api
+      - run: npm ci
+        working-directory: infra
+      - run: npm run typecheck
+        working-directory: infra
+      # Synth needs no AWS credentials (account and Region are fixed in infra/bin/app.ts).
+      - run: npx cdk synth --strict --quiet
+        working-directory: infra
 
   deploy:
     needs: test
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    environment:
-      name: cloudflare
-      url: https://emberreach-api.emberreach-api.workers.dev/health
+    # The deploy role only trusts this environment (infra/lib/github-deploy-stack.ts).
+    environment: aws
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: api/package-lock.json
+          cache-dependency-path: |
+            api/package-lock.json
+            infra/package-lock.json
       - run: npm ci
         working-directory: api
-      # Worker secrets (OPTILOGIC_APP_KEY) live in Cloudflare and survive deploys.
-      - uses: cloudflare/wrangler-action@v3
+      - run: npm ci
+        working-directory: infra
+      # OIDC: no stored AWS keys. The role can only assume the CDK bootstrap roles.
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: api
-          command: deploy
+          role-to-assume: arn:aws:iam::913427211898:role/emberreach-github-deploy
+          aws-region: us-east-2
+      - run: npx cdk deploy EmberreachData EmberreachApi --require-approval never
+        working-directory: infra

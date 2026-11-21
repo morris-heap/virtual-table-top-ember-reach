@@ -1,6 +1,6 @@
 # ADR 0002: Backend on Optilogic Postgres, served by a Cloudflare Worker
 
-- **Status:** Accepted (2026-11-21)
+- **Status:** Superseded by [ADR 0003](0003-backend-dynamodb-lambda.md) (2026-11-21)
 - **Jira:** VTTER-51 (Backend epic), for VTTER-47 (Character Sheet UI)
 - **Amends:** [ADR 0001](0001-companion-app-stack.md) ("Local state only… There's no backend")
 

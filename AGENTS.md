@@ -9,7 +9,7 @@ Codex reads `AGENTS.md` directly. Claude Code reads `CLAUDE.md`, which imports t
 **Emberreach** (working title) is an original fantasy tabletop RPG in the classic dungeon-crawl
 structure: a GM, 3–5 players, d20 Tests, ancestries, callings (classes), and levels 1–10.
 The repo holds the game design (Markdown), a companion web app (`/app`, GitHub Pages) and its API
-(`/api`, a Cloudflare Worker on Optilogic Postgres). The rules files stay the source of truth for the code.
+(`/api`, an AWS Lambda function on DynamoDB, deployed with CDK from `/infra`). The rules files stay the source of truth for the code.
 
 ## Read before changing anything
 
@@ -24,7 +24,7 @@ relevant ones before answering design questions or making edits:
 | [rules/gm-guide.md](rules/gm-guide.md) | Foe stat blocks, encounter budgets, starter adventure |
 | [sheets/character-sheet.md](sheets/character-sheet.md) | Character sheet template (must match the rules) |
 | [data/](data/) | Machine-readable game numbers used by the app and API (`core.json`, `character.json`). Must match the rules files |
-| [docs/adr/](docs/adr/) | Architecture decisions: [0001](docs/adr/0001-companion-app-stack.md) app stack, [0002](docs/adr/0002-backend-postgres.md) backend |
+| [docs/adr/](docs/adr/) | Architecture decisions: [0001](docs/adr/0001-companion-app-stack.md) app stack, [0003](docs/adr/0003-backend-dynamodb-lambda.md) backend (replaced [0002](docs/adr/0002-backend-postgres.md)) |
 | [docs/mockups/](docs/mockups/) | Character sheet UI mockups (view and guided-creation edit mode) for VTTER-47 |
 
 ## How we establish rules (workflow)
@@ -62,7 +62,7 @@ relevant ones before answering design questions or making edits:
 ## Git and Jira
 
 - Default branch `main`. Commit only when the user asks. Branch from an up-to-date `main` and open a PR;
-  merging to `main` deploys (the app to Pages, the API to Cloudflare).
+  merging to `main` deploys (the app to Pages, the API to AWS).
 - Work is tracked in Jira project **VTTER** (Virtual Table Top Ember Reach) at morris-heap.atlassian.net.
   Name branches `VTTER-<n>-short-slug`, and mention the VTTER key(s) in commit messages and PR titles.
   (Older history uses the previous project key, KAN.)
@@ -82,24 +82,106 @@ by `.github/workflows/app.yml` on pushes to `main`. See [docs/adr/0001-companion
   update `rules/*.md` **and** `/data` in the same change (this is part of the ripple check above).
 - Vite `base` is `/virtual-table-top-ember-reach/`. Use relative or base-aware paths for assets.
 
-## API (`/api`)
+## API (`/api`) and infrastructure (`/infra`)
 
-Cloudflare Worker at https://emberreach-api.emberreach-api.workers.dev, connecting through Hyperdrive to the
-Optilogic Postgres (schema `emberreach`). Deployed by `.github/workflows/api.yml` on pushes to `main`.
+An AWS Lambda function (Node.js 22) behind an API Gateway HTTP API, storing heroes in the DynamoDB table
+`emberreach-characters`. Everything is in the ember-reach project, Region **us-east-2**. See
+[docs/adr/0003-backend-dynamodb-lambda.md](docs/adr/0003-backend-dynamodb-lambda.md).
+The CDK app in `infra/` defines it. `.github/workflows/api.yml` deploys `EmberreachData` and `EmberreachApi` on pushes to `main`
+through GitHub OIDC (role `emberreach-github-deploy`, environment `aws`).
 
-- Commands (run in `api/`): `npm test`, `npm run typecheck`, `npm run dev` (local Worker on the real DB),
-  `npm run db:check`, `npm run db:migrate`, `npm run db:allow-cloudflare`, `npm run hyperdrive [-- --update]`,
-  `npm run secrets`, `npm run deploy`. **Run test and typecheck before you commit API changes.**
-- Secrets live in the repo-root `.env` (git-ignored; template in `.env.example`, keep it in sync) and in Cloudflare (`OPTILOGIC_APP_KEY` Worker secret).
-  **Never print, log or commit them.** Scripts read `.env` and pass values without echoing them, and call
-  wrangler without a shell, because cmd.exe rewrites `^ & | < > %` in passwords.
-- Schema changes are new files in `api/migrations/` (never edit an applied one). Sheet fields are real columns
-  and child tables, not JSON. Allowed values come from `/data/character.json` and `/data/core.json`.
-- The Optilogic test environment can restart and drop its firewall rules. The scripts and the Worker
-  (on failure, plus a 10-minute cron) re-add them automatically with the app key.
-- Hyperdrive query caching is **off** on purpose (a read right after a save or delete must be fresh). Keep it off.
+- Commands in `api/`: `npm test`, `npm run typecheck`, `npm run dev` (local server on the real table).
+  Commands in `infra/`: `npm run typecheck`, `npm run synth`, `npm run diff`, `npx cdk deploy <Stack>`.
+  **Run the API test and typecheck, and the infra typecheck and synth, before you commit API or infra changes.**
+- AWS access is the CLI profile `ember-reach` (`aws login --profile ember-reach`). There are no AWS keys in `.env`,
+  GitHub or code, so keep it that way: CI uses OIDC and the function uses its role.
+- One item per hero: key `ownerId` + `id`. Sheet fields are item attributes, and lists are native DynamoDB lists and maps,
+  never JSON strings. Allowed values come from `/data/character.json` and `/data/core.json`. Single-hero reads are
+  strongly consistent (a read right after a save or delete must be fresh), so keep `ConsistentRead`.
+- The function's role gets only the DynamoDB actions `api/src/store.ts` uses. If you add a call, add its action in
+  `infra/lib/api-stack.ts`.
+- Don't rename CDK construct ids in `infra/lib/data-stack.ts`. That replaces the table. Always `cdk diff` first.
 - Until real login (VTTER-53), heroes are scoped by an `X-Owner-Id` UUID header. That isn't authentication,
-  so keep only test data in the database and clean up any rows you create when testing.
+  so keep only test data in the table and clean up any items you create when testing.
 - On Windows, run Vitest from a path that starts with an uppercase drive letter (`C:\…`). A lowercase `c:\…`
   working directory makes every test file that imports a local module fail with
   "Cannot read properties of undefined (reading 'config')". CI (Linux) isn't affected.
+
+<!-- BEGIN AWS Agent Toolkit rules -->
+# AWS Guidance for the new AWS experience
+
+This user has signed up for the new AWS experience. This experience lets you sign into AWS using a social provider and requires the following additional context.
+
+Where this guidance conflicts with the project's own instructions, the project's instructions take precedence.
+
+## Context
+
+### Terminology:
+
+- Say "project" instead of "account" — a project contains an AWS account and settings for sharing with other collaborators
+- Say "team member" instead of "IAM user" — users are invited by email, not created or federated in IAM
+- Say "AWS Settings" when referring to management tasks at [settings.aws.com](https://settings.aws.com/) (project management, billing, team members, spend limits). Users view their actual AWS resources in the AWS Management Console.
+- Say "selected Region" when referring to the user's Region — not "home Region"
+- The user has a managed IAM experience. This includes a managed service control policies (SCP) and resource control policies (RCP) that govern the use of AWS. They will still need to use IAM to create policies to let services work with each other. If there are questions about the SCPs or RCPs, go to the documentation at https://docs.aws.amazon.com/accounts/latest/reference/scps-and-rcps-for-projects.html
+
+### Constraints:
+
+- All projects share a single AWS Region determined by the user's contact address. Resources cannot be created in other Regions
+- When developing:
+  - MUST create all Regional resources in the project's assigned Region
+  - You CAN create AWS WAF and Cloudwatch Logs resources in us-east-1 when there are global resources (like a global WAF instance) that require a connection to dependencies in us-east-1. You should not use these for any other reason, because resources in the selected Region will provide lower cost (due to no cross-Region traffic), increased availability (due to no cross-Region traffic), and easier manageability (due to not needing to look in another Region). When you need to do an inventory of resources, you need to look in both the selected Region and us-east-1 for Cloudwatch Logs or WAF resources.
+  - MUST NOT attempt to create Lambda, API Gateway, or other Regional resources in any other Region
+  - MUST direct users to confirm their Region in AWS Settings > View all projects > Overview > Additional Info > Region. If the user cannot confirm their Region, check in ~/.aws/config
+  - MUST NOT use Lambda@Edge — excluded from both Lambda and CloudFront
+  - MUST NOT use CloudFormation StackSets — no multi-account or multi-Region deployments
+  - MUST NOT attempt cross-Region actions — no cross-Region replication for DynamoDB/S3/RDS, no multi-Region KMS keys
+  - MUST NOT use Route 53 cross-Region routing — geolocation, latency-based, and failover routing policies are not available
+  - CloudFront is a global service and its actions ARE allowed in `us-east-1`. A user can create a CloudFront distribution pointing to their project-region Lambda function URL or API Gateway. However, Lambda and API Gateway themselves MUST NOT be created in `us-east-1` — they must be in the project Region.
+  - Reduced availability in `eu-north-1` specifically: Amazon Rekognition, Amazon Textract, Amazon Personalize, AWS App Runner are not available in that Region.
+- IAM permissions for human access are managed by AWS. Don't assign roles to team members unless absolutely necessary
+- The user may have a spend limit if they are on the paid plan. The limit that pauses their project if it's exceeded. If resources suddenly become inaccessible, ask if they have a spend limit configured. Only project owners can modify a spend limit.
+- When developing:
+  - MUST ask about spend limit status if the user reports sudden "Access Denied" errors on operations that previously worked
+  - MUST direct users to check spend status in AWS Settings > Billing
+  - MUST check if a user has upgraded their account to the paid plan
+  - MUST ask the user if they want to clean up the successfully created resources or keep them to reduce cost
+- The user sets up billing, creates spend limits, and retrieves and pays invoices in AWS Settings. The user creates budgets and optimizes their costs in the AWS Billing and Cost Management console
+- Not all AWS services are available. If a service isn't working, do the following:
+  1. Run the command `aws freetier get-account-plan-state`
+  2. If accountPlanType": "FREE", check the [Free Tier supported services list](https://docs.aws.amazon.com/accounts/latest/reference/supported-services-sign-up-new.html#supported-services-free-tier) next,
+  3. If accountPlanType": "PAID", check the [Paid Tier supported services list](https://docs.aws.amazon.com/accounts/latest/reference/supported-services-sign-up-new.html#supported-services-paid-plan).
+  4. If neither list shows the service, check the [Not supported for this experience list](https://docs.aws.amazon.com/accounts/latest/reference/supported-services-sign-up-new.html#unsupported-services). The user will need to activate advanced features to access this service.
+- Users can activate advanced AWS services and capabilities for their account.
+- For any AWS task or question — building, configuring, migrating, debugging, or operating a service, writing SDK code, authoring CDK/CloudFormation, or answering how a service works — first call `aws___search_documentation` with topic `agent_skills` and load the matching skill with `aws___retrieve_skill`. Do this even when you believe you know the answer: skills carry current service behavior that your training may not. Prefer the skill's guidance over general knowledge. Skip it only for work that does not involve AWS.
+
+### Help level
+
+- help_level (required): LOW, MEDIUM, or HIGH. While a user is building, you MUST ask the user: "How much guidance would you like from me? Low (I only flag security risks), medium (I ask a couple of clarifying questions if something seems off), or high (I explain what I'm doing, suggest alternatives, and flag best practices)."
+
+You CAN update this rule file to save a user's help_level.
+
+**Saved help_level: LOW** (chosen 2026-11-21). Don't ask again unless the user wants to change it.
+
+Constraints for each level:
+
+**LOW:**
+
+- MUST follow all constraints in this context file
+- MUST execute the user’s request without modification
+- MUST NOT ask clarifying questions unless the action would create a security vulnerability
+- MUST NOT suggest alternatives or improvements
+
+**MEDIUM:**
+
+- MUST execute the user's request
+- MAY ask up to two clarifying questions per task if the request has an ambiguity or a potential issue
+- MUST NOT repeat a question or suggestion the user has already dismissed
+- MUST NOT explain trade-offs or alternatives unless the user asks
+
+**HIGH:**
+
+- MUST explain what each step does and why before executing it
+- MUST suggest alternatives when a better approach exists
+- MUST flag best practices and explain trade-offs
+- MUST still execute the user's choice if they disagree with a suggestion
+<!-- END AWS Agent Toolkit rules -->

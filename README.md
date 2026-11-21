@@ -35,7 +35,8 @@ who can carry light into the dark and bring treasure back.
 | [rules/gm-guide.md](rules/gm-guide.md) | Running the game: foes, encounter building, a starter adventure |
 | [sheets/character-sheet.md](sheets/character-sheet.md) | Printable/fillable character sheet template |
 | [app/](app/) | Online companion app, live at https://morris-heap.github.io/virtual-table-top-ember-reach/ |
-| [api/](api/) | Companion API (Cloudflare Worker + Optilogic Postgres) for saved characters, live at https://emberreach-api.emberreach-api.workers.dev |
+| [api/](api/) | Companion API (AWS Lambda + DynamoDB, us-east-2) for saved characters |
+| [infra/](infra/) | AWS CDK app that deploys the API and its table |
 | [data/](data/) | Game numbers as JSON, shared by the app and API and checked against the rules |
 | [docs/adr/](docs/adr/) | Architecture decision records |
 | [docs/mockups/](docs/mockups/) | UI mockups (character sheet) |
