@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <!-- Same drawing as Logo in app/src/Landing.tsx, with the landing-page nav colour (#ffb347) for the hexagon. -->
+  <defs>
+    <linearGradient id="ember-fill" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#d9531e"/>
+      <stop offset="1" stop-color="#ffb347"/>
+    </linearGradient>
+  </defs>
+  <path d="M32 3 57 17.5v29L32 61 7 46.5v-29Z" fill="none" stroke="#ffb347" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M32 15c3 7 11 11 11 21a11 11 0 0 1-22 0c0-5 3-8 5-10 0 4 2 6 4 6-1-6 0-12 2-17Z" fill="url(#ember-fill)"/>
+</svg>

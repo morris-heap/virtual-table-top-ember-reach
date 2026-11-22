@@ -1,6 +1,8 @@
 // Landing page for signed-out visitors (VTTER-59). Copy follows README.md (pitch and design pillars).
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import core from '../../data/core.json'
+import { socialProviders } from './auth/config.ts'
+import type { SocialProvider } from './auth/oauth.ts'
 import type { Auth } from './auth/useAuth.ts'
 import { DEGREE_HINT, DEGREE_LABEL, degreeOf } from './engine/dice.ts'
 
@@ -29,6 +31,46 @@ export function Logo({ size = 32 }: { size?: number }) {
   )
 }
 
+// Provider marks for the social sign-in buttons (each company's own logo colors).
+const PROVIDER_ICON: Record<SocialProvider, ReactNode> = {
+  Google: (
+    <>
+      <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5a5.6 5.6 0 0 1-2.4 3.6v3h3.9c2.2-2.1 3.5-5.1 3.5-8.8" />
+      <path fill="#34A853" d="M12 24c3.2 0 6-1.1 7.9-2.9l-3.9-3c-1 .7-2.4 1.1-4 1.1a7 7 0 0 1-6.6-4.8h-4v3.1A12 12 0 0 0 12 24" />
+      <path fill="#FBBC05" d="M5.4 14.4a7 7 0 0 1 0-4.6V6.7h-4a12 12 0 0 0 0 10.8z" />
+      <path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.4 6.7l4 3.1A7 7 0 0 1 12 4.8" />
+    </>
+  ),
+  Microsoft: (
+    <>
+      <path fill="#F25022" d="M1 1h10.5v10.5H1z" />
+      <path fill="#7FBA00" d="M12.5 1H23v10.5H12.5z" />
+      <path fill="#00A4EF" d="M1 12.5h10.5V23H1z" />
+      <path fill="#FFB900" d="M12.5 12.5H23V23H12.5z" />
+    </>
+  ),
+  GitHub: (
+    <path fill="#1f2328" d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2 0 1.9 1.2 1.9 1.2 1 1.8 2.8 1.3 3.5 1 0-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6 0-3.2 0 0 1-.3 3.4 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8 0 3.2.9.8 1.3 1.9 1.3 3.2 0 4.6-2.8 5.6-5.5 5.9.5.4.9 1 .9 2.2v3.3c0 .3.1.7.8.6A12 12 0 0 0 12 .3" />
+  ),
+}
+
+function SocialButtons({ auth }: { auth: Auth }) {
+  if (socialProviders.length === 0) return null
+  return (
+    <div className="lp-social" role="group" aria-label="Continue with another account">
+      <span className="lp-or">or continue with</span>
+      <div className="lp-social-row">
+        {socialProviders.map(p => (
+          <button key={p} type="button" className="lp-social-btn" onClick={() => auth.signInWith(p)}>
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">{PROVIDER_ICON[p]}</svg>
+            <span>{p}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 const PILLARS = [
   {
     title: 'One roll for everything',
@@ -51,6 +93,11 @@ const PILLARS = [
     icon: <path d="M12 2a5 5 0 0 1 5 5v2h1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2h1V7a5 5 0 0 1 5-5Zm0 2a3 3 0 0 0-3 3v2h6V7a3 3 0 0 0-3-3Z" />,
   },
 ]
+
+/** "Google", "Google or Microsoft", "Google, Microsoft or GitHub". */
+function listOr(items: readonly string[]): string {
+  return items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} or ${items[items.length - 1]}`
+}
 
 export default function Landing({ auth, onGuest }: { auth: Auth; onGuest: () => void }) {
   const error = auth.state.status === 'signedOut' ? auth.state.error : undefined
@@ -85,7 +132,11 @@ export default function Landing({ auth, onGuest }: { auth: Auth; onGuest: () => 
               <button type="button" className="lp-btn primary" onClick={auth.signUp}>Create free account</button>
               <button type="button" className="lp-btn secondary" onClick={auth.signIn}>Sign in</button>
             </div>
-            <p className="lp-fine">Free while the game is in development. Sign in with your email address.</p>
+            <SocialButtons auth={auth} />
+            <p className="lp-fine">
+              Free while the game is in development. Sign in with your email address
+              {socialProviders.length > 0 && ` or your ${listOr(socialProviders)} account`}.
+            </p>
             <button type="button" className="lp-link" onClick={onGuest}>
               Just want to roll? Try the Test roller without an account <span aria-hidden="true">→</span>
             </button>

@@ -2,7 +2,7 @@
 // whether the visitor is signed in, and once they are, how many heroes they've saved.
 import { useCallback, useEffect, useState } from 'react'
 import { apiUrl, authConfig } from './config.ts'
-import type { User } from './oauth.ts'
+import type { SocialProvider, User } from './oauth.ts'
 import { completeSignIn, getAccessToken, signIn, signOut } from './session.ts'
 
 export type AuthState =
@@ -15,6 +15,7 @@ export interface Auth {
   state: AuthState
   signIn: () => void
   signUp: () => void
+  signInWith: (provider: SocialProvider) => void
   signOut: () => void
 }
 
@@ -53,6 +54,7 @@ export function useAuth(): Auth {
     state,
     signIn: useCallback(() => { if (authConfig) void signIn(authConfig) }, []),
     signUp: useCallback(() => { if (authConfig) void signIn(authConfig, 'signup') }, []),
+    signInWith: useCallback((p: SocialProvider) => { if (authConfig) void signIn(authConfig, 'signin', p) }, []),
     signOut: useCallback(() => { if (authConfig) void signOut(authConfig) }, []),
   }
 }

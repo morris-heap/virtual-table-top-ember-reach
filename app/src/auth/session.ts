@@ -3,7 +3,7 @@
 // next sign-in one click), refreshes the access token, and signs out.
 import {
   authorizeUrl, checkIdToken, codeExchangeBody, isExpiring, logoutUrl, pkceChallenge, randomString, readCallback,
-  refreshBody, tokensFromResponse, userFromClaims, decodeJwt, type AuthConfig, type Tokens, type User,
+  refreshBody, tokensFromResponse, userFromClaims, decodeJwt, type AuthConfig, type SocialProvider, type Tokens, type User,
 } from './oauth.ts'
 
 const TOKENS = 'emberreach.auth.tokens'
@@ -42,12 +42,15 @@ async function tokenRequest(cfg: AuthConfig, body: URLSearchParams): Promise<unk
 
 /**
  * Sends the browser to the managed login page: the sign-in form, or the create-account form with
- * `screen: 'signup'`. Either way Cognito returns to the app with a code (or Google, if enabled).
+ * `screen: 'signup'`, or straight to a social provider. Either way Cognito returns to the app with a code.
  */
-export async function signIn(cfg: AuthConfig, screen: 'signin' | 'signup' = 'signin'): Promise<void> {
+export async function signIn(
+  cfg: AuthConfig, screen: 'signin' | 'signup' = 'signin', provider?: SocialProvider,
+): Promise<void> {
   const pending: Pending = { state: randomString(), nonce: randomString(), verifier: randomString(48) }
   store(PENDING, pending)
-  window.location.assign(authorizeUrl(cfg, { ...pending, challenge: await pkceChallenge(pending.verifier), screen }))
+  const challenge = await pkceChallenge(pending.verifier)
+  window.location.assign(authorizeUrl(cfg, { ...pending, challenge, screen, provider }))
 }
 
 let completing: Promise<User | null> | null = null
