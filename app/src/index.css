@@ -148,6 +148,14 @@ button.brand:hover span, a.brand:hover span { color: var(--ember); }
 .lp-hero h1 { font-size: clamp(2.3rem, 7vw, 4rem); line-height: 1.04; letter-spacing: -.02em; margin: 0 0 18px; font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif; font-weight: 700; }
 .lp-lead { margin: 0 0 24px; font-size: 1.1rem; line-height: 1.6; color: var(--ash-muted); max-width: 36rem; }
 .lp-ctas { display: flex; flex-wrap: wrap; gap: 12px; }
+.lp-social { margin-top: 20px; display: grid; gap: 10px; max-width: 34rem; }
+.lp-or { display: flex; align-items: center; gap: 12px; font-size: .8rem; text-transform: uppercase; letter-spacing: .12em; color: var(--ash-muted); }
+.lp-or::before, .lp-or::after { content: ''; flex: 1; height: 1px; background: rgba(255, 255, 255, .16); }
+.lp-social-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.lp-social-btn { flex: 1 1 140px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 46px; padding: 0 16px; border-radius: 12px; background: rgba(255, 255, 255, .94); color: #1f1f1f; border: 1px solid rgba(255, 255, 255, .2); font-weight: 600; font-size: .95rem; transition: transform .12s ease, box-shadow .2s ease, background .2s ease; }
+.lp-social-btn:hover { background: #fff; box-shadow: 0 8px 22px -10px rgba(255, 179, 71, .7); }
+.lp-social-btn:active { transform: translateY(1px); }
+.lp-social-btn:focus-visible { outline: 2px solid #ffb347; outline-offset: 3px; }
 .lp-fine { margin: 14px 0 0; font-size: .88rem; color: var(--ash-muted); }
 .lp-link { margin-top: 18px; padding: 0; background: none; border: 0; color: #ffb347; font-weight: 600; text-align: left; }
 .lp-link:hover { text-decoration: underline; }

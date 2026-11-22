@@ -27,6 +27,19 @@ export interface User {
 
 export const SCOPES = 'openid email profile'
 
+/**
+ * Social sign-in providers the app can offer, by their Cognito identity provider name (infra/lib/auth-stack.ts).
+ * Order is the order of the buttons.
+ */
+export const SOCIAL_PROVIDERS = ['Google', 'Microsoft', 'GitHub'] as const
+export type SocialProvider = (typeof SOCIAL_PROVIDERS)[number]
+
+/** Reads a comma-separated provider list (VITE_AUTH_PROVIDERS). Unknown names are dropped; order is ours. */
+export function parseProviders(raw: string | undefined): SocialProvider[] {
+  const wanted = new Set((raw ?? '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean))
+  return SOCIAL_PROVIDERS.filter(p => wanted.has(p.toLowerCase()))
+}
+
 /** base64url without padding (RFC 7636). */
 export function base64url(bytes: Uint8Array): string {
   let s = ''
@@ -50,11 +63,12 @@ export async function pkceChallenge(verifier: string): Promise<string> {
 
 /**
  * The managed login URL. `screen: 'signup'` opens the create-account form (Cognito's /signup page, which takes
- * the same OAuth parameters and returns through the same code + PKCE redirect).
+ * the same OAuth parameters and returns through the same code + PKCE redirect). `provider` skips Cognito's page
+ * and goes straight to that social provider (`identity_provider`); a first sign-in there creates the account.
  */
 export function authorizeUrl(
   cfg: AuthConfig,
-  p: { state: string; nonce: string; challenge: string; screen?: 'signin' | 'signup' },
+  p: { state: string; nonce: string; challenge: string; screen?: 'signin' | 'signup'; provider?: SocialProvider },
 ): string {
   const q = new URLSearchParams({
     response_type: 'code',
@@ -66,6 +80,10 @@ export function authorizeUrl(
     code_challenge: p.challenge,
     code_challenge_method: 'S256',
   })
+  if (p.provider) {
+    q.set('identity_provider', p.provider)
+    return `https://${cfg.domain}/oauth2/authorize?${q}`
+  }
   return `https://${cfg.domain}/${p.screen === 'signup' ? 'signup' : 'oauth2/authorize'}?${q}`
 }
 

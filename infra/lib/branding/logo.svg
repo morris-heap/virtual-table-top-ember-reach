@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="64" viewBox="0 0 240 64">
+  <!-- The app's nav brand (Logo in app/src/Landing.tsx, .lp-nav .brand): gold hexagon, ember flame, ash wordmark. -->
+  <defs>
+    <linearGradient id="e" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#d9531e"/>
+      <stop offset="1" stop-color="#ffb347"/>
+    </linearGradient>
+  </defs>
+  <path d="M32 3 57 17.5v29L32 61 7 46.5v-29Z" fill="none" stroke="#ffb347" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M32 15c3 7 11 11 11 21a11 11 0 0 1-22 0c0-5 3-8 5-10 0 4 2 6 4 6-1-6 0-12 2-17Z" fill="url(#e)"/>
+  <text x="70" y="42" font-family="system-ui, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="800" textLength="164" lengthAdjust="spacingAndGlyphs" fill="#f6ece3">Emberreach</text>
+</svg>
