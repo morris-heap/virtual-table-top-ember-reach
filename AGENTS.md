@@ -63,7 +63,7 @@ relevant ones before answering design questions or making edits:
 
 - Default branch `main`. Commit only when the user asks. Branch from an up-to-date `main` and open a PR;
   merging to `main` deploys (the app to Cloudflare, the API to AWS).
-- Work is tracked in Jira project **VTTER** (Virtual Table Top Ember Reach) at morris-heap.atlassian.net.
+- Work is tracked in Jira project **VTTER** (VTT Ember Reach) at morris-heap.atlassian.net.
   Name branches `VTTER-<n>-short-slug`, and mention the VTTER key(s) in commit messages and PR titles.
   (Older history uses the previous project key, KAN.)
 - Current epics: VTTER-46 UI / UX (VTTER-47 Character Sheet UI), VTTER-51 Backend
