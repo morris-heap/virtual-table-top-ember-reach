@@ -8,6 +8,8 @@
 
 - One **d20** per player, plus a set of **d4, d6, d8, d10, d12**
 - A character sheet per player ([template](../sheets/character-sheet.md))
+- **A party of 1 to 5 heroes** (3–5 is the table norm). There is no hard limit, but every hero adds a turn to each
+  round, so play slows down above 5. A single hero can play the built-in adventures solo.
 - ~20 tokens for **Momentum** (glass beads, coins) and ~10 for the GM's **Dread** pool
 - Optional: a grid map and minis. The rules work fine without them using zones (see §6.3)
 

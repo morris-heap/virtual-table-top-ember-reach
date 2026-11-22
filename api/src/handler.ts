@@ -1,5 +1,7 @@
 // HTTP routing and validation for the Emberreach API. Pure: storage is injected, so it's unit-testable.
 
+import { parseAdventure, type AdventureDraft, type AdventureRecord, type AdventureSummary } from './adventure.ts'
+import { parseProfilePatch, type ProfilePatch, type ProfileRecord } from './profile.ts'
 import { parseSheet, ValidationError, type CharacterRecord, type CharacterSheet, type CharacterSummary } from './sheet.ts'
 
 export interface CharacterStore {
@@ -11,6 +13,20 @@ export interface CharacterStore {
   delete(ownerId: string, id: string): Promise<boolean>
 }
 
+export interface ProfileStore {
+  /** The user's profile. The first call creates it, with a unique player ID that never changes. */
+  getOrCreate(ownerId: string): Promise<ProfileRecord>
+  update(ownerId: string, patch: ProfilePatch): Promise<ProfileRecord>
+}
+
+/** Adventures are keyed (owner, id), so one owner can never read or change another's. */
+export interface AdventureStore {
+  list(ownerId: string): Promise<AdventureSummary[]>
+  get(ownerId: string, id: string): Promise<AdventureRecord | null>
+  save(ownerId: string, id: string, draft: AdventureDraft): Promise<AdventureRecord>
+  delete(ownerId: string, id: string): Promise<boolean>
+}
+
 /**
  * Checks a bearer token and returns the verified user id (the Cognito `sub`), or null if the token is invalid.
  * Production uses the Cognito access-token verifier in src/auth.ts. Tests inject a fake.
@@ -19,6 +35,8 @@ export type VerifyToken = (token: string) => Promise<string | null>
 
 export interface Deps {
   store: CharacterStore
+  profiles: ProfileStore
+  adventures: AdventureStore
   allowedOrigins: string[]
   verifyToken: VerifyToken
 }
@@ -79,6 +97,42 @@ async function readJson(req: Request): Promise<unknown> {
   }
 }
 
+/** GET, PUT (full replace) and DELETE of one item. The owner is already baked into the closures. */
+async function itemRoute(
+  req: Request, label: string, cors: Record<string, string>,
+  ops: { get(): Promise<unknown>; save(body: unknown): Promise<unknown>; remove(): Promise<boolean> },
+): Promise<Response> {
+  switch (req.method) {
+    case 'GET': {
+      const item = await ops.get()
+      if (!item) throw new HttpError(404, `${label} not found`)
+      return json(item, 200, cors)
+    }
+    case 'PUT':
+      return json(await ops.save(await readJson(req)), 200, cors)
+    case 'DELETE': {
+      if (!(await ops.remove())) throw new HttpError(404, `${label} not found`)
+      return json(null, 204, cors)
+    }
+    default:
+      throw new HttpError(405, 'Method not allowed')
+  }
+}
+
+async function profileRoute(req: Request, owner: string, deps: Deps, cors: Record<string, string>): Promise<Response> {
+  switch (req.method) {
+    case 'GET':
+      return json(await deps.profiles.getOrCreate(owner), 200, cors)
+    case 'PUT': {
+      const patch = parseProfilePatch(await readJson(req))
+      await deps.profiles.getOrCreate(owner) // make sure the profile (and player ID) exists first
+      return json(await deps.profiles.update(owner, patch), 200, cors)
+    }
+    default:
+      throw new HttpError(405, 'Method not allowed')
+  }
+}
+
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   const cors = corsHeaders(req.headers.get('Origin'), deps.allowedOrigins)
   try {
@@ -96,33 +150,39 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       }
     }
 
-    if (parts[0] !== 'characters' || parts.length > 2) throw new HttpError(404, 'Not found')
+    const resource = parts[0]
+    const maxParts = resource === 'profile' ? 1 : 2
+    if ((resource !== 'characters' && resource !== 'profile' && resource !== 'adventures') || parts.length > maxParts) {
+      throw new HttpError(404, 'Not found')
+    }
     const owner = await ownerOf(req, deps.verifyToken)
+
+    // `return await` so errors thrown inside a route are caught below and become 4xx/5xx responses.
+    if (resource === 'profile') return await profileRoute(req, owner, deps, cors)
 
     if (parts.length === 1) {
       if (req.method !== 'GET') throw new HttpError(405, 'Method not allowed')
-      return json({ characters: await deps.store.list(owner) }, 200, cors)
+      return resource === 'characters'
+        ? json({ characters: await deps.store.list(owner) }, 200, cors)
+        : json({ adventures: await deps.adventures.list(owner) }, 200, cors)
     }
 
     const id = parts[1].toLowerCase()
-    if (!UUID.test(id)) throw new HttpError(400, 'Character id must be a UUID')
+    const label = resource === 'characters' ? 'Character' : 'Adventure'
+    if (!UUID.test(id)) throw new HttpError(400, `${label} id must be a UUID`)
 
-    switch (req.method) {
-      case 'GET': {
-        const c = await deps.store.get(owner, id)
-        if (!c) throw new HttpError(404, 'Character not found')
-        return json(c, 200, cors)
-      }
-      case 'PUT': {
-        return json(await deps.store.save(owner, id, parseSheet(await readJson(req))), 200, cors)
-      }
-      case 'DELETE': {
-        if (!(await deps.store.delete(owner, id))) throw new HttpError(404, 'Character not found')
-        return json(null, 204, cors)
-      }
-      default:
-        throw new HttpError(405, 'Method not allowed')
+    if (resource === 'characters') {
+      return await itemRoute(req, label, cors, {
+        get: () => deps.store.get(owner, id),
+        save: body => deps.store.save(owner, id, parseSheet(body)),
+        remove: () => deps.store.delete(owner, id),
+      })
     }
+    return await itemRoute(req, label, cors, {
+      get: () => deps.adventures.get(owner, id),
+      save: body => deps.adventures.save(owner, id, parseAdventure(body)),
+      remove: () => deps.adventures.delete(owner, id),
+    })
   } catch (err) {
     if (err instanceof HttpError) return json({ error: err.message }, err.status, { ...cors, ...err.headers })
     if (err instanceof ValidationError) return json({ error: err.message }, 400, cors)

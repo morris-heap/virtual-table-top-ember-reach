@@ -1,34 +1,21 @@
 // Sign-in state for the whole app (VTTER-53, VTTER-59). Finishes a pending sign-in on load, then reports
-// whether the visitor is signed in, and once they are, how many heroes they've saved.
+// whether the visitor is signed in. The Home screen loads the signed-in user's heroes itself (VTTER-71).
 import { useCallback, useEffect, useState } from 'react'
-import { apiUrl, authConfig } from './config.ts'
+import { authConfig } from './config.ts'
 import type { User } from './oauth.ts'
-import { completeSignIn, getAccessToken, signIn, signOut } from './session.ts'
+import { completeSignIn, signIn, signOut } from './session.ts'
 
 export type AuthState =
   | { status: 'disabled' } // sign-in isn't configured (no Cognito client id): the app runs without accounts
   | { status: 'loading' }
   | { status: 'signedOut'; error?: string }
-  | { status: 'signedIn'; user: User; heroes?: number | 'error' }
+  | { status: 'signedIn'; user: User }
 
 export interface Auth {
   state: AuthState
   signIn: () => void
   signUp: () => void
   signOut: () => void
-}
-
-async function countHeroes(): Promise<number | 'error' | undefined> {
-  if (!apiUrl || !authConfig) return undefined
-  const token = await getAccessToken(authConfig)
-  if (!token) return 'error'
-  try {
-    const res = await fetch(`${apiUrl}/characters`, { headers: { Authorization: `Bearer ${token}` } })
-    if (!res.ok) return 'error'
-    return ((await res.json()) as { characters: unknown[] }).characters.length
-  } catch {
-    return 'error'
-  }
 }
 
 export function useAuth(): Auth {
@@ -38,12 +25,8 @@ export function useAuth(): Auth {
     if (!authConfig) return
     let live = true
     completeSignIn(authConfig)
-      .then(async user => {
-        if (!live) return
-        if (!user) return setState({ status: 'signedOut' })
-        setState({ status: 'signedIn', user })
-        const heroes = await countHeroes()
-        if (live) setState({ status: 'signedIn', user, heroes })
+      .then(user => {
+        if (live) setState(user ? { status: 'signedIn', user } : { status: 'signedOut' })
       })
       .catch((e: Error) => live && setState({ status: 'signedOut', error: e.message }))
     return () => { live = false }

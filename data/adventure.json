@@ -1,0 +1,14 @@
+{
+  "$comment": "Adventure authoring data used by the app and API. Scene types follow rules/gm-guide.md §5. Change both together (see AGENTS.md).",
+  "sceneTypes": ["social", "exploration", "puzzle", "trap", "choice", "combat", "boss"],
+  "visibilities": ["private", "friends", "public"],
+  "liveVisibilities": ["private"],
+  "limits": {
+    "maxScenes": 50,
+    "maxHooks": 20,
+    "maxFoes": 20,
+    "titleMax": 80,
+    "summaryMax": 500,
+    "textMax": 2000
+  }
+}

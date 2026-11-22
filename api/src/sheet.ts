@@ -55,32 +55,32 @@ const ARMOR = character.armor.map(a => a.id)
 const MAX_TEXT = 2000
 const MAX_LIST = 50
 
-function fail(msg: string): never {
+export function fail(msg: string): never {
   throw new ValidationError(msg)
 }
-function obj(v: unknown, field: string): Record<string, unknown> {
+export function obj(v: unknown, field: string): Record<string, unknown> {
   if (!v || typeof v !== 'object' || Array.isArray(v)) fail(`${field} must be an object`)
   return v as Record<string, unknown>
 }
-function text(v: unknown, field: string, { min = 0, max = MAX_TEXT, def = '' } = {}): string {
+export function text(v: unknown, field: string, { min = 0, max = MAX_TEXT, def = '' } = {}): string {
   if (v === undefined || v === null) v = def
   if (typeof v !== 'string') fail(`${field} must be a string`)
   const s = v.trim()
   if (s.length < min || s.length > max) fail(`${field} must be ${min}-${max} characters`)
   return s
 }
-function int(v: unknown, field: string, min: number, max: number, def?: number): number {
+export function int(v: unknown, field: string, min: number, max: number, def?: number): number {
   if ((v === undefined || v === null) && def !== undefined) return def
   if (!Number.isInteger(v) || (v as number) < min || (v as number) > max) fail(`${field} must be a whole number from ${min} to ${max}`)
   return v as number
 }
-function list(v: unknown, field: string): unknown[] {
+export function list(v: unknown, field: string, max = MAX_LIST): unknown[] {
   if (v === undefined || v === null) return []
   if (!Array.isArray(v)) fail(`${field} must be a list`)
-  if (v.length > MAX_LIST) fail(`${field} can have at most ${MAX_LIST} entries`)
+  if (v.length > max) fail(`${field} can have at most ${max} entries`)
   return v
 }
-function oneOf(v: unknown, field: string, allowed: string[], def: string): string {
+export function oneOf(v: unknown, field: string, allowed: string[], def: string): string {
   if (v === undefined || v === null) return def
   if (typeof v !== 'string' || !allowed.includes(v)) fail(`${field} must be one of: ${allowed.join(', ')}`)
   return v

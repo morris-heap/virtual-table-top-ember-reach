@@ -6,7 +6,7 @@ import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from 'aws-lambda'
 import { cognitoVerifier } from './auth.ts'
 import { handle, type Deps } from './handler.ts'
-import { DynamoCharacterStore } from './store.ts'
+import { DynamoAdventureStore, DynamoCharacterStore, DynamoProfileStore } from './store.ts'
 
 export function toRequest(event: APIGatewayProxyEventV2): Request {
   const { domainName } = event.requestContext
@@ -33,11 +33,12 @@ export function makeHandler(deps: Deps) {
 }
 
 // Created once per execution environment and reused across invocations.
+const db = DynamoDBDocumentClient.from(new DynamoDBClient({}), { marshallOptions: { removeUndefinedValues: true } })
+const table = process.env.TABLE_NAME ?? 'emberreach-characters'
 const deps: Deps = {
-  store: new DynamoCharacterStore(
-    DynamoDBDocumentClient.from(new DynamoDBClient({}), { marshallOptions: { removeUndefinedValues: true } }),
-    process.env.TABLE_NAME ?? 'emberreach-characters',
-  ),
+  store: new DynamoCharacterStore(db, table),
+  profiles: new DynamoProfileStore(db, table),
+  adventures: new DynamoAdventureStore(db, table),
   allowedOrigins: (process.env.ALLOWED_ORIGINS ?? '').split(',').map(s => s.trim()).filter(Boolean),
   verifyToken: cognitoVerifier(process.env.USER_POOL_ID, process.env.USER_POOL_CLIENT_ID),
 }
