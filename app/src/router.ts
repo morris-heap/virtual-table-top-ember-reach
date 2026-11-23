@@ -9,6 +9,8 @@ export type Route =
   | { name: 'adventure'; id: string }
   /** A built-in adventure, read-only. */
   | { name: 'builtIn'; slug: string }
+  /** A Game you are in, or one you were sent the link to (VTTER-72). */
+  | { name: 'game'; id: string }
   | { name: 'notFound' }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -20,6 +22,7 @@ export function parseRoute(pathname: string): Route {
   const [first, second, third] = parts
   if (parts.length === 1 && first === 'profile') return { name: 'profile' }
   if (parts.length === 1 && first === 'roller') return { name: 'roller' }
+  if (first === 'games' && parts.length === 2 && UUID.test(second)) return { name: 'game', id: second.toLowerCase() }
   if (first === 'adventures') {
     if (parts.length === 2 && (second === 'new' || UUID.test(second))) return { name: 'adventure', id: second.toLowerCase() }
     if (parts.length === 3 && second === 'built-in' && SLUG.test(third)) return { name: 'builtIn', slug: third }
@@ -34,5 +37,6 @@ export function pathFor(route: Exclude<Route, { name: 'notFound' }>): string {
     case 'roller': return '/roller'
     case 'adventure': return `/adventures/${route.id}`
     case 'builtIn': return `/adventures/built-in/${route.slug}`
+    case 'game': return `/games/${route.id}`
   }
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import AdventureEditor from './AdventureEditor.tsx'
 import AdventureView from './AdventureView.tsx'
+import GamePage from './GamePage.tsx'
 import Home from './Home.tsx'
 import Landing, { Logo } from './Landing.tsx'
 import { navigate, useRoute } from './nav.ts'
@@ -44,6 +45,7 @@ function SignedIn({ auth, name }: { auth: Auth; name: string }) {
     case 'roller': return <Roller auth={auth} onHome={() => navigate('/')} />
     case 'adventure': return <AdventureEditor auth={auth} id={route.id} />
     case 'builtIn': return <AdventureView auth={auth} slug={route.slug} />
+    case 'game': return <GamePage auth={auth} id={route.id} />
     case 'notFound': return <GoHome />
   }
 }

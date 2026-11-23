@@ -36,7 +36,15 @@ class MemoryStore implements CharacterStore {
 
 // Profile and adventure routes have their own tests (profile-adventures.test.ts); these tests never reach them.
 const unusedStores = {
-  profiles: { getOrCreate: async () => { throw new Error('unused') }, update: async () => { throw new Error('unused') } },
+  profiles: {
+    getOrCreate: async () => { throw new Error('unused') }, update: async () => { throw new Error('unused') },
+    peek: async () => null, ownerOfPlayer: async () => null,
+  },
+  games: {
+    getForMember: async () => null, listFor: async () => [], countOwned: async () => 0, countJoined: async () => 0,
+    save: async () => { throw new Error('unused') }, delete: async () => false, gmOf: async () => null, getByGm: async () => null,
+    addMember: async () => null, removeMember: async () => {},
+  },
   adventures: {
     list: async () => [], get: async () => null, delete: async () => false,
     save: async () => { throw new Error('unused') },

@@ -1,0 +1,180 @@
+// DynamoDB implementation of GameStore (docs/adr/0006-games.md). Same table as heroes, profiles and adventures.
+//   (gmId,     game#<id>)  the Game: settings plus `memberIds`, a string set that includes the GM
+//   (memberId, gm#<id>)    a pointer from each member (the GM too) to the Game, so a member can find and read it
+//   ('_game',  <id>)       a pointer from the Game id to its GM, so a public Game can be joined from its link
+// Only Get, Query, Update and Delete are used, so the Lambda role needs no new action.
+import { DeleteCommand, GetCommand, QueryCommand, UpdateCommand, type DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
+import gameData from '../../data/game.json'
+import type { GameDraft, GameRecord } from './game.ts'
+import type { GameStore } from './handler.ts'
+import { guard, isConditionFailure, setExpression } from './store.ts'
+
+export const GAME_PREFIX = 'game#'
+export const MEMBER_PREFIX = 'gm#'
+export const GAME_LOOKUP_OWNER = '_game'
+const { limits } = gameData
+
+export class DynamoGameStore implements GameStore {
+  constructor(private db: DynamoDBDocumentClient, private table: string) {}
+
+  private async readGame(gmId: string, id: string): Promise<GameRecord | null> {
+    const res = await guard(() => this.db.send(new GetCommand({
+      TableName: this.table, Key: { ownerId: gmId, id: GAME_PREFIX + id }, ConsistentRead: true,
+    })))
+    return res.Item ? toGame(res.Item) : null
+  }
+
+  private async pointer(userId: string, id: string): Promise<string | null> {
+    const res = await guard(() => this.db.send(new GetCommand({
+      TableName: this.table, Key: { ownerId: userId, id: MEMBER_PREFIX + id }, ConsistentRead: true,
+    })))
+    return (res.Item?.gmId as string | undefined) ?? null
+  }
+
+  private async writePointer(userId: string, id: string, gmId: string) {
+    await guard(() => this.db.send(new UpdateCommand({
+      TableName: this.table,
+      Key: { ownerId: userId, id: MEMBER_PREFIX + id },
+      UpdateExpression: 'SET #kind = :k, #gm = :gm, #g = :g',
+      ExpressionAttributeNames: { '#kind': 'kind', '#gm': 'gmId', '#g': 'gameId' },
+      ExpressionAttributeValues: { ':k': 'membership', ':gm': gmId, ':g': id },
+    })))
+  }
+
+  getByGm(gmId: string, id: string) {
+    return this.readGame(gmId, id)
+  }
+
+  async getForMember(userId: string, id: string) {
+    const gmId = await this.pointer(userId, id)
+    return gmId ? this.readGame(gmId, id) : null
+  }
+
+  async listFor(userId: string) {
+    const rows: { id: string; gmId: string }[] = []
+    let start: Record<string, unknown> | undefined
+    do {
+      const page = await guard(() => this.db.send(new QueryCommand({
+        TableName: this.table,
+        KeyConditionExpression: 'ownerId = :o AND begins_with(id, :p)',
+        ExpressionAttributeValues: { ':o': userId, ':p': MEMBER_PREFIX },
+        ExpressionAttributeNames: { '#g': 'gameId', '#gm': 'gmId' },
+        ProjectionExpression: '#g, #gm',
+        ExclusiveStartKey: start,
+      })))
+      for (const it of page.Items ?? []) rows.push({ id: it.gameId as string, gmId: it.gmId as string })
+      start = page.LastEvaluatedKey
+    } while (start && rows.length < limits.maxGamesPerPlayer)
+    const games = await Promise.all(rows.slice(0, limits.maxGamesPerPlayer).map(r => this.readGame(r.gmId, r.id)))
+    return games.filter((g): g is GameRecord => g !== null).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+  }
+
+  private async count(ownerId: string, prefix: string) {
+    const res = await guard(() => this.db.send(new QueryCommand({
+      TableName: this.table,
+      KeyConditionExpression: 'ownerId = :o AND begins_with(id, :p)',
+      ExpressionAttributeValues: { ':o': ownerId, ':p': prefix },
+      Select: 'COUNT',
+    })))
+    return res.Count ?? 0
+  }
+
+  countOwned(gmId: string) {
+    return this.count(gmId, GAME_PREFIX)
+  }
+
+  countJoined(userId: string) {
+    return this.count(userId, MEMBER_PREFIX)
+  }
+
+  async save(gmId: string, id: string, draft: GameDraft) {
+    const now = new Date().toISOString()
+    const { names, values, sets } = setExpression({ ...draft, kind: 'game', updatedAt: now })
+    names['#createdAt'] = 'createdAt'
+    names['#members'] = 'memberIds'
+    values[':now'] = now
+    values[':gm'] = new Set([gmId])
+    sets.push('#createdAt = if_not_exists(#createdAt, :now)')
+    const res = await guard(() => this.db.send(new UpdateCommand({
+      TableName: this.table,
+      Key: { ownerId: gmId, id: GAME_PREFIX + id },
+      UpdateExpression: `SET ${sets.join(', ')} ADD #members :gm`,
+      ExpressionAttributeNames: names,
+      ExpressionAttributeValues: values,
+      ReturnValues: 'ALL_NEW',
+    })))
+    await this.writePointer(gmId, id, gmId)
+    await guard(() => this.db.send(new UpdateCommand({
+      TableName: this.table,
+      Key: { ownerId: GAME_LOOKUP_OWNER, id },
+      UpdateExpression: 'SET #kind = :k, #gm = :gm',
+      ExpressionAttributeNames: { '#kind': 'kind', '#gm': 'gmId' },
+      ExpressionAttributeValues: { ':k': 'game-lookup', ':gm': gmId },
+    })))
+    return toGame(res.Attributes as Record<string, unknown>)
+  }
+
+  async delete(gmId: string, id: string) {
+    const res = await guard(() => this.db.send(new DeleteCommand({
+      TableName: this.table, Key: { ownerId: gmId, id: GAME_PREFIX + id }, ReturnValues: 'ALL_OLD',
+    })))
+    if (!res.Attributes) return false
+    // The Game is gone, so no one can read it. Now tidy the members' pointers and the lookup.
+    for (const memberId of toGame(res.Attributes).memberIds) {
+      await guard(() => this.db.send(new DeleteCommand({ TableName: this.table, Key: { ownerId: memberId, id: MEMBER_PREFIX + id } })))
+    }
+    await guard(() => this.db.send(new DeleteCommand({ TableName: this.table, Key: { ownerId: GAME_LOOKUP_OWNER, id } })))
+    return true
+  }
+
+  async gmOf(gameId: string) {
+    const res = await guard(() => this.db.send(new GetCommand({
+      TableName: this.table, Key: { ownerId: GAME_LOOKUP_OWNER, id: gameId }, ConsistentRead: true,
+    })))
+    return (res.Item?.gmId as string | undefined) ?? null
+  }
+
+  async addMember(gmId: string, id: string, userId: string) {
+    let updated
+    try {
+      updated = await guard(() => this.db.send(new UpdateCommand({
+        TableName: this.table,
+        Key: { ownerId: gmId, id: GAME_PREFIX + id },
+        UpdateExpression: 'ADD #members :u',
+        // The Game must exist, and have room unless this user is already in it.
+        ConditionExpression: 'attribute_exists(#id) AND (contains(#members, :one) OR size(#members) < :max)',
+        ExpressionAttributeNames: { '#members': 'memberIds', '#id': 'id' },
+        ExpressionAttributeValues: { ':u': new Set([userId]), ':one': userId, ':max': limits.maxMembers },
+        ReturnValues: 'ALL_NEW',
+      })))
+    } catch (err) {
+      if (isConditionFailure(err)) return null
+      throw err
+    }
+    await this.writePointer(userId, id, gmId)
+    return toGame(updated.Attributes as Record<string, unknown>)
+  }
+
+  async removeMember(gmId: string, id: string, userId: string) {
+    // Remove the pointer first: that is what revokes access. Then drop them from the roster.
+    await guard(() => this.db.send(new DeleteCommand({ TableName: this.table, Key: { ownerId: userId, id: MEMBER_PREFIX + id } })))
+    try {
+      await guard(() => this.db.send(new UpdateCommand({
+        TableName: this.table,
+        Key: { ownerId: gmId, id: GAME_PREFIX + id },
+        UpdateExpression: 'DELETE #members :u',
+        ConditionExpression: 'attribute_exists(#id)',
+        ExpressionAttributeNames: { '#members': 'memberIds', '#id': 'id' },
+        ExpressionAttributeValues: { ':u': new Set([userId]) },
+      })))
+    } catch (err) {
+      if (!isConditionFailure(err)) throw err
+    }
+  }
+}
+
+/** Strip the storage prefix and `kind`, and turn the DynamoDB string set into an array. */
+function toGame(item: Record<string, unknown>): GameRecord {
+  const { kind: _kind, memberIds, id, ...rest } = item as Record<string, unknown> & { id: string; memberIds?: Iterable<string> }
+  return { ...(rest as Omit<GameRecord, 'id' | 'memberIds'>), id: id.slice(GAME_PREFIX.length), memberIds: [...(memberIds ?? [])] }
+}

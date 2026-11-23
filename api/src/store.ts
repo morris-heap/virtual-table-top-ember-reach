@@ -14,10 +14,10 @@ const ADVENTURE_SUMMARY_FIELDS = ['id', 'title', 'summary', 'levelMin', 'levelMa
 // Other item kinds share the owner's partition with heroes (docs/adr/0005). Heroes have no `kind`.
 const ADVENTURE_PREFIX = 'adv#'
 const PROFILE_ID = 'profile'
-const PLAYER_LOOKUP_OWNER = '_player' // (ownerId '_player', id <playerId>) -> owner, so a player ID is unique
+export const PLAYER_LOOKUP_OWNER = '_player' // (ownerId '_player', id <playerId>) -> owner, so a player ID is unique
 const CLAIM_ATTEMPTS = 5
 
-function isConditionFailure(err: unknown): boolean {
+export function isConditionFailure(err: unknown): boolean {
   return (err as { name?: string }).name === 'ConditionalCheckFailedException'
 }
 
@@ -27,7 +27,7 @@ const TRANSIENT = new Set([
   'InternalServerError', 'ServiceUnavailable', 'TimeoutError',
 ])
 
-async function guard<T>(op: () => Promise<T>): Promise<T> {
+export async function guard<T>(op: () => Promise<T>): Promise<T> {
   try {
     return await op()
   } catch (err) {
@@ -38,7 +38,7 @@ async function guard<T>(op: () => Promise<T>): Promise<T> {
 }
 
 /** `#a = :a` pairs for every field, so names that are DynamoDB reserved words (name, level…) are safe. */
-function setExpression(fields: Record<string, unknown>) {
+export function setExpression(fields: Record<string, unknown>) {
   const names: Record<string, string> = {}
   const values: Record<string, unknown> = {}
   const sets: string[] = []
@@ -165,6 +165,18 @@ export class DynamoProfileStore implements ProfileStore {
       }
     }
     throw new DatabaseUnavailable()
+  }
+
+  async peek(ownerId: string): Promise<ProfileRecord | null> {
+    const found = await this.read(ownerId)
+    return found ? toProfile(found) : null
+  }
+
+  async ownerOfPlayer(playerId: string): Promise<string | null> {
+    const res = await guard(() => this.db.send(new GetCommand({
+      TableName: this.table, Key: { ownerId: PLAYER_LOOKUP_OWNER, id: playerId }, ConsistentRead: true,
+    })))
+    return (res.Item?.owner as string | undefined) ?? null
   }
 
   async update(ownerId: string, patch: ProfilePatch): Promise<ProfileRecord> {

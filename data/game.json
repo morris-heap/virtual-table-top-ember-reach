@@ -1,0 +1,11 @@
+{
+  "$comment": "Games (VTTER-72, docs/adr/0006-games.md). A Game is the table people play an adventure from. Allowed values and limits for the API and app.",
+  "visibilities": ["private", "public"],
+  "adventureSources": ["builtin", "own"],
+  "limits": {
+    "nameMax": 80,
+    "maxMembers": 20,
+    "maxGamesPerGm": 20,
+    "maxGamesPerPlayer": 50
+  }
+}

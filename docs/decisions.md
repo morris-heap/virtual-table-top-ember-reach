@@ -34,6 +34,23 @@ VTTER-73 (friends list).
 
 ---
 
+### 2026-11-22 — Games: the table people play from (VTTER-72)
+
+**Decision:** A **Game** is the table: one GM (or none, for a solo Game), players, and one adventure.
+1. A GM creates a Game from an adventure (built-in or their own). Anyone can start a **solo** Game on a built-in adventure,
+   with no GM, private and with no one else.
+2. A Game is **private** (invitation by player ID) or **public** (anyone with the link can join).
+3. Members read the Game's adventure through the Game. Adventures themselves stay private.
+4. Only a GM can invite or remove players. Any player can leave. The GM can't leave, only delete the Game.
+5. Party size still has **no hard cap**: five heroes is advice, and the app warns past it. 20 people per Game is an abuse limit.
+
+**Why:** Games, not Groups, were chosen on 2026-11-22. Reading the adventure through the Game means a GM can run a table
+without publishing their adventure. Details and trade-offs are in [ADR 0006](adr/0006-games.md).
+
+**Affects:** data/game.json, api/, app/, docs/adr/0006-games.md. No rules text changes.
+
+---
+
 ### 2026-11-21 — v0.2: the eight v0.1 open questions (VTTER-5)
 
 **Decision:** Settle every question from the v0.1 *Open questions* list. Core rules and GM guide go to **v0.2**.

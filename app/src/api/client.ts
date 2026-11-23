@@ -3,7 +3,7 @@
 import { apiUrl, authConfig } from '../auth/config.ts'
 import { getAccessToken } from '../auth/session.ts'
 import { ApiError, errorMessage, jsonInit } from './request.ts'
-import type { Adventure, AdventureDraft, AdventureSummary, HeroSummary, Profile } from './types.ts'
+import type { Adventure, AdventureDraft, AdventureSummary, Game, GameDraft, GameSummary, HeroSummary, Profile } from './types.ts'
 
 export { ApiError }
 
@@ -35,4 +35,15 @@ export const adventuresApi = {
   get: (id: string) => call<Adventure>('GET', `/adventures/${id}`),
   save: (id: string, draft: AdventureDraft) => call<Adventure>('PUT', `/adventures/${id}`, draft),
   remove: (id: string) => call<void>('DELETE', `/adventures/${id}`),
+}
+
+export const gamesApi = {
+  list: async () => (await call<{ games: GameSummary[] }>('GET', '/games')).games,
+  get: (id: string) => call<Game>('GET', `/games/${id}`),
+  save: (id: string, draft: GameDraft) => call<Game>('PUT', `/games/${id}`, draft),
+  remove: (id: string) => call<void>('DELETE', `/games/${id}`),
+  /** The GM invites a player, or a player joins a public Game with their own player ID. */
+  addMember: (id: string, playerId: string) => call<Game>('PUT', `/games/${id}/members/${encodeURIComponent(playerId)}`),
+  /** The GM removes a player, or a player leaves with their own player ID. */
+  removeMember: (id: string, playerId: string) => call<void>('DELETE', `/games/${id}/members/${encodeURIComponent(playerId)}`),
 }

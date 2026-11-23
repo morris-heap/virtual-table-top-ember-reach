@@ -50,8 +50,8 @@ who can carry light into the dark and bring treasure back.
 - **Digital companion (in progress):** the Test roller and Momentum tracker are live. The API for saved
   characters and sign-in (Cognito, VTTER-53) are live. Signed-in players get a Home with their heroes and
   adventures, a profile with a player ID and a Game Master switch, and can write private adventures (VTTER-71).
-  Next: the character sheet with guided creation (VTTER-47), Games to play an adventure from (VTTER-72, solo or
-  with friends, up to 5 heroes recommended) and a friends list (VTTER-73).
+  They can start a solo Game on a built-in adventure, and a Game Master can run a public or private Game for friends
+  (VTTER-72, up to 5 heroes recommended). Next: the character sheet with guided creation (VTTER-47) and a friends list (VTTER-73).
 - **Later:** initiative tracker, a shared table, print layout, art direction.
 
 ## Working with AI agents
