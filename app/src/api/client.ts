@@ -1,32 +1,21 @@
 // Calls to the Emberreach API with the signed-in user's access token (docs/adr/0004-auth-cognito.md).
 // The API takes the owner from the verified token, so nothing here ever sends a user id.
 import { apiUrl, authConfig } from '../auth/config.ts'
-import { getAccessToken } from '../auth/session.ts'
-import { ApiError, errorMessage, jsonInit } from './request.ts'
-import type { Adventure, AdventureDraft, AdventureSummary, Game, GameDraft, GameSummary, Hero, HeroSummary, Profile } from './types.ts'
+import { currentUser, getAccessToken } from '../auth/session.ts'
+import { ApiError, request } from './request.ts'
+import type { Adventure, AdventureDraft, AdventureSummary, Game, GameDraft, GameSummary, Profile } from './types.ts'
 
 export { ApiError }
 
-async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+export async function call<T>(method: string, path: string, body?: unknown, expectedAccount?: string): Promise<T> {
   if (!apiUrl || !authConfig) throw new ApiError('The server is not set up for this site.', 0)
-  const token = await getAccessToken(authConfig)
-  if (!token) throw new ApiError('Your session expired. Sign in again.', 401)
-  let res: Response
-  try {
-    res = await fetch(`${apiUrl}${path}`, jsonInit(method, token, body))
-  } catch {
-    throw new ApiError("Can't reach the server. Check your connection.", 0)
-  }
-  if (!res.ok) throw new ApiError(await errorMessage(res), res.status)
-  return res.status === 204 ? (undefined as T) : ((await res.json()) as T)
-}
-
-export const heroesApi = {
-  list: async () => (await call<{ characters: HeroSummary[] }>('GET', '/characters')).characters,
-  /** Creates or replaces a hero. The API fills in every sheet field left out (api/src/sheet.ts). */
-  get: (id: string) => call<Hero>('GET', `/characters/${id}`),
-  save: (id: string, sheet: Record<string, unknown>) => call<Hero>('PUT', `/characters/${id}`, sheet),
-  remove: (id: string) => call<void>('DELETE', `/characters/${id}`),
+  const config = authConfig
+  return request<T>(`${apiUrl}${path}`, method, async force => {
+    if (expectedAccount && currentUser()?.sub !== expectedAccount) return null
+    const token = await getAccessToken(config, force)
+    if (expectedAccount && currentUser()?.sub !== expectedAccount) return null
+    return token
+  }, body)
 }
 
 export const profileApi = {

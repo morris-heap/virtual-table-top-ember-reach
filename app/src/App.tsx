@@ -13,6 +13,7 @@ import { navigate, useRoute } from './nav.ts'
 import Profile from './Profile.tsx'
 import Roller from './Roller.tsx'
 import { useAuth, type Auth } from './auth/useAuth.ts'
+import Link from './Link.tsx'
 
 const GUEST = 'emberreach.guest'
 
@@ -58,14 +59,20 @@ function SignedIn({ auth, name }: { auth: Auth; name: string }) {
 
 export default function App() {
   const auth = useAuth()
+  const route = useRoute()
   const [guest, setGuest] = useState(readGuest)
 
   const enterGuest = () => { writeGuest(true); setGuest(true); window.scrollTo(0, 0) }
   const leaveGuest = () => { writeGuest(false); setGuest(false); window.scrollTo(0, 0) }
 
+  if (auth.state.status !== 'loading' && auth.state.status !== 'signedIn') {
+    if (route.name === 'heroes') return <Heroes auth={auth} />
+    if (route.name === 'hero') return <HeroPage auth={auth} id={route.id} />
+  }
+
   switch (auth.state.status) {
     case 'disabled': // no accounts configured: straight to the roller
-      return <Roller auth={auth} />
+      return <><Link to="/heroes">Your local heroes</Link><Roller auth={auth} /></>
     case 'signedIn':
       return <SignedIn auth={auth} name={auth.state.user.name} />
     case 'loading':
@@ -79,6 +86,6 @@ export default function App() {
       // A failed sign-in returns to the landing page so its error shows next to the buttons.
       return guest && !auth.state.error
         ? <Roller auth={auth} onHome={leaveGuest} />
-        : <Landing auth={auth} onGuest={enterGuest} />
+        : <><Landing auth={auth} onGuest={enterGuest} /><p className="fine"><Link to="/heroes">Create or open local heroes without signing in</Link></p></>
   }
 }

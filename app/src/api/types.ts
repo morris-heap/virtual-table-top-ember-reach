@@ -9,13 +9,8 @@ export interface HeroSummary {
   updatedAt: string
 }
 
-/** A saved hero, as the API returns it (api/src/sheet.ts). Only the fields the app shows so far. */
-export interface Hero extends HeroSummary {
-  background: string
-  attributes: Record<'might' | 'grace' | 'wits' | 'lore' | 'spirit' | 'presence', number>
-  grit: number
-  ember: number
-}
+/** The shared API sheet plus public record metadata. Owner identity never leaves the API. */
+export type Hero = import('../../../api/src/sheet.ts').CharacterSheet & { id: string; createdAt: string; updatedAt: string }
 
 export interface Profile {
   /** Empty until the user sets one: show their sign-in name instead. */

@@ -1,8 +1,8 @@
-// One hero: the New hero form for `new`, otherwise a short view of the saved sheet.
-// The full character sheet and guided creation are VTTER-47 (docs/mockups/).
+import SheetEditor from './characters/SheetEditor.tsx'
+// One hero: creation or the editable sheet with durable autosave.
+// Guided creation remains VTTER-47 (docs/mockups/).
 import { useState } from 'react'
-import core from '../../data/core.json'
-import { heroesApi } from './api/client.ts'
+import { characters as heroesApi } from './characters/current.ts'
 import type { Hero } from './api/types.ts'
 import type { Auth } from './auth/useAuth.ts'
 import Link from './Link.tsx'
@@ -11,7 +11,7 @@ import NewHero from './NewHero.tsx'
 import Shell, { LoadState } from './Shell.tsx'
 import { useLoad } from './useLoad.ts'
 
-function HeroView({ hero }: { hero: Hero }) {
+function HeroView({ hero, auth }: { hero: Hero; auth: Auth }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -29,22 +29,7 @@ function HeroView({ hero }: { hero: Hero }) {
 
   return (
     <>
-      <header>
-        <p className="eyebrow">Level {hero.level}{hero.ancestry && ` · ${hero.ancestry}`}{hero.calling && ` ${hero.calling}`}</p>
-        <h1>{hero.name}</h1>
-      </header>
-      <section className="panel" aria-labelledby="attr-title">
-        <h2 id="attr-title">Attributes</h2>
-        <dl className="stat-grid">
-          {core.attributes.map(a => {
-            const v = hero.attributes[a.toLowerCase() as keyof Hero['attributes']] ?? 0
-            return <div key={a}><dt>{a}</dt><dd>{v > 0 ? `+${v}` : v < 0 ? `−${-v}` : '0'}</dd></div>
-          })}
-          <div><dt>Grit</dt><dd>{hero.grit}</dd></div>
-          <div><dt>Ember</dt><dd>{hero.ember}</dd></div>
-        </dl>
-        <p className="fine">Guided setup of attributes, skills and gear is coming soon.</p>
-      </section>
+      <SheetEditor hero={hero} auth={auth} />
       {error && <p className="notice error" role="alert">{error}</p>}
       <div className="form-actions">
         <Link to="/heroes" className="account-btn">All heroes</Link>
@@ -74,7 +59,7 @@ export default function HeroPage({ auth, id }: { auth: Auth; id: string }) {
         )
         : hero.state.status !== 'ready'
           ? <LoadState state={hero.state} reload={hero.reload} what="the hero" />
-          : hero.state.data && <HeroView hero={hero.state.data} />}
+          : hero.state.data && <HeroView key={id} hero={hero.state.data} auth={auth} />}
     </Shell>
   )
 }
