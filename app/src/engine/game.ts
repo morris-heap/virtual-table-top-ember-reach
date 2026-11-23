@@ -28,11 +28,19 @@ export function playerCount(members: GameMember[]): number {
   return members.filter(m => m.role === 'player').length
 }
 
-/** Turns slow down past the recommended party. There is no hard cap. Null while the table is comfortable. */
+/** Heroes at the table. Each hero takes a turn, so this is what the party-size advice counts (VTTER-77). */
+export function heroCount(members: GameMember[]): number {
+  return members.filter(m => m.hero !== null).length
+}
+
+/**
+ * Turns slow down past the recommended party, because every hero adds a turn to the Heroes' Phase.
+ * Advice only: there is no hard cap (data/core.json party.recommendedMax). Null while the table is comfortable.
+ */
 export function partyWarning(members: GameMember[]): string | null {
-  const n = playerCount(members)
+  const n = heroCount(members)
   return n > RECOMMENDED_PARTY
-    ? `${n} players. Turns slow down with more than ${RECOMMENDED_PARTY}, so consider splitting the table.`
+    ? `${n} heroes. Each one adds a turn to the Heroes' Phase, so consider splitting the table.`
     : null
 }
 

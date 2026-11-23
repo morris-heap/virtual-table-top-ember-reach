@@ -114,6 +114,45 @@ describe('DynamoGameStore', () => {
     expect(await games.gmOf(G)).toBeNull()
     expect(ddb.commandCalls(GetCommand)[0].args[0].input.Key).toEqual({ ownerId: '_game', id: G })
   })
+
+  // VTTER-77: the hero rides on the member's own pointer item.
+  it('reads each member hero from their pointer, skipping members who brought none', async () => {
+    ddb.on(GetCommand)
+      .resolvesOnce({ Item: { heroId: 'hero-gm' } })
+      .resolvesOnce({ Item: {} })
+    expect(await games.heroesOf(G, [GM, ANA])).toEqual({ [GM]: 'hero-gm' })
+    const keys = ddb.commandCalls(GetCommand).map(c => c.args[0].input.Key)
+    expect(keys).toEqual([{ ownerId: GM, id: `gm#${G}` }, { ownerId: ANA, id: `gm#${G}` }])
+  })
+
+  it("sets and clears the caller's own hero, and only if they are still a member", async () => {
+    ddb.on(UpdateCommand).resolves({})
+    await games.setHero(ANA, G, 'hero-1')
+    const set = ddb.commandCalls(UpdateCommand)[0].args[0].input
+    expect(set.Key).toEqual({ ownerId: ANA, id: `gm#${G}` })
+    expect(set.UpdateExpression).toBe('SET #h = :h')
+    expect(set.ConditionExpression).toBe('attribute_exists(#id)')
+    expect(set.ExpressionAttributeValues?.[':h']).toBe('hero-1')
+
+    ddb.reset()
+    ddb.on(UpdateCommand).resolves({})
+    await games.setHero(ANA, G, null)
+    const cleared = ddb.commandCalls(UpdateCommand)[0].args[0].input
+    expect(cleared.UpdateExpression).toBe('REMOVE #h')
+    expect(cleared.ExpressionAttributeValues).toBeUndefined()
+
+    // Removed from the Game in the meantime: no throw, nothing written.
+    ddb.reset()
+    ddb.on(UpdateCommand).rejects(conditionFailed())
+    await expect(games.setHero(ANA, G, 'hero-1')).resolves.toBeUndefined()
+  })
+
+  it('drops the hero when a member is removed, because the pointer goes', async () => {
+    ddb.on(DeleteCommand).resolves({})
+    ddb.on(UpdateCommand).resolves({})
+    await games.removeMember(GM, G, ANA)
+    expect(ddb.commandCalls(DeleteCommand)[0].args[0].input.Key).toEqual({ ownerId: ANA, id: `gm#${G}` })
+  })
 })
 
 describe('DynamoProfileStore: player lookups for Games', () => {

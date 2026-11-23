@@ -1,6 +1,7 @@
 // DynamoDB implementation of GameStore (docs/adr/0006-games.md). Same table as heroes, profiles and adventures.
 //   (gmId,     game#<id>)  the Game: settings plus `memberIds`, a string set that includes the GM
-//   (memberId, gm#<id>)    a pointer from each member (the GM too) to the Game, so a member can find and read it
+//   (memberId, gm#<id>)    a pointer from each member (the GM too) to the Game, so a member can find and read it.
+//                          It also holds that member's `heroId`: the hero they brought (VTTER-77).
 //   ('_game',  <id>)       a pointer from the Game id to its GM, so a public Game can be joined from its link
 // Only Get, Query, Update and Delete are used, so the Lambda role needs no new action.
 import { DeleteCommand, GetCommand, QueryCommand, UpdateCommand, type DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
@@ -153,6 +154,37 @@ export class DynamoGameStore implements GameStore {
     }
     await this.writePointer(userId, id, gmId)
     return toGame(updated.Attributes as Record<string, unknown>)
+  }
+
+  async heroesOf(gameId: string, memberIds: string[]) {
+    const pairs = await Promise.all(memberIds.map(async memberId => {
+      const res = await guard(() => this.db.send(new GetCommand({
+        TableName: this.table,
+        Key: { ownerId: memberId, id: MEMBER_PREFIX + gameId },
+        ProjectionExpression: '#h',
+        ExpressionAttributeNames: { '#h': 'heroId' },
+        ConsistentRead: true,
+      })))
+      return [memberId, res.Item?.heroId as string | undefined] as const
+    }))
+    return Object.fromEntries(pairs.filter((p): p is readonly [string, string] => !!p[1]))
+  }
+
+  async setHero(userId: string, gameId: string, heroId: string | null) {
+    // Writes only the caller's own pointer, and only if they are still a member.
+    try {
+      await guard(() => this.db.send(new UpdateCommand({
+        TableName: this.table,
+        Key: { ownerId: userId, id: MEMBER_PREFIX + gameId },
+        UpdateExpression: heroId ? 'SET #h = :h' : 'REMOVE #h',
+        ConditionExpression: 'attribute_exists(#id)',
+        ExpressionAttributeNames: { '#h': 'heroId', '#id': 'id' },
+        ...(heroId ? { ExpressionAttributeValues: { ':h': heroId } } : {}),
+      })))
+    } catch (err) {
+      // They were removed from the Game between the membership check and this write: nothing to set.
+      if (!isConditionFailure(err)) throw err
+    }
   }
 
   async removeMember(gmId: string, id: string, userId: string) {

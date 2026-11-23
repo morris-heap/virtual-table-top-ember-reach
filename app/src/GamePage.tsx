@@ -2,7 +2,9 @@
 // Anyone who is not in the Game sees a Join button: it works for a public Game and is refused for a private one.
 import { useState, type FormEvent } from 'react'
 import { ApiError, gamesApi, profileApi } from './api/client.ts'
-import type { Game, GameDraft } from './api/types.ts'
+// Heroes come from the offline-capable repository (VTTER-56), so the picker works offline too.
+import { characterRepository, characters } from './characters/current.ts'
+import type { Game, GameDraft, GameMember, HeroSummary } from './api/types.ts'
 import { findBuiltIn } from './adventures/builtIn.ts'
 import type { Auth } from './auth/useAuth.ts'
 import { levelRange, sceneLabel } from './engine/adventure.ts'
@@ -47,6 +49,86 @@ function AdventureBlock({ game }: { game: Game }) {
         ))}
       </ol>
     </>
+  )
+}
+
+/** What a member brought to the table. Read-only for everyone: only the owner can change it, below. */
+function HeroLine({ member }: { member: GameMember }) {
+  if (!member.hero) return <span className="muted">No hero yet</span>
+  const h = member.hero
+  return <span className="muted">{h.name} · level {h.level} {h.ancestry} {h.calling}</span>
+}
+
+/**
+ * The signed-in member picks one of their own heroes (VTTER-77). The API takes the player from the
+ * token, so this can only ever change your own hero.
+ */
+function MyHero({ game, onChange }: { game: Game; onChange: (g: Game) => void }) {
+  const heroes = useLoad(characters.list)
+  const mine = game.members.find(m => m.mine)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  if (!mine) return null
+
+  function pick(heroId: string) {
+    setBusy(true)
+    setError(null)
+    void (async () => {
+      try {
+        if (heroId === '') {
+          onChange(await gamesApi.clearHero(game.id))
+          return
+        }
+        // The hero list is offline-capable (VTTER-56), so it can include a hero the API has never
+        // seen. Upload anything pending first, or the Game would reject an id that isn't there yet.
+        await characterRepository().flush()
+        onChange(await gamesApi.setHero(game.id, heroId))
+      } catch (e) {
+        const err = e as ApiError
+        setError(err.status === 404
+          ? "That hero hasn't finished syncing yet. Wait for it to save, then try again."
+          : err.message)
+      } finally {
+        setBusy(false)
+      }
+    })()
+  }
+
+  const list: HeroSummary[] = heroes.state.status === 'ready' ? heroes.state.data : []
+
+  return (
+    <section className="panel" aria-labelledby="my-hero-title">
+      <h2 id="my-hero-title">Your hero</h2>
+      {heroes.state.status === 'error'
+        ? <p className="notice error" role="alert">Couldn't load your heroes. {heroes.state.message}</p>
+        : list.length === 0 && heroes.state.status === 'ready'
+          ? (
+            <p className="muted">
+              You have no heroes yet. <Link to="/heroes/new">Create one</Link> to bring it to this Game.
+            </p>
+          )
+          : (
+            <label className="field">
+              <span>Bring a hero to this Game</span>
+              <select
+                value={mine.hero?.id ?? ''} disabled={busy || heroes.state.status === 'loading'}
+                onChange={e => pick(e.target.value)}
+              >
+                <option value="">No hero</option>
+                {/* A hero deleted after being chosen is gone from this list, so keep the slot selectable. */}
+                {mine.hero && !list.some(h => h.id === mine.hero!.id) && (
+                  <option value={mine.hero.id}>{mine.hero.name} (deleted)</option>
+                )}
+                {list.map(h => (
+                  <option key={h.id} value={h.id}>{h.name} — level {h.level} {h.ancestry} {h.calling}</option>
+                ))}
+              </select>
+              <small className="muted">Only you can change this. The rest of the table sees it read-only.</small>
+            </label>
+          )}
+      {error && <p className="notice error" role="alert">{error}</p>}
+    </section>
   )
 }
 
@@ -110,6 +192,9 @@ function GameScreen({ game, myPlayerId, onChange, onGone }: {
         <p className="muted">Playing the scenes, with Tests, turns and your hero, comes in a later release.</p>
       </section>
 
+      {/* Outside the roster, so a solo Game can bring a hero too. */}
+      <MyHero game={game} onChange={onChange} />
+
       {!game.solo && (
         <section className="panel" aria-labelledby="table-title">
           <h2 id="table-title">At the table</h2>
@@ -118,6 +203,7 @@ function GameScreen({ game, myPlayerId, onChange, onGone }: {
               <li key={m.playerId || m.displayName} className="row">
                 <b>{memberName(m)}</b>
                 <span className="muted">{m.role === 'gm' ? 'Game Master' : 'Player'} · {m.playerId}</span>
+                <HeroLine member={m} />
                 {m.role === 'player' && (isGm || m.playerId === myPlayerId) && (
                   <span className="row-actions">
                     <button

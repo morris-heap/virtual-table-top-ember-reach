@@ -91,14 +91,39 @@ class MemoryGames implements GameStore {
   }
   async removeMember(gm: string, id: string, user: string) {
     this.pointers.delete(`${user}/${id}`)
+    this.heroes.delete(`${user}/${id}`)
     const g = this.games.get(`${gm}/${id}`)
     if (g) g.memberIds = g.memberIds.filter(m => m !== user)
   }
+  // The hero lives on the member's own pointer, so it is keyed the same way (VTTER-77).
+  heroes = new Map<string, string>() // `${member}/${gameId}` -> heroId
+  async heroesOf(gameId: string, memberIds: string[]) {
+    const out: Record<string, string> = {}
+    for (const m of memberIds) {
+      const h = this.heroes.get(`${m}/${gameId}`)
+      if (h) out[m] = h
+    }
+    return out
+  }
+  async setHero(user: string, gameId: string, heroId: string | null) {
+    if (!this.pointers.has(`${user}/${gameId}`)) return
+    if (heroId) this.heroes.set(`${user}/${gameId}`, heroId)
+    else this.heroes.delete(`${user}/${gameId}`)
+  }
 }
 
-const noHeroes: CharacterStore = {
-  ping: async () => {}, list: async () => [], get: async () => null, delete: async () => false,
-  save: async () => { throw new Error('unused') },
+/** Just enough hero store for VTTER-77: heroes keyed (owner, id), so one owner never sees another's. */
+class MemoryHeroes implements CharacterStore {
+  rows = new Map<string, { id: string; name: string; level: number; ancestry: string; calling: string }>()
+  add(ownerId: string, id: string, name: string) {
+    this.rows.set(`${ownerId}/${id}`, { id, name, level: 3, ancestry: 'Emberkin', calling: 'Hexer' })
+  }
+  async ping() {}
+  async list() { return [] }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async get(ownerId: string, id: string) { return (this.rows.get(`${ownerId}/${id}`) ?? null) as any }
+  async delete() { return false }
+  async save(): Promise<never> { throw new Error('unused') }
 }
 const verifyToken = async (token: string) => (token.startsWith('token-') ? token.slice('token-'.length) : null)
 
@@ -109,20 +134,21 @@ async function world() {
   const profiles = new MemoryProfiles()
   const adventures = new MemoryAdventures()
   const games = new MemoryGames()
+  const heroes = new MemoryHeroes()
   const call = (method: string, path: string, owner: string | null, body?: unknown): Promise<Reply> => {
     const headers: Record<string, string> = { Origin: ORIGIN }
     if (owner) headers.Authorization = `Bearer token-${owner}`
     if (body !== undefined) headers['Content-Type'] = 'application/json'
     return handle(
       new Request(`https://api.test${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }),
-      { store: noHeroes, profiles, adventures, games, allowedOrigins: [ORIGIN], verifyToken },
+      { store: heroes, profiles, adventures, games, allowedOrigins: [ORIGIN], verifyToken },
     ) as unknown as Promise<Reply>
   }
   const gm = await profiles.getOrCreate(GM)
   await profiles.update(GM, { gameMaster: true })
   const ana = await profiles.getOrCreate(ANA)
   const ben = await profiles.getOrCreate(BEN)
-  return { profiles, adventures, games, call, ids: { gm: gm.playerId, ana: ana.playerId, ben: ben.playerId } }
+  return { profiles, adventures, games, heroes, call, ids: { gm: gm.playerId, ana: ana.playerId, ben: ben.playerId } }
 }
 
 const table = { name: 'Friday night', adventure: { source: 'builtin', id: 'soot-kings-hearth' }, visibility: 'private' }
@@ -170,7 +196,7 @@ describe('Games: creating', () => {
   it('lists a Game for its GM with the GM as the first member, and never leaks Cognito ids', async () => {
     const { call, ids } = await world()
     const created = await (await call('PUT', `/games/${G1}`, GM, table)).json()
-    expect(created.members).toEqual([{ playerId: ids.gm, displayName: GM, role: 'gm' }])
+    expect(created.members).toEqual([{ playerId: ids.gm, displayName: GM, role: 'gm', hero: null, mine: true }])
     expect(JSON.stringify(created)).not.toContain('memberIds')
     expect(JSON.stringify(created)).not.toContain('ownerId')
     const list = await (await call('GET', '/games', GM)).json()
@@ -272,6 +298,98 @@ describe('Games: members', () => {
     expect((await call('GET', '/games/not-a-uuid', GM)).status).toBe(400)
     expect((await call('GET', `/games/${G1}/members`, GM)).status).toBe(404)
     expect((await call('PUT', `/games/${G1}/other/x`, GM)).status).toBe(404)
+    expect((await call('PUT', `/games/${G1}/other`, GM)).status).toBe(404)
     expect((await call('POST', '/games', GM)).status).toBe(405)
+  })
+})
+
+// VTTER-77: each member brings one of their own heroes.
+describe('a hero in a Game', () => {
+  const HERO = '55555555-5555-4555-8555-555555555555'
+  const OTHER = '66666666-6666-4666-8666-666666666666'
+
+  it('a member picks their own hero, sees it on the roster, and can change or clear it', async () => {
+    const { call, heroes, ids } = await world()
+    heroes.add(ANA, HERO, 'Vashti')
+    heroes.add(ANA, OTHER, 'Korrin')
+    await call('PUT', `/games/${G1}`, GM, table)
+    await call('PUT', `/games/${G1}/members/${ids.ana}`, GM)
+
+    const picked = await (await call('PUT', `/games/${G1}/hero`, ANA, { heroId: HERO })).json()
+    const anaRow = picked.members.find((m: { playerId: string }) => m.playerId === ids.ana)
+    expect(anaRow.hero).toEqual({ id: HERO, name: 'Vashti', level: 3, ancestry: 'Emberkin', calling: 'Hexer' })
+    expect(anaRow.mine).toBe(true)
+
+    const changed = await (await call('PUT', `/games/${G1}/hero`, ANA, { heroId: OTHER })).json()
+    expect(changed.members.find((m: { playerId: string }) => m.playerId === ids.ana).hero.name).toBe('Korrin')
+
+    const cleared = await (await call('DELETE', `/games/${G1}/hero`, ANA)).json()
+    expect(cleared.members.find((m: { playerId: string }) => m.playerId === ids.ana).hero).toBeNull()
+  })
+
+  it('the whole table sees a hero but only its owner is marked `mine`', async () => {
+    const { call, heroes, ids } = await world()
+    heroes.add(ANA, HERO, 'Vashti')
+    await call('PUT', `/games/${G1}`, GM, table)
+    await call('PUT', `/games/${G1}/members/${ids.ana}`, GM)
+    await call('PUT', `/games/${G1}/hero`, ANA, { heroId: HERO })
+
+    const seen = await (await call('GET', `/games/${G1}`, GM)).json()
+    const anaRow = seen.members.find((m: { playerId: string }) => m.playerId === ids.ana)
+    expect(anaRow.hero.name).toBe('Vashti')
+    expect(anaRow.mine).toBe(false)
+    // The roster carries no owner or member ids. (The fake profiles use the Cognito id as a display
+    // name, so checking for the raw id itself would always match.)
+    expect(JSON.stringify(seen)).not.toContain('memberIds')
+    expect(JSON.stringify(seen)).not.toContain('ownerId')
+    expect(Object.keys(anaRow).sort()).toEqual(['displayName', 'hero', 'mine', 'playerId', 'role'])
+  })
+
+  it("refuses a hero that is not the caller's, and a Game the caller is not in", async () => {
+    const { call, heroes, ids } = await world()
+    heroes.add(ANA, HERO, 'Vashti')
+    await call('PUT', `/games/${G1}`, GM, table)
+    await call('PUT', `/games/${G1}/members/${ids.ana}`, GM)
+    // Ben is not in the Game at all.
+    expect((await call('PUT', `/games/${G1}/hero`, BEN, { heroId: HERO })).status).toBe(404)
+    // The GM is a member, but Ana's hero is not theirs to bring.
+    expect((await call('PUT', `/games/${G1}/hero`, GM, { heroId: HERO })).status).toBe(404)
+    expect((await call('PUT', `/games/${G1}/hero`, ANA, { heroId: 'not-a-uuid' })).status).toBe(400)
+    expect((await call('PUT', `/games/${G1}/hero`, ANA, {})).status).toBe(400)
+    expect((await call('GET', `/games/${G1}/hero`, ANA)).status).toBe(405)
+  })
+
+  it('leaving a Game takes the hero with it', async () => {
+    const { call, heroes, ids } = await world()
+    heroes.add(ANA, HERO, 'Vashti')
+    await call('PUT', `/games/${G1}`, GM, table)
+    await call('PUT', `/games/${G1}/members/${ids.ana}`, GM)
+    await call('PUT', `/games/${G1}/hero`, ANA, { heroId: HERO })
+    await call('DELETE', `/games/${G1}/members/${ids.ana}`, ANA)
+
+    await call('PUT', `/games/${G1}/members/${ids.ana}`, GM)
+    const rejoined = await (await call('GET', `/games/${G1}`, GM)).json()
+    expect(rejoined.members.find((m: { playerId: string }) => m.playerId === ids.ana).hero).toBeNull()
+  })
+
+  it('shows an empty slot when the chosen hero was deleted', async () => {
+    const { call, heroes, ids } = await world()
+    heroes.add(ANA, HERO, 'Vashti')
+    await call('PUT', `/games/${G1}`, GM, table)
+    await call('PUT', `/games/${G1}/members/${ids.ana}`, GM)
+    await call('PUT', `/games/${G1}/hero`, ANA, { heroId: HERO })
+    heroes.rows.delete(`${ANA}/${HERO}`)
+
+    const seen = await (await call('GET', `/games/${G1}`, ANA)).json()
+    expect(seen.members.find((m: { playerId: string }) => m.playerId === ids.ana).hero).toBeNull()
+  })
+
+  it('a solo Game can bring a hero', async () => {
+    const { call, heroes, ids } = await world()
+    heroes.add(ANA, HERO, 'Vashti')
+    const solo = { ...table, solo: true }
+    await call('PUT', `/games/${G2}`, ANA, solo)
+    const picked = await (await call('PUT', `/games/${G2}/hero`, ANA, { heroId: HERO })).json()
+    expect(picked.members.find((m: { playerId: string }) => m.playerId === ids.ana).hero.name).toBe('Vashti')
   })
 })
