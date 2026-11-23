@@ -2,7 +2,7 @@
 // whether the visitor is signed in. The Home screen loads the signed-in user's heroes itself (VTTER-71).
 import { useCallback, useEffect, useState } from 'react'
 import { authConfig } from './config.ts'
-import type { User } from './oauth.ts'
+import type { SocialProvider, User } from './oauth.ts'
 import { completeSignIn, signIn, signOut } from './session.ts'
 
 export type AuthState =
@@ -15,6 +15,7 @@ export interface Auth {
   state: AuthState
   signIn: () => void
   signUp: () => void
+  signInWith: (provider: SocialProvider) => void
   signOut: () => void
 }
 
@@ -36,6 +37,7 @@ export function useAuth(): Auth {
     state,
     signIn: useCallback(() => { if (authConfig) void signIn(authConfig) }, []),
     signUp: useCallback(() => { if (authConfig) void signIn(authConfig, 'signup') }, []),
+    signInWith: useCallback((p: SocialProvider) => { if (authConfig) void signIn(authConfig, 'signin', p) }, []),
     signOut: useCallback(() => { if (authConfig) void signOut(authConfig) }, []),
   }
 }

@@ -19,8 +19,12 @@ const APP_ORIGIN = 'https://emberreach.morris-heap.com'
 const DEV_ORIGIN = 'http://localhost:5173'
 const BASE = '/' // the Vite base in app/vite.config.ts
 
-// Optional Google sign-in: `-c googleClientId=…` (or "googleClientId" in cdk.json context). See infra/README.md.
-const googleClientId = app.node.tryGetContext('googleClientId') as string | undefined
+// Optional social sign-in. Each is on when its client id is in cdk.json context (or `-c name=…`), and its
+// client secret is in Secrets Manager under the name below. See infra/README.md.
+const ctx = (key: string) => (app.node.tryGetContext(key) as string | undefined) || undefined
+const googleClientId = ctx('googleClientId')
+const microsoftClientId = ctx('microsoftClientId')
+const githubClientId = ctx('githubClientId')
 
 new GithubDeployStack(app, 'EmberreachGithubDeploy', {
   env,
@@ -35,6 +39,10 @@ new AuthStack(app, 'EmberreachAuth', {
   domainPrefix: 'emberreach-login',
   appUrls: [`${APP_ORIGIN}${BASE}`, `${DEV_ORIGIN}${BASE}`],
   google: googleClientId ? { clientId: googleClientId, clientSecretName: 'emberreach/google-oauth-client-secret' } : undefined,
+  microsoft: microsoftClientId
+    ? { clientId: microsoftClientId, clientSecretName: 'emberreach/microsoft-oauth-client-secret', tenantId: ctx('microsoftTenantId') }
+    : undefined,
+  github: githubClientId ? { clientId: githubClientId, clientSecretName: 'emberreach/github-oauth-client-secret' } : undefined,
 })
 // The API finds the table by name and the Cognito ids through SSM rather than cross-stack exports,
 // so the stacks deploy independently. Deploy EmberreachAuth before EmberreachApi the first time.
