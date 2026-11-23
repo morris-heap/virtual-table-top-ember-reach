@@ -20,9 +20,17 @@ Auth0). The backend is now on AWS ([ADR 0003](0003-backend-dynamodb-lambda.md)),
   optional TOTP MFA. The pool has deletion protection and is retained if its stack is deleted.
 - **Single sign-on page: Cognito managed login** (v2) at `emberreach-login.auth.us-east-2.amazoncognito.com`.
   It handles sign-in, sign-up, password reset and MFA, so the app has no password forms.
-- **Social sign-in (optional): Google** as a federated OIDC provider, turned on with the CDK context value
-  `googleClientId`. The Google client secret lives in Secrets Manager (`emberreach/google-oauth-client-secret`)
-  and CloudFormation resolves it at deploy time. Without the context value, only email sign-in is offered.
+- **Social sign-in (optional): Google, Microsoft and GitHub** (VTTER-62). Google uses Cognito's built-in Google
+  provider. Microsoft (Entra ID) is an OIDC provider named `Microsoft`. GitHub isn't OIDC, so the `GitHub` OIDC provider
+  points at a small wrapper we run (`api/src/github-oidc.ts`, Lambda + HTTP API in `EmberreachAuth`) that exchanges the
+  code with GitHub and returns an ID token signed by an asymmetric KMS key. Each is turned on
+  with a CDK context value (`googleClientId`, `microsoftClientId`, `githubClientId`). Its client secret lives in
+  Secrets Manager (`emberreach/<provider>-oauth-client-secret`), and CloudFormation resolves it at deploy time.
+  Cognito needs one exact token issuer, so Microsoft trusts a single tenant: personal Microsoft accounts by default
+  (`microsoftTenantId` changes it). The app's landing page has a button per provider (`VITE_AUTH_PROVIDERS`) that
+  sends `identity_provider` to skip Cognito's page. Without any context values, only email sign-in is offered.
+- **Branding:** the managed login style is in code (`infra/lib/branding/`), so the sign-in pages match the app's
+  dark ember look and the console branding editor isn't used.
 - **Flow: OAuth 2.0 authorization code grant with PKCE (S256)**, plus `state` and an OIDC `nonce`. One public app
   client (`emberreach-web`, no client secret), scopes `openid email profile`. Callback and sign-out URLs are the
   app URL (`https://emberreach.morris-heap.com/`) and the local dev URL, both with the Vite base `/`.

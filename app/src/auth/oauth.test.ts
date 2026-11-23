@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  authorizeUrl, base64url, checkIdToken, codeExchangeBody, decodeJwt, isExpiring, logoutUrl, pkceChallenge,
+  authorizeUrl, base64url, checkIdToken, codeExchangeBody, decodeJwt, isExpiring, logoutUrl, parseProviders, pkceChallenge,
   randomString, readCallback, refreshBody, tokensFromResponse, userFromClaims, type AuthConfig,
 } from './oauth.ts'
 
@@ -45,6 +45,20 @@ describe('URLs', () => {
     expect(u.origin + u.pathname).toBe(`https://${cfg.domain}/signup`)
     expect(u.search).toBe(new URL(authorizeUrl(cfg, p)).search)
     expect(new URL(authorizeUrl(cfg, { ...p, screen: 'signin' })).pathname).toBe('/oauth2/authorize')
+  })
+  it('goes straight to a social provider with identity_provider', () => {
+    const p = { state: 's1', nonce: 'n1', challenge: 'c1' }
+    const u = new URL(authorizeUrl(cfg, { ...p, screen: 'signup', provider: 'GitHub' }))
+    expect(u.pathname).toBe('/oauth2/authorize')
+    expect(u.searchParams.get('identity_provider')).toBe('GitHub')
+    expect(u.searchParams.get('code_challenge')).toBe('c1')
+    expect(u.searchParams.get('nonce')).toBe('n1')
+    expect(new URL(authorizeUrl(cfg, p)).searchParams.has('identity_provider')).toBe(false)
+  })
+  it('reads the provider list, ignoring case, spaces, unknown names and order', () => {
+    expect(parseProviders(' github, Google ,linkedin,,MICROSOFT')).toEqual(['Google', 'Microsoft', 'GitHub'])
+    expect(parseProviders('')).toEqual([])
+    expect(parseProviders(undefined)).toEqual([])
   })
   it('builds the logout URL back to the app', () => {
     const u = new URL(logoutUrl(cfg))
