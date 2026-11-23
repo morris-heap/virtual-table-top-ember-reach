@@ -3,7 +3,7 @@
 import { apiUrl, authConfig } from '../auth/config.ts'
 import { getAccessToken } from '../auth/session.ts'
 import { ApiError, errorMessage, jsonInit } from './request.ts'
-import type { Adventure, AdventureDraft, AdventureSummary, Game, GameDraft, GameSummary, HeroSummary, Profile } from './types.ts'
+import type { Adventure, AdventureDraft, AdventureSummary, Game, GameDraft, GameSummary, Hero, HeroSummary, Profile } from './types.ts'
 
 export { ApiError }
 
@@ -23,6 +23,10 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 
 export const heroesApi = {
   list: async () => (await call<{ characters: HeroSummary[] }>('GET', '/characters')).characters,
+  /** Creates or replaces a hero. The API fills in every sheet field left out (api/src/sheet.ts). */
+  get: (id: string) => call<Hero>('GET', `/characters/${id}`),
+  save: (id: string, sheet: Record<string, unknown>) => call<Hero>('PUT', `/characters/${id}`, sheet),
+  remove: (id: string) => call<void>('DELETE', `/characters/${id}`),
 }
 
 export const profileApi = {

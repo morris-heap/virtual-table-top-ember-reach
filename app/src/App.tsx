@@ -2,8 +2,11 @@
 // players (VTTER-71), and the Test roller as a guest when a visitor picks "Try the Test roller" (kept for this tab only).
 import { useEffect, useState } from 'react'
 import AdventureEditor from './AdventureEditor.tsx'
+import Adventures from './Adventures.tsx'
 import AdventureView from './AdventureView.tsx'
 import GamePage from './GamePage.tsx'
+import HeroPage from './HeroPage.tsx'
+import Heroes from './Heroes.tsx'
 import Home from './Home.tsx'
 import Landing, { Logo } from './Landing.tsx'
 import { navigate, useRoute } from './nav.ts'
@@ -43,6 +46,9 @@ function SignedIn({ auth, name }: { auth: Auth; name: string }) {
     case 'home': return <Home auth={auth} name={name} />
     case 'profile': return <Profile auth={auth} name={name} />
     case 'roller': return <Roller auth={auth} onHome={() => navigate('/')} />
+    case 'heroes': return <Heroes auth={auth} />
+    case 'hero': return <HeroPage auth={auth} id={route.id} />
+    case 'adventures': return <Adventures auth={auth} />
     case 'adventure': return <AdventureEditor auth={auth} id={route.id} />
     case 'builtIn': return <AdventureView auth={auth} slug={route.slug} />
     case 'game': return <GamePage auth={auth} id={route.id} />

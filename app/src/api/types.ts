@@ -9,6 +9,14 @@ export interface HeroSummary {
   updatedAt: string
 }
 
+/** A saved hero, as the API returns it (api/src/sheet.ts). Only the fields the app shows so far. */
+export interface Hero extends HeroSummary {
+  background: string
+  attributes: Record<'might' | 'grace' | 'wits' | 'lore' | 'spirit' | 'presence', number>
+  grit: number
+  ember: number
+}
+
 export interface Profile {
   /** Empty until the user sets one: show their sign-in name instead. */
   displayName: string

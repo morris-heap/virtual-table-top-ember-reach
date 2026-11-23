@@ -10,6 +10,12 @@ describe('parseRoute', () => {
     ['/profile', { name: 'profile' }],
     ['/profile/', { name: 'profile' }],
     ['/roller', { name: 'roller' }],
+    ['/heroes', { name: 'heroes' }],
+    ['/heroes/new', { name: 'hero', id: 'new' }],
+    [`/heroes/${ID}`, { name: 'hero', id: ID }],
+    [`/heroes/${ID.toUpperCase()}`, { name: 'hero', id: ID }],
+    ['/adventures', { name: 'adventures' }],
+    ['/adventures/', { name: 'adventures' }],
     ['/adventures/new', { name: 'adventure', id: 'new' }],
     [`/adventures/${ID}`, { name: 'adventure', id: ID }],
     [`/adventures/${ID.toUpperCase()}`, { name: 'adventure', id: ID }],
@@ -21,7 +27,7 @@ describe('parseRoute', () => {
   })
 
   it.each([
-    '/nope', '/profile/extra', '/adventures', '/adventures/123', `/adventures/${ID}/scenes`,
+    '/nope', '/profile/extra', '/heroes/123', `/heroes/${ID}/sheet`, '/adventures/123', `/adventures/${ID}/scenes`,
     '/adventures/built-in', '/adventures/built-in/Bad Slug', '/adventures/built-in/-x',
     '/games', '/games/new', `/games/${ID}/members`,
   ])('%s is not found', path => {
@@ -29,7 +35,7 @@ describe('parseRoute', () => {
   })
 
   it('pathFor is the inverse of parseRoute', () => {
-    for (const path of ['/', '/profile', '/roller', '/adventures/new', `/adventures/${ID}`, '/adventures/built-in/soot-kings-hearth', `/games/${ID}`]) {
+    for (const path of ['/', '/profile', '/roller', '/heroes', '/heroes/new', `/heroes/${ID}`, '/adventures', '/adventures/new', `/adventures/${ID}`, '/adventures/built-in/soot-kings-hearth', `/games/${ID}`]) {
       const route = parseRoute(path)
       if (route.name === 'notFound') throw new Error(path)
       expect(pathFor(route)).toBe(path)
