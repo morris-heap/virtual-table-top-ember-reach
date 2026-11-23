@@ -19,6 +19,31 @@ function setup() {
 const response = (body: unknown, status = 200, headers?: HeadersInit) => new Response(JSON.stringify(body), { status, headers })
 afterEach(() => { vi.useRealTimers() })
 
+// VTTER-77: a Game stores a hero by id, so an id the API has never seen cannot be brought to a table.
+// GamePage flushes before setting a hero; this pins the behaviour it depends on.
+describe('bringing an offline hero to a Game', () => {
+  it('lists a hero saved offline but only gives it a server id once flushed', async () => {
+    const { fetcher, api } = setup()
+    const local = new LocalCharacterRepository(storage(), 'acct')
+    let online = false
+    const repo = new OfflineCharacterRepository(local, api, () => online)
+
+    await repo.save(id, sheet)
+    // Offline, the hero is listed (so the picker can show it) but is still pending upload.
+    expect((await repo.list()).map(h => h.id)).toEqual([id])
+    expect(local.entries()[id]?.pending).toBe('save')
+    expect(fetcher).not.toHaveBeenCalled()
+
+    online = true
+    fetcher.mockResolvedValue(response(hero))
+    await repo.flush()
+    // Now the API knows the id, so setHero can reference it.
+    expect(local.entries()[id]?.pending).toBeUndefined()
+    expect(fetcher).toHaveBeenCalledWith(`https://example.test/characters/${id}`, expect.objectContaining({ method: 'PUT' }))
+    repo.stop()
+  })
+})
+
 describe('API character repository', () => {
   it('saves the shared sheet using only the bearer token for identity', async () => {
     const { fetcher, api } = setup()

@@ -1,7 +1,9 @@
 // One Game (VTTER-72): its adventure, who is at the table, and the GM's controls (invite, public or private, delete).
 // Anyone who is not in the Game sees a Join button: it works for a public Game and is refused for a private one.
 import { useState, type FormEvent } from 'react'
-import { ApiError, gamesApi, heroesApi, profileApi } from './api/client.ts'
+import { ApiError, gamesApi, profileApi } from './api/client.ts'
+// Heroes come from the offline-capable repository (VTTER-56), so the picker works offline too.
+import { characterRepository, characters } from './characters/current.ts'
 import type { Game, GameDraft, GameMember, HeroSummary } from './api/types.ts'
 import { findBuiltIn } from './adventures/builtIn.ts'
 import type { Auth } from './auth/useAuth.ts'
@@ -62,7 +64,7 @@ function HeroLine({ member }: { member: GameMember }) {
  * token, so this can only ever change your own hero.
  */
 function MyHero({ game, onChange }: { game: Game; onChange: (g: Game) => void }) {
-  const heroes = useLoad(heroesApi.list)
+  const heroes = useLoad(characters.list)
   const mine = game.members.find(m => m.mine)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -72,8 +74,25 @@ function MyHero({ game, onChange }: { game: Game; onChange: (g: Game) => void })
   function pick(heroId: string) {
     setBusy(true)
     setError(null)
-    const work = heroId === '' ? gamesApi.clearHero(game.id) : gamesApi.setHero(game.id, heroId)
-    void work.then(onChange).catch((e: Error) => setError(e.message)).finally(() => setBusy(false))
+    void (async () => {
+      try {
+        if (heroId === '') {
+          onChange(await gamesApi.clearHero(game.id))
+          return
+        }
+        // The hero list is offline-capable (VTTER-56), so it can include a hero the API has never
+        // seen. Upload anything pending first, or the Game would reject an id that isn't there yet.
+        await characterRepository().flush()
+        onChange(await gamesApi.setHero(game.id, heroId))
+      } catch (e) {
+        const err = e as ApiError
+        setError(err.status === 404
+          ? "That hero hasn't finished syncing yet. Wait for it to save, then try again."
+          : err.message)
+      } finally {
+        setBusy(false)
+      }
+    })()
   }
 
   const list: HeroSummary[] = heroes.state.status === 'ready' ? heroes.state.data : []
