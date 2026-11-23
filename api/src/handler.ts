@@ -45,6 +45,13 @@ export interface GameStore {
   /** Add a member, or null if the Game is gone or full. Adding twice is fine. */
   addMember(gmId: string, id: string, userId: string): Promise<GameRecord | null>
   removeMember(gmId: string, id: string, userId: string): Promise<void>
+  /**
+   * The hero each member brought, by Cognito id (VTTER-77). The choice lives on the member's own
+   * pointer item, so only that member can write it and leaving the Game takes it with them.
+   */
+  heroesOf(gameId: string, memberIds: string[]): Promise<Record<string, string>>
+  /** Set the caller's hero for a Game, or clear it with null. The caller must already be a member. */
+  setHero(userId: string, gameId: string, heroId: string | null): Promise<void>
 }
 
 /** Adventures are keyed (owner, id), so one owner can never read or change another's. */
@@ -165,9 +172,20 @@ async function profileRoute(req: Request, owner: string, deps: Deps, cors: Recor
 
 /** What a member sees of a Game: names and player IDs, never Cognito ids. */
 async function gameView(game: GameRecord, userId: string, deps: Deps) {
+  // Each member's chosen hero, shown to the whole table read-only (VTTER-77).
+  const heroIds = await deps.games.heroesOf(game.id, game.memberIds)
   const members = await Promise.all(game.memberIds.map(async id => {
     const p = await deps.profiles.peek(id)
-    return { playerId: p?.playerId ?? '', displayName: p?.displayName ?? '', role: id === game.ownerId ? 'gm' : 'player' }
+    const heroId = heroIds[id]
+    const hero = heroId ? await deps.store.get(id, heroId) : null
+    return {
+      playerId: p?.playerId ?? '',
+      displayName: p?.displayName ?? '',
+      role: id === game.ownerId ? 'gm' : 'player',
+      // A hero the player deleted leaves the slot empty rather than a dangling id.
+      hero: hero ? { id: hero.id, name: hero.name, level: hero.level, ancestry: hero.ancestry, calling: hero.calling } : null,
+      mine: id === userId,
+    }
   }))
   // Members read the GM's own adventure through the Game. Built-in adventures ship with the app.
   const own = game.adventure.source === 'own' ? await deps.adventures.get(game.ownerId, game.adventure.id) : null
@@ -243,8 +261,27 @@ async function gamesRoute(req: Request, parts: string[], owner: string, deps: De
     }
   }
 
+  // /games/:id/hero — the caller picks or clears their own hero (VTTER-77). Never anyone else's.
+  if (parts[2] === 'hero' && parts.length === 3) {
+    if (req.method !== 'PUT' && req.method !== 'DELETE') throw new HttpError(405, 'Method not allowed')
+    const game = await games.getForMember(owner, id)
+    if (!game) throw new HttpError(404, 'Game not found')
+    let heroId: string | null = null
+    if (req.method === 'PUT') {
+      const body = await readJson(req)
+      if (!body || typeof body !== 'object' || Array.isArray(body)) throw new HttpError(400, 'body must be an object')
+      const raw = (body as Record<string, unknown>).heroId
+      if (typeof raw !== 'string' || !UUID.test(raw)) throw new HttpError(400, 'heroId must be a UUID')
+      heroId = raw.toLowerCase()
+      // The hero must be the caller's own: the owner comes from the verified token, never the request.
+      if (!(await deps.store.get(owner, heroId))) throw new HttpError(404, 'That hero was not found')
+    }
+    await games.setHero(owner, id, heroId)
+    return json(await gameView(game, owner, deps), 200, cors)
+  }
+
   // /games/:id/members/:playerId
-  if (parts[2] !== 'members') throw new HttpError(404, 'Not found')
+  if (parts[2] !== 'members' || parts.length !== 4) throw new HttpError(404, 'Not found')
   if (req.method !== 'PUT' && req.method !== 'DELETE') throw new HttpError(405, 'Method not allowed')
   const playerId = parts[3].toUpperCase()
   if (!isPlayerId(playerId)) throw new HttpError(400, 'That is not a player ID')
@@ -307,7 +344,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     const resource = parts[0]
     const maxParts = resource === 'profile' ? 1 : resource === 'games' ? 4 : 2
-    if (!['characters', 'profile', 'adventures', 'games'].includes(resource) || parts.length > maxParts || parts.length === 3) {
+    // Three parts is only ever /games/:id/hero (VTTER-77); gamesRoute rejects any other third segment.
+    if (!['characters', 'profile', 'adventures', 'games'].includes(resource) || parts.length > maxParts
+      || (parts.length === 3 && resource !== 'games')) {
       throw new HttpError(404, 'Not found')
     }
     const owner = await ownerOf(req, deps.verifyToken)

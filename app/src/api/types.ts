@@ -72,10 +72,17 @@ export interface GameSummary extends GameDraft {
   updatedAt: string
 }
 
+/** The hero a member brought, as the table sees it: read-only for everyone but its owner (VTTER-77). */
+export type GameHero = Pick<HeroSummary, 'id' | 'name' | 'level' | 'ancestry' | 'calling'>
+
 export interface GameMember {
   playerId: string
   displayName: string
   role: GameRole
+  /** Null until they pick one, or if they deleted the hero they had chosen. */
+  hero: GameHero | null
+  /** True for the signed-in member, who is the only one who can change this hero. */
+  mine: boolean
 }
 
 export interface Game extends GameDraft {

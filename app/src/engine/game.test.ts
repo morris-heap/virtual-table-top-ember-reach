@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { GameMember } from '../api/types.ts'
-import { cleanPlayerId, gameLink, memberName, newGame, partyWarning, playerCount, RECOMMENDED_PARTY } from './game.ts'
+import { cleanPlayerId, gameLink, heroCount, memberName, newGame, partyWarning, playerCount, RECOMMENDED_PARTY } from './game.ts'
 
-const player = (n: number): GameMember => ({ playerId: `EMBER-${n}AAAA`, displayName: '', role: 'player' })
-const gm: GameMember = { playerId: 'EMBER-GGGGG', displayName: 'Kit', role: 'gm' }
+const hero = (name: string) => ({ id: name, name, level: 1, ancestry: 'Emberkin', calling: 'Hexer' })
+/** A player with a hero, unless `withHero` says otherwise. */
+const player = (n: number, withHero = true): GameMember => ({
+  playerId: `EMBER-${n}AAAA`, displayName: '', role: 'player', hero: withHero ? hero(`H${n}`) : null, mine: false,
+})
+const gm: GameMember = { playerId: 'EMBER-GGGGG', displayName: 'Kit', role: 'gm', hero: null, mine: false }
 const ref = { source: 'builtin' as const, id: 'soot-kings-hearth' }
 
 describe('cleanPlayerId', () => {
@@ -27,10 +31,18 @@ describe('party', () => {
   it('counts players, not the GM', () => {
     expect(playerCount([gm, player(1), player(2)])).toBe(2)
   })
-  it('warns only past the recommended size, and never forbids', () => {
+  it('counts heroes, not people: a member without one adds no turn', () => {
+    expect(heroCount([gm, player(1), player(2, false)])).toBe(1)
+    // A GM who brings a hero is counted too: it takes a turn like any other.
+    expect(heroCount([{ ...gm, hero: hero('Gm') }, player(1)])).toBe(2)
+  })
+  it('warns only past the recommended number of heroes, and never forbids', () => {
     const table = (n: number) => [gm, ...Array.from({ length: n }, (_, i) => player(i))]
     expect(partyWarning(table(RECOMMENDED_PARTY))).toBeNull()
-    expect(partyWarning(table(RECOMMENDED_PARTY + 1))).toMatch(/slow down/)
+    expect(partyWarning(table(RECOMMENDED_PARTY + 1))).toMatch(/Heroes' Phase/)
+    // Past the recommended size in people, but not in heroes: no warning.
+    const heroless = [gm, ...Array.from({ length: RECOMMENDED_PARTY + 3 }, (_, i) => player(i, false))]
+    expect(partyWarning(heroless)).toBeNull()
   })
 })
 
@@ -41,6 +53,6 @@ describe('labels', () => {
   it('names a member by display name, then player ID', () => {
     expect(memberName(gm)).toBe('Kit')
     expect(memberName(player(1))).toBe('EMBER-1AAAA')
-    expect(memberName({ playerId: '', displayName: '', role: 'player' })).toBe('A player')
+    expect(memberName({ playerId: '', displayName: '', role: 'player', hero: null, mine: false })).toBe('A player')
   })
 })

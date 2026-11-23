@@ -39,4 +39,8 @@ export const gamesApi = {
   addMember: (id: string, playerId: string) => call<Game>('PUT', `/games/${id}/members/${encodeURIComponent(playerId)}`),
   /** The GM removes a player, or a player leaves with their own player ID. */
   removeMember: (id: string, playerId: string) => call<void>('DELETE', `/games/${id}/members/${encodeURIComponent(playerId)}`),
+  /** Bring one of your own heroes to a Game (VTTER-77). The API takes the player from the token. */
+  setHero: (id: string, heroId: string) => call<Game>('PUT', `/games/${id}/hero`, { heroId }),
+  /** Withdraw your hero from a Game. */
+  clearHero: (id: string) => call<Game>('DELETE', `/games/${id}/hero`),
 }
