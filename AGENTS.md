@@ -23,8 +23,8 @@ relevant ones before answering design questions or making edits:
 | [rules/core-rules.md](rules/core-rules.md) | Core mechanics: Tests, characters, callings, magic, combat, gear, advancement, open questions |
 | [rules/gm-guide.md](rules/gm-guide.md) | Foe stat blocks, encounter budgets, starter adventure |
 | [sheets/character-sheet.md](sheets/character-sheet.md) | Character sheet template (must match the rules) |
-| [data/](data/) | Machine-readable game numbers used by the app and API (`core.json`, `character.json`). Must match the rules files |
-| [docs/adr/](docs/adr/) | Architecture decisions: [0001](docs/adr/0001-companion-app-stack.md) app stack, [0003](docs/adr/0003-backend-dynamodb-lambda.md) backend (replaced [0002](docs/adr/0002-backend-postgres.md)), [0004](docs/adr/0004-auth-cognito.md) sign-in |
+| [data/](data/) | Machine-readable game numbers used by the app and API (`core.json`, `character.json`, `adventure.json`), and the built-in adventures in `data/adventures/`. Must match the rules files |
+| [docs/adr/](docs/adr/) | Architecture decisions: [0001](docs/adr/0001-companion-app-stack.md) app stack, [0003](docs/adr/0003-backend-dynamodb-lambda.md) backend (replaced [0002](docs/adr/0002-backend-postgres.md)), [0004](docs/adr/0004-auth-cognito.md) sign-in, [0005](docs/adr/0005-profile-and-adventures.md) profile, player ID and private adventures |
 | [docs/mockups/](docs/mockups/) | Character sheet UI mockups (view and guided-creation edit mode) for VTTER-47 |
 
 ## How we establish rules (workflow)
@@ -66,7 +66,8 @@ relevant ones before answering design questions or making edits:
 - Work is tracked in Jira project **VTTER** (VTT Ember Reach) at morris-heap.atlassian.net.
   Name branches `VTTER-<n>-short-slug`, and mention the VTTER key(s) in commit messages and PR titles.
   (Older history uses the previous project key, KAN.)
-- Current epics: VTTER-46 UI / UX (VTTER-47 Character Sheet UI), VTTER-51 Backend
+- Current epics: VTTER-46 UI / UX (VTTER-47 Character Sheet UI, VTTER-71 Home, Profile and private adventures,
+  then VTTER-72 Games and VTTER-73 friends list), VTTER-51 Backend
   (VTTER-53 Cognito login done; VTTER-55 portraits and VTTER-56 app ↔ API still to do).
 - Write commit messages in the imperative and say which rules changed (for example "Rebalance Hexer Grit to 8 + 3/level").
 
@@ -83,6 +84,12 @@ in `app/`, then `npx wrangler deploy`); `.github/workflows/app.yml` checks pull 
   `app/dist`. Keep its `name`, `compatibility_date` and assets settings in step with `app/wrangler.jsonc`, and don't
   delete it until Cloudflare fixes preview builds (VTTER-67). Both files need a `previews` block.
 
+- **Screens and routing:** signed-in players get Home (Heroes | Adventures), Profile, the adventure editor and the Test
+  roller. Routes are a pure table in `app/src/router.ts` (hand-rolled, no router library), and `/` must stay Home because
+  it is the Cognito redirect. Calls to the API go through `app/src/api/client.ts` and never send a user id.
+  Built-in adventures are `data/adventures/*.json`, listed in `app/src/adventures/builtIn.ts`. Games and the friends list
+  are VTTER-72 and VTTER-73. **Party size has no hard cap**: `data/core.json` `party.recommendedMax` (5) is advice, so
+  warn, never block.
 - Commands (run in `app/`): `npm install`, `npm run dev`, `npm test`, `npm run lint`, `npm run build`.
   **Run test, lint and build before you commit app changes.**
 - Game logic goes in `app/src/engine/` as pure functions with an injectable RNG, and every rule gets unit tests.
@@ -104,7 +111,11 @@ through GitHub OIDC (role `emberreach-github-deploy`, environment `aws`).
 - AWS access is the CLI profile `ember-reach` (`aws login --profile ember-reach`). There are no AWS keys in `.env`,
   GitHub or code, so keep it that way: CI uses OIDC and the function uses its role.
 - One item per hero: key `ownerId` + `id`. Sheet fields are item attributes, and lists are native DynamoDB lists and maps,
-  never JSON strings. Allowed values come from `/data/character.json` and `/data/core.json`. Single-hero reads are
+  never JSON strings. The same partition also holds the profile (`id: profile`), adventures (`id: adv#<uuid>`) and the
+  player ID lookup (`ownerId: _player`) ([ADR 0005](docs/adr/0005-profile-and-adventures.md)). Every non-hero item has a
+  `kind` attribute, which the hero list filters on, so give any new item kind one. Adventures are private to their owner:
+  the API accepts only the visibilities in `data/adventure.json` `liveVisibilities`. The player ID is public, and the Cognito
+  `sub` never leaves the API. Allowed values come from `/data/character.json` and `/data/core.json`. Single-hero reads are
   strongly consistent (a read right after a save or delete must be fresh), so keep `ConsistentRead`.
 - The function's role gets only the DynamoDB actions `api/src/store.ts` uses. If you add a call, add its action in
   `infra/lib/api-stack.ts`.

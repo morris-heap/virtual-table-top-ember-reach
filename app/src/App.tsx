@@ -1,9 +1,14 @@
-// Chooses the screen (VTTER-59): the landing page for signed-out visitors, the app for signed-in users,
-// and the app as a guest when a visitor picks "Try the Test roller" (kept for this tab only).
-import { useState } from 'react'
+// Chooses the screen (VTTER-59): the landing page for signed-out visitors, Home and its screens for signed-in
+// players (VTTER-71), and the Test roller as a guest when a visitor picks "Try the Test roller" (kept for this tab only).
+import { useEffect, useState } from 'react'
+import AdventureEditor from './AdventureEditor.tsx'
+import AdventureView from './AdventureView.tsx'
+import Home from './Home.tsx'
 import Landing, { Logo } from './Landing.tsx'
+import { navigate, useRoute } from './nav.ts'
+import Profile from './Profile.tsx'
 import Roller from './Roller.tsx'
-import { useAuth } from './auth/useAuth.ts'
+import { useAuth, type Auth } from './auth/useAuth.ts'
 
 const GUEST = 'emberreach.guest'
 
@@ -24,6 +29,25 @@ function writeGuest(on: boolean) {
   }
 }
 
+/** An address that matches no screen goes back to Home. */
+function GoHome() {
+  useEffect(() => navigate('/', { replace: true }), [])
+  return null
+}
+
+/** The screens for a signed-in player (VTTER-71). */
+function SignedIn({ auth, name }: { auth: Auth; name: string }) {
+  const route = useRoute()
+  switch (route.name) {
+    case 'home': return <Home auth={auth} name={name} />
+    case 'profile': return <Profile auth={auth} name={name} />
+    case 'roller': return <Roller auth={auth} onHome={() => navigate('/')} />
+    case 'adventure': return <AdventureEditor auth={auth} id={route.id} />
+    case 'builtIn': return <AdventureView auth={auth} slug={route.slug} />
+    case 'notFound': return <GoHome />
+  }
+}
+
 export default function App() {
   const auth = useAuth()
   const [guest, setGuest] = useState(readGuest)
@@ -33,8 +57,9 @@ export default function App() {
 
   switch (auth.state.status) {
     case 'disabled': // no accounts configured: straight to the roller
-    case 'signedIn':
       return <Roller auth={auth} />
+    case 'signedIn':
+      return <SignedIn auth={auth} name={auth.state.user.name} />
     case 'loading':
       return (
         <div className="splash" role="status" aria-live="polite">

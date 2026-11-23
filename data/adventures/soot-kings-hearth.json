@@ -1,0 +1,51 @@
+{
+  "$comment": "Built-in adventure. Source of truth: rules/gm-guide.md §5. Change both together (see AGENTS.md).",
+  "id": "soot-kings-hearth",
+  "title": "The Soot King's Hearth",
+  "summary": "The ember that warms the village of Brindlecross has gone cold, and soot-black rats pour out of the old Forge vent. Descend, win over or defeat the goblins, and re-kindle the hearth.",
+  "levelMin": 1,
+  "levelMax": 1,
+  "hours": "3-4",
+  "soloPlayable": true,
+  "scenes": [
+    {
+      "id": "cold-village",
+      "title": "The cold village",
+      "type": "social",
+      "text": "Talk to the elder Maren (Friendly), the shrine-keeper Oswin (Wary, he's hiding something), and the children who saw \"a crown of smoke.\" Oswin took a sliver of the ember to sell. A DC 12 Insight Test spots the lie, and a Persuade or Intimidate Test gets a confession. The sliver gives a Boon later: it can re-kindle the hearth.",
+      "foes": []
+    },
+    {
+      "id": "the-vent",
+      "title": "The vent",
+      "type": "exploration",
+      "text": "Descend 30 m. Make a group Athletics Test (DC 12) to climb down. Anyone who fails takes 1d6.",
+      "foes": ["2 Ash Rat swarms", "1 Cinder Goblin"]
+    },
+    {
+      "id": "forge-corridor",
+      "title": "The Forge corridor",
+      "type": "puzzle",
+      "text": "A dormant Hollow Sentry guards a door. A DC 14 Craft or Arcana Test deactivates it, and failure wakes it. A steam vent trap fills the hall: DC 12 Notice to spot it, or dodge vs DC 12 and take 2d6.",
+      "foes": ["1 Hollow Sentry"]
+    },
+    {
+      "id": "goblin-camp",
+      "title": "The goblin camp",
+      "type": "choice",
+      "text": "Four Cinder Goblins serve the Soot King out of fear. Talking them over (Wary to Friendly) can turn them into allies or guides. Fighting them is a Hard encounter.",
+      "foes": ["4 Cinder Goblins"]
+    },
+    {
+      "id": "the-hearth",
+      "title": "The Soot King's Hearth",
+      "type": "boss",
+      "text": "A huge chamber with the cold ember in the center. The Soot King, a smoke elemental crowned with ash, feeds on the ember's last heat. Terrain: soot pits (Bane on movement), chains overhead (Athletics to swing across zones), and the cold ember itself. Twist: any hero can spend their Action touching the ember and making a Spirit Test (DC 14). Each success deals 10 radiant damage to the Soot King, and Oswin's sliver gives the Test a Boon. Victory: the ember reignites. Everyone levels up to 2 and gets a reward (a +1 weapon or an Ember Charm: once per session, recover 1 Ember).",
+      "foes": ["The Soot King"]
+    }
+  ],
+  "hooks": [
+    "Who taught a smoke elemental to eat embers? A soot-stained letter in the King's hoard is signed \"the Ashen Choir.\"",
+    "Oswin's buyer is still in the city of Lanthorn, waiting for an ember sliver."
+  ]
+}

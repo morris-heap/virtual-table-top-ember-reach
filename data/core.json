@@ -13,6 +13,10 @@
     "costMissMax": 3
   },
   "boonDice": [4, 6, 8],
+  "party": {
+    "min": 1,
+    "recommendedMax": 5
+  },
   "attributes": ["Might", "Grace", "Wits", "Lore", "Spirit", "Presence"],
   "momentum": {
     "max": 6,

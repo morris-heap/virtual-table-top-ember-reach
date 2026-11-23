@@ -22,6 +22,10 @@ const store: CharacterStore = {
   delete: async () => false,
 }
 
+const unused = async () => { throw new Error('unused') }
+const profiles = { getOrCreate: unused, update: unused }
+const adventures = { list: async () => [], get: async () => null, save: unused, delete: async () => false }
+
 describe('Lambda adapter', () => {
   it('builds a Request with the path, query, headers and a decoded base64 body', async () => {
     const req = toRequest(event('PUT', '/characters/x', {
@@ -35,7 +39,7 @@ describe('Lambda adapter', () => {
   })
 
   it('returns status, CORS headers and body from the handler', async () => {
-    const h = makeHandler({ store, allowedOrigins: [ORIGIN], verifyToken: async () => null })
+    const h = makeHandler({ store, profiles, adventures, allowedOrigins: [ORIGIN], verifyToken: async () => null })
     const res = await h(event('GET', '/health'))
     expect(res.statusCode).toBe(200)
     expect(res.headers?.['access-control-allow-origin']).toBe(ORIGIN)
@@ -43,7 +47,7 @@ describe('Lambda adapter', () => {
   })
 
   it('answers the CORS preflight with 204', async () => {
-    const res = await makeHandler({ store, allowedOrigins: [ORIGIN], verifyToken: async () => null })(event('OPTIONS', '/characters'))
+    const res = await makeHandler({ store, profiles, adventures, allowedOrigins: [ORIGIN], verifyToken: async () => null })(event('OPTIONS', '/characters'))
     expect(res.statusCode).toBe(204)
     expect(res.body).toBe('')
   })

@@ -116,6 +116,9 @@ Budget **threat points** equal to **2 × number of heroes**, adjusted by difficu
 
 ## 5. Starter one-shot: *The Soot King's Hearth* (level 1, 3–4 hours)
 
+*This adventure also ships in the app as [data/adventures/soot-kings-hearth.json](../data/adventures/soot-kings-hearth.json).
+Change both together.*
+
 **Hook:** The village of **Brindlecross** grew around a fallen ember that warms the whole valley.
 Three nights ago, the ember went cold. Soot-black rats now pour out of the old Forge vent under
 the village shrine. The elder offers 50 silver each, plus the hearth-blessing:

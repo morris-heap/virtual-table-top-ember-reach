@@ -34,6 +34,15 @@ class MemoryStore implements CharacterStore {
   }
 }
 
+// Profile and adventure routes have their own tests (profile-adventures.test.ts); these tests never reach them.
+const unusedStores = {
+  profiles: { getOrCreate: async () => { throw new Error('unused') }, update: async () => { throw new Error('unused') } },
+  adventures: {
+    list: async () => [], get: async () => null, delete: async () => false,
+    save: async () => { throw new Error('unused') },
+  },
+}
+
 // Sample level 1 Emberkin Hexer (matches docs/mockups).
 const kestrel = {
   name: 'Kestrel Ashvane', player: 'Player 1', level: 1, ancestry: 'Emberkin', calling: 'Hexer',
@@ -62,7 +71,7 @@ function call(store: CharacterStore, method: string, path: string,
     headers,
     body: opts.body === undefined ? undefined : typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body),
   })
-  return handle(req, { store, allowedOrigins: [ORIGIN, 'http://localhost:5173'], verifyToken })
+  return handle(req, { store, ...unusedStores, allowedOrigins: [ORIGIN, 'http://localhost:5173'], verifyToken })
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -113,7 +122,7 @@ describe('characters', () => {
 
   it('ignores the old X-Owner-Id header', async () => {
     const req = new Request('https://api.test/characters', { headers: { 'X-Owner-Id': A } })
-    expect((await handle(req, { store: new MemoryStore(), allowedOrigins: [], verifyToken })).status).toBe(401)
+    expect((await handle(req, { store: new MemoryStore(), ...unusedStores, allowedOrigins: [], verifyToken })).status).toBe(401)
   })
 
   it('uses the verified user id as the owner', async () => {

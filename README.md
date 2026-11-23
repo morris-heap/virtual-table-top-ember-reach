@@ -37,7 +37,7 @@ who can carry light into the dark and bring treasure back.
 | [app/](app/) | Online companion app, live at https://emberreach.morris-heap.com/ |
 | [api/](api/) | Companion API (AWS Lambda + DynamoDB, us-east-2) for saved characters |
 | [infra/](infra/) | AWS CDK app that deploys the API and its table |
-| [data/](data/) | Game numbers as JSON, shared by the app and API and checked against the rules |
+| [data/](data/) | Game numbers and built-in adventures as JSON, shared by the app and API and checked against the rules |
 | [docs/adr/](docs/adr/) | Architecture decision records |
 | [docs/mockups/](docs/mockups/) | UI mockups (character sheet) |
 
@@ -48,7 +48,10 @@ who can carry light into the dark and bring treasure back.
 - **Before any public release:** run a formal trademark search on the name "Emberreach".
 - **v0.3:** levels 6–10 talents, more spells, magic items, a second adventure.
 - **Digital companion (in progress):** the Test roller and Momentum tracker are live. The API for saved
-  characters and sign-in (Cognito, VTTER-53) are live. Next: the character sheet with guided creation (VTTER-47).
+  characters and sign-in (Cognito, VTTER-53) are live. Signed-in players get a Home with their heroes and
+  adventures, a profile with a player ID and a Game Master switch, and can write private adventures (VTTER-71).
+  Next: the character sheet with guided creation (VTTER-47), Games to play an adventure from (VTTER-72, solo or
+  with friends, up to 5 heroes recommended) and a friends list (VTTER-73).
 - **Later:** initiative tracker, a shared table, print layout, art direction.
 
 ## Working with AI agents

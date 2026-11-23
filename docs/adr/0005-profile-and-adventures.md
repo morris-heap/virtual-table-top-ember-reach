@@ -1,0 +1,70 @@
+# ADR 0005: Profile, player ID and private adventures
+
+- **Status:** Accepted (2026-11-22)
+- **Jira:** VTTER-71 (in VTTER-46, UI / UX). Follow-ups: VTTER-72 Games, VTTER-73 friends list.
+
+## Context
+
+After sign-in the app went straight to the Test roller. We want a Home screen (Heroes and Adventures), a Profile
+page, and a way for any player to write adventures. Adventures will later be shared with friends or made public, and
+people will play them together in a **Game** (the table: members, a GM, an adventure and heroes). None of that
+sharing exists yet, so this change only has to avoid painting us into a corner.
+
+## Decision
+
+- **Same table, more item kinds.** Profiles and adventures live in `emberreach-characters`, in the owner's partition,
+  next to the heroes. Heroes keep their UUID sort key and have no `kind` attribute. The new items carry a `kind`:
+
+  | Item | `ownerId` | `id` | `kind` |
+  |---|---|---|---|
+  | Hero | user's `sub` | `<uuid>` | *(none)* |
+  | Profile | user's `sub` | `profile` | `profile` |
+  | Adventure | user's `sub` | `adv#<uuid>` | `adventure` |
+  | Player ID lookup | `_player` | `<playerId>` | `player-lookup` |
+
+  The hero list is a `Query` with `FilterExpression: attribute_not_exists(kind)`. The adventure list is a `Query` with
+  `begins_with(id, 'adv#')`. No new table, no new IAM action, and no construct-id changes.
+- **Routes** (all need sign-in, owner from the verified token): `GET|PUT /profile`, `GET /adventures`,
+  `GET|PUT|DELETE /adventures/:uuid`. A user can only reach their own items, because the owner is part of the key.
+- **Player ID.** A short public id such as `EMBER-7K2Q9` (no `0 O 1 I L`), created on the first `GET /profile` and
+  never changed. It is not the Cognito `sub`, which stays private. Uniqueness comes from a lookup item that is claimed
+  with a conditional `UpdateItem` (`attribute_not_exists`), retried with a new id on collision. If two first requests
+  race, the loser deletes its claim and returns the winner's profile. Friends (VTTER-73) and Games (VTTER-72) will find
+  people through this id.
+- **Everyone writes adventures, private by default.** There is no Game Master gate on authoring. The Game Master
+  flag on the profile unlocks GM features: sharing an adventure and, with Games, creating a Game from one.
+  The flag is stored in the profile item, not in Cognito, so it is a preference and not a permission. Anything that
+  must be enforced (who may read a shared adventure or join a Game) will be checked from membership data, never from
+  this flag.
+- **Visibility is in the model now, only `private` is live.** An adventure has `visibility`:
+  `private | friends | public` (`data/adventure.json`). The API accepts only `liveVisibilities` (`private`) and
+  answers 400 for the others, so nothing can be shared by accident before reads by other users are designed.
+- **Built-in adventures** ship with the app in `data/adventures/*.json` (first: *The Soot King's Hearth*, from
+  `rules/gm-guide.md` §5). They are read-only, open to everyone, and shaped so a solo player can be walked through
+  them later.
+- **Games, not Groups.** A Game is public or private and is created by a GM from the GM view by picking an adventure.
+  Groups were considered and dropped: a Game is the table.
+- **Party size has no hard cap.** `data/core.json` has `party.min` 1 and `party.recommendedMax` 5. Beyond 5, rounds
+  slow down, so the app will warn but never block.
+- **App routing is hand-rolled.** Five screens, with `parseRoute`/`pathFor` as pure functions (`app/src/router.ts`)
+  and a small History API hook (`app/src/nav.ts`). It avoids a dependency, and the route table is unit-tested without
+  a DOM. The Cognito redirect stays `/`, which is Home. The Worker's SPA fallback was already on.
+
+## Alternatives considered
+
+- **A second table for adventures and profiles:** cleaner separation, but a new stack resource, new IAM and a second
+  thing to back up, for data that is always read by owner. Revisit when shared reads (by game, by friend) need their
+  own indexes.
+- **Cognito groups or a custom attribute for Game Master:** would put the flag in the token, but a user choosing to be
+  a GM is a preference, and changing it would need a Cognito call and a new sign-in.
+- **Using the `sub` as the public id:** simple, but it is the key to every item the user owns, so it should not be
+  shown or shared.
+- **react-router:** fine, but 15 kB and a dependency for five routes.
+
+## Consequences
+
+- The hero list now filters on `kind`, so any new item kind in the owner's partition must carry one.
+- Reads by anyone but the owner (friends, Games, public) need their own design and ADRs: a lookup from player ID to
+  owner, membership items, and probably a GSI. The `_player` lookup is the first step.
+- `UpdateItem` conditional writes cover everything here, so the function's IAM actions are unchanged.
+- Deleting a profile does not release its player ID. There is no account deletion yet.
