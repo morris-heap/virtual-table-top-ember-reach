@@ -5,6 +5,12 @@ export type Route =
   | { name: 'home' }
   | { name: 'profile' }
   | { name: 'roller' }
+  /** All your heroes. */
+  | { name: 'heroes' }
+  /** One of your heroes, or `new` to make one. */
+  | { name: 'hero'; id: string }
+  /** Built-in adventures and the ones you wrote. */
+  | { name: 'adventures' }
   /** A user-written adventure, or `new` for the blank editor. */
   | { name: 'adventure'; id: string }
   /** A built-in adventure, read-only. */
@@ -22,8 +28,11 @@ export function parseRoute(pathname: string): Route {
   const [first, second, third] = parts
   if (parts.length === 1 && first === 'profile') return { name: 'profile' }
   if (parts.length === 1 && first === 'roller') return { name: 'roller' }
+  if (parts.length === 1 && first === 'heroes') return { name: 'heroes' }
+  if (first === 'heroes' && parts.length === 2 && (second === 'new' || UUID.test(second))) return { name: 'hero', id: second.toLowerCase() }
   if (first === 'games' && parts.length === 2 && UUID.test(second)) return { name: 'game', id: second.toLowerCase() }
   if (first === 'adventures') {
+    if (parts.length === 1) return { name: 'adventures' }
     if (parts.length === 2 && (second === 'new' || UUID.test(second))) return { name: 'adventure', id: second.toLowerCase() }
     if (parts.length === 3 && second === 'built-in' && SLUG.test(third)) return { name: 'builtIn', slug: third }
   }
@@ -35,6 +44,9 @@ export function pathFor(route: Exclude<Route, { name: 'notFound' }>): string {
     case 'home': return '/'
     case 'profile': return '/profile'
     case 'roller': return '/roller'
+    case 'heroes': return '/heroes'
+    case 'hero': return `/heroes/${route.id}`
+    case 'adventures': return '/adventures'
     case 'adventure': return `/adventures/${route.id}`
     case 'builtIn': return `/adventures/built-in/${route.slug}`
     case 'game': return `/games/${route.id}`

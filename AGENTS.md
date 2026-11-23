@@ -84,8 +84,9 @@ in `app/`, then `npx wrangler deploy`); `.github/workflows/app.yml` checks pull 
   `app/dist`. Keep its `name`, `compatibility_date` and assets settings in step with `app/wrangler.jsonc`, and don't
   delete it until Cloudflare fixes preview builds (VTTER-67). Both files need a `previews` block.
 
-- **Screens and routing:** signed-in players get Home (Heroes | Adventures), Profile, the adventure editor and the Test
-  roller. Routes are a pure table in `app/src/router.ts` (hand-rolled, no router library), and `/` must stay Home because
+- **Screens and routing:** signed-in players get Home (Games, plus their newest heroes and adventures), Heroes (`/heroes`,
+  `/heroes/new`, `/heroes/<id>`), Adventures (`/adventures`, the editor, built-ins), Games, Profile and the Test roller.
+  The top bar links Home, Heroes and Adventures. Routes are a pure table in `app/src/router.ts` (hand-rolled, no router library), and `/` must stay Home because
   it is the Cognito redirect. Calls to the API go through `app/src/api/client.ts` and never send a user id.
   Built-in adventures are `data/adventures/*.json`, listed in `app/src/adventures/builtIn.ts` **and** in `api/src/game.ts`
   (`BUILT_IN_IDS`), so add both when you add one. Games (VTTER-72, `/games/:id`) are created from an adventure on Home. The
