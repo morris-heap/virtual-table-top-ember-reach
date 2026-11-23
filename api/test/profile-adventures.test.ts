@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseAdventure, type AdventureDraft, type AdventureRecord } from '../src/adventure.ts'
-import { handle, type AdventureStore, type CharacterStore, type ProfileStore } from '../src/handler.ts'
+import { handle, type AdventureStore, type CharacterStore, type GameStore, type ProfileStore } from '../src/handler.ts'
 import { isPlayerId, newPlayerId, parseProfilePatch, type ProfilePatch, type ProfileRecord } from '../src/profile.ts'
 
 const ORIGIN = 'https://emberreach.morris-heap.com'
@@ -25,6 +25,19 @@ class MemoryProfiles implements ProfileStore {
     this.rows.set(ownerId, r)
     return r
   }
+  async peek(ownerId: string) {
+    return this.rows.get(ownerId) ?? null
+  }
+  async ownerOfPlayer(playerId: string) {
+    return [...this.rows].find(([, r]) => r.playerId === playerId)?.[0] ?? null
+  }
+}
+
+// The Games routes have their own tests (games.test.ts); these tests never reach them.
+const noGames: GameStore = {
+  getForMember: async () => null, listFor: async () => [], countOwned: async () => 0, countJoined: async () => 0,
+  save: async () => { throw new Error('unused') }, delete: async () => false, gmOf: async () => null, getByGm: async () => null,
+  addMember: async () => null, removeMember: async () => {},
 }
 
 class MemoryAdventures implements AdventureStore {
@@ -67,7 +80,7 @@ function world() {
     if (opts.body !== undefined) headers['Content-Type'] = 'application/json'
     return handle(
       new Request(`https://api.test${path}`, { method, headers, body: opts.body === undefined ? undefined : JSON.stringify(opts.body) }),
-      { store: noHeroes, profiles, adventures, allowedOrigins: [ORIGIN], verifyToken },
+      { store: noHeroes, profiles, adventures, games: noGames, allowedOrigins: [ORIGIN], verifyToken },
     ) as unknown as Promise<Reply>
   }
   return { profiles, adventures, call }

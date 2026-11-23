@@ -1,17 +1,19 @@
 // Home for a signed-in player (VTTER-71): their Heroes on the left, Adventures on the right.
 import core from '../../data/core.json'
-import { adventuresApi, heroesApi, profileApi } from './api/client.ts'
+import { adventuresApi, gamesApi, heroesApi, profileApi } from './api/client.ts'
 import type { Auth } from './auth/useAuth.ts'
 import { BUILT_IN } from './adventures/builtIn.ts'
 import { levelRange } from './engine/adventure.ts'
 import Link from './Link.tsx'
 import Shell, { LoadState } from './Shell.tsx'
+import StartGame from './StartGame.tsx'
 import { useLoad } from './useLoad.ts'
 
 export default function Home({ auth, name }: { auth: Auth; name: string }) {
   const heroes = useLoad(heroesApi.list)
   const adventures = useLoad(adventuresApi.list)
   const profile = useLoad(profileApi.get)
+  const games = useLoad(gamesApi.list)
 
   // A Game Master sees the GM tools on their adventures. Until the profile loads, show the player view.
   const isGm = profile.state.status === 'ready' && profile.state.data.gameMaster
@@ -59,6 +61,7 @@ export default function Home({ auth, name }: { auth: Auth; name: string }) {
               <li key={a.id} className="row">
                 <Link to={{ name: 'builtIn', slug: a.id }}><b>{a.title}</b></Link>
                 <span className="muted">{levelRange(a)} · {a.hours} hours{a.soloPlayable && ' · solo or with a GM'}</span>
+                <StartGame adventure={{ source: 'builtin', id: a.id }} title={a.title} canSolo={a.soloPlayable} isGm={isGm} />
               </li>
             ))}
           </ul>
@@ -74,11 +77,7 @@ export default function Home({ auth, name }: { auth: Auth; name: string }) {
                     <li key={a.id} className="row">
                       <Link to={{ name: 'adventure', id: a.id }}><b>{a.title}</b></Link>
                       <span className="muted">{levelRange(a)}</span>
-                      {isGm && (
-                        <span className="row-actions">
-                          <button type="button" className="account-btn" disabled title="Creating Games is coming soon">Create game</button>
-                        </span>
-                      )}
+                      <StartGame adventure={{ source: 'own', id: a.id }} title={a.title} canSolo={false} isGm={isGm} />
                     </li>
                   ))}
                 </ul>
@@ -86,10 +85,31 @@ export default function Home({ auth, name }: { auth: Auth; name: string }) {
         </section>
       </div>
 
-      <p className="fine">
-        Games, where friends play an adventure together, are coming soon.
-        {!isGm && <> A Game Master turns on GM tools in <Link to="/profile">Settings</Link>.</>}
-      </p>
+      <section className="panel" aria-labelledby="games-title">
+        <div className="panel-head"><h2 id="games-title">Games</h2></div>
+        {games.state.status !== 'ready'
+          ? <LoadState state={games.state} reload={games.reload} what="your Games" />
+          : games.state.data.length === 0
+            ? (
+              <p className="muted">
+                No Games yet. Pick “Play solo” on a built-in adventure to start one alone
+                {isGm ? ', or “Create game” to run one for friends.' : <>. To run one for friends, turn on Game Master in <Link to="/profile">Settings</Link>.</>}
+              </p>
+            )
+            : (
+              <ul className="rows">
+                {games.state.data.map(g => (
+                  <li key={g.id} className="row">
+                    <Link to={{ name: 'game', id: g.id }}><b>{g.name}</b></Link>
+                    <span className="muted">
+                      {g.solo ? 'Solo' : `${g.role === 'gm' ? 'You run it' : 'You play'} · ${g.memberCount} ${g.memberCount === 1 ? 'person' : 'people'}`}
+                      {' · '}{g.visibility === 'public' ? 'Public' : 'Private'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+      </section>
     </Shell>
   )
 }

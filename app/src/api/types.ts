@@ -45,3 +45,42 @@ export interface Adventure extends AdventureDraft {
 }
 
 export type AdventureSummary = Pick<Adventure, 'id' | 'title' | 'summary' | 'levelMin' | 'levelMax' | 'visibility' | 'updatedAt'>
+
+/** Where a Game's adventure comes from: one that ships with the app, or one of the GM's own. */
+export interface AdventureRef {
+  source: 'builtin' | 'own'
+  id: string
+}
+
+export interface GameDraft {
+  name: string
+  adventure: AdventureRef
+  visibility: 'private' | 'public'
+  /** One player on a built-in adventure: no GM, no invites. */
+  solo: boolean
+}
+
+export type GameRole = 'gm' | 'player'
+
+export interface GameSummary extends GameDraft {
+  id: string
+  role: GameRole
+  memberCount: number
+  updatedAt: string
+}
+
+export interface GameMember {
+  playerId: string
+  displayName: string
+  role: GameRole
+}
+
+export interface Game extends GameDraft {
+  id: string
+  role: GameRole
+  members: GameMember[]
+  /** The GM's own adventure, readable by every member. Null for a built-in one. */
+  adventureContent: Adventure | null
+  createdAt: string
+  updatedAt: string
+}

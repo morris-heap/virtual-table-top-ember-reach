@@ -1,7 +1,9 @@
 // HTTP routing and validation for the Emberreach API. Pure: storage is injected, so it's unit-testable.
 
 import { parseAdventure, type AdventureDraft, type AdventureRecord, type AdventureSummary } from './adventure.ts'
-import { parseProfilePatch, type ProfilePatch, type ProfileRecord } from './profile.ts'
+import gameData from '../../data/game.json'
+import { parseGame, type GameDraft, type GameRecord } from './game.ts'
+import { isPlayerId, parseProfilePatch, type ProfilePatch, type ProfileRecord } from './profile.ts'
 import { parseSheet, ValidationError, type CharacterRecord, type CharacterSheet, type CharacterSummary } from './sheet.ts'
 
 export interface CharacterStore {
@@ -17,6 +19,32 @@ export interface ProfileStore {
   /** The user's profile. The first call creates it, with a unique player ID that never changes. */
   getOrCreate(ownerId: string): Promise<ProfileRecord>
   update(ownerId: string, patch: ProfilePatch): Promise<ProfileRecord>
+  /** Read a profile without creating it (null if the user has never opened the app). */
+  peek(ownerId: string): Promise<ProfileRecord | null>
+  /** Who a public player ID belongs to, or null if no one has it. */
+  ownerOfPlayer(playerId: string): Promise<string | null>
+}
+
+/**
+ * Games are stored under the GM and reached by members through a membership item, so every read
+ * is checked against membership. Owner and member ids here are Cognito ids and never leave the API.
+ */
+export interface GameStore {
+  /** The Game, only if `userId` is its GM or a member. */
+  getForMember(userId: string, id: string): Promise<GameRecord | null>
+  listFor(userId: string): Promise<GameRecord[]>
+  countOwned(gmId: string): Promise<number>
+  countJoined(userId: string): Promise<number>
+  /** Create or replace the Game's settings. The GM is always a member. */
+  save(gmId: string, id: string, draft: GameDraft): Promise<GameRecord>
+  delete(gmId: string, id: string): Promise<boolean>
+  /** The GM's id for a Game id, so a public Game can be joined from its link. */
+  gmOf(gameId: string): Promise<string | null>
+  /** Read a Game by its GM without a membership check. The caller must check access (public, or already a member). */
+  getByGm(gmId: string, id: string): Promise<GameRecord | null>
+  /** Add a member, or null if the Game is gone or full. Adding twice is fine. */
+  addMember(gmId: string, id: string, userId: string): Promise<GameRecord | null>
+  removeMember(gmId: string, id: string, userId: string): Promise<void>
 }
 
 /** Adventures are keyed (owner, id), so one owner can never read or change another's. */
@@ -37,6 +65,7 @@ export interface Deps {
   store: CharacterStore
   profiles: ProfileStore
   adventures: AdventureStore
+  games: GameStore
   allowedOrigins: string[]
   verifyToken: VerifyToken
 }
@@ -133,6 +162,131 @@ async function profileRoute(req: Request, owner: string, deps: Deps, cors: Recor
   }
 }
 
+/** What a member sees of a Game: names and player IDs, never Cognito ids. */
+async function gameView(game: GameRecord, userId: string, deps: Deps) {
+  const members = await Promise.all(game.memberIds.map(async id => {
+    const p = await deps.profiles.peek(id)
+    return { playerId: p?.playerId ?? '', displayName: p?.displayName ?? '', role: id === game.ownerId ? 'gm' : 'player' }
+  }))
+  // Members read the GM's own adventure through the Game. Built-in adventures ship with the app.
+  const own = game.adventure.source === 'own' ? await deps.adventures.get(game.ownerId, game.adventure.id) : null
+  const { ownerId: _o, ...adventureContent } = own ?? ({} as Partial<AdventureRecord>)
+  return {
+    id: game.id,
+    name: game.name,
+    adventure: game.adventure,
+    visibility: game.visibility,
+    solo: game.solo,
+    role: game.ownerId === userId ? 'gm' : 'player',
+    members,
+    adventureContent: own ? adventureContent : null,
+    createdAt: game.createdAt,
+    updatedAt: game.updatedAt,
+  }
+}
+
+function gameSummary(game: GameRecord, userId: string) {
+  return {
+    id: game.id, name: game.name, adventure: game.adventure, visibility: game.visibility, solo: game.solo,
+    role: game.ownerId === userId ? 'gm' : 'player', memberCount: game.memberIds.length, updatedAt: game.updatedAt,
+  }
+}
+
+/** `/games`, `/games/:id` and `/games/:id/members/:playerId`. Every read goes through membership. */
+async function gamesRoute(req: Request, parts: string[], owner: string, deps: Deps, cors: Record<string, string>): Promise<Response> {
+  const { games } = deps
+  if (parts.length === 1) {
+    if (req.method !== 'GET') throw new HttpError(405, 'Method not allowed')
+    return json({ games: (await games.listFor(owner)).map(g => gameSummary(g, owner)) }, 200, cors)
+  }
+  const id = parts[1].toLowerCase()
+  if (!UUID.test(id)) throw new HttpError(400, 'Game id must be a UUID')
+
+  if (parts.length === 2) {
+    switch (req.method) {
+      case 'GET': {
+        const game = await games.getForMember(owner, id)
+        if (!game) throw new HttpError(404, 'Game not found')
+        return json(await gameView(game, owner, deps), 200, cors)
+      }
+      case 'PUT': {
+        const draft = parseGame(await readJson(req))
+        const existing = await games.getForMember(owner, id)
+        if (existing && existing.ownerId !== owner) throw new HttpError(403, 'Only the Game Master can change a Game')
+        if (!draft.solo && !(await deps.profiles.getOrCreate(owner)).gameMaster) {
+          throw new HttpError(403, 'Turn on Game Master in Settings to run a Game with other players')
+        }
+        if (draft.adventure.source === 'own' && !(await deps.adventures.get(owner, draft.adventure.id))) {
+          throw new HttpError(400, 'That adventure was not found')
+        }
+        if (existing) {
+          if (draft.solo && existing.memberIds.length > 1) throw new HttpError(400, 'Remove the other players before making this a solo Game')
+        } else {
+          const taken = await games.gmOf(id)
+          if (taken && taken !== owner) throw new HttpError(409, 'That Game id is already in use')
+          if ((await games.countOwned(owner)) >= gameData.limits.maxGamesPerGm) {
+            throw new HttpError(400, `You can run at most ${gameData.limits.maxGamesPerGm} Games. Delete one first.`)
+          }
+        }
+        return json(await gameView(await games.save(owner, id, draft), owner, deps), 200, cors)
+      }
+      case 'DELETE': {
+        const game = await games.getForMember(owner, id)
+        if (!game) throw new HttpError(404, 'Game not found')
+        if (game.ownerId !== owner) throw new HttpError(403, 'Only the Game Master can delete a Game. Leave it instead.')
+        await games.delete(owner, id)
+        return json(null, 204, cors)
+      }
+      default:
+        throw new HttpError(405, 'Method not allowed')
+    }
+  }
+
+  // /games/:id/members/:playerId
+  if (parts[2] !== 'members') throw new HttpError(404, 'Not found')
+  if (req.method !== 'PUT' && req.method !== 'DELETE') throw new HttpError(405, 'Method not allowed')
+  const playerId = parts[3].toUpperCase()
+  if (!isPlayerId(playerId)) throw new HttpError(400, 'That is not a player ID')
+  const me = await deps.profiles.getOrCreate(owner)
+  const target = await deps.profiles.ownerOfPlayer(playerId)
+  if (!target) throw new HttpError(404, 'No player has that ID')
+  const mine = target === owner && playerId === me.playerId
+
+  if (req.method === 'PUT') {
+    let gmId: string
+    let game = await games.getForMember(owner, id)
+    if (mine) {
+      // Joining as yourself: fine if you are already in, or if the Game is public and you have its link.
+      if (game) return json(await gameView(game, owner, deps), 200, cors)
+      const found = await games.gmOf(id)
+      game = found ? await games.getByGm(found, id) : null
+      if (!game || game.visibility !== 'public') throw new HttpError(404, 'Game not found')
+      gmId = game.ownerId
+    } else {
+      // Inviting someone else: only the GM.
+      if (!game) throw new HttpError(404, 'Game not found')
+      if (game.ownerId !== owner) throw new HttpError(403, 'Only the Game Master can invite players')
+      gmId = owner
+    }
+    if (game.solo) throw new HttpError(400, 'A solo Game has one player')
+    if (!game.memberIds.includes(target) && (await games.countJoined(target)) >= gameData.limits.maxGamesPerPlayer) {
+      throw new HttpError(400, 'That player is in as many Games as they can be')
+    }
+    const joined = await games.addMember(gmId, id, target)
+    if (!joined) throw new HttpError(409, `This Game is full (${gameData.limits.maxMembers} people)`)
+    return json(await gameView(joined, owner, deps), 200, cors)
+  }
+
+  // DELETE: the GM removes a player, or a player leaves.
+  const game = await games.getForMember(owner, id)
+  if (!game) throw new HttpError(404, 'Game not found')
+  if (target === game.ownerId) throw new HttpError(400, 'The Game Master cannot leave. Delete the Game instead.')
+  if (game.ownerId !== owner && !mine) throw new HttpError(403, 'Only the Game Master can remove other players')
+  if (!game.memberIds.includes(target)) throw new HttpError(404, 'That player is not in this Game')
+  await games.removeMember(game.ownerId, id, target)
+  return json(null, 204, cors)
+}
+
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   const cors = corsHeaders(req.headers.get('Origin'), deps.allowedOrigins)
   try {
@@ -151,14 +305,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
 
     const resource = parts[0]
-    const maxParts = resource === 'profile' ? 1 : 2
-    if ((resource !== 'characters' && resource !== 'profile' && resource !== 'adventures') || parts.length > maxParts) {
+    const maxParts = resource === 'profile' ? 1 : resource === 'games' ? 4 : 2
+    if (!['characters', 'profile', 'adventures', 'games'].includes(resource) || parts.length > maxParts || parts.length === 3) {
       throw new HttpError(404, 'Not found')
     }
     const owner = await ownerOf(req, deps.verifyToken)
 
     // `return await` so errors thrown inside a route are caught below and become 4xx/5xx responses.
     if (resource === 'profile') return await profileRoute(req, owner, deps, cors)
+    if (resource === 'games') return await gamesRoute(req, parts, owner, deps, cors)
 
     if (parts.length === 1) {
       if (req.method !== 'GET') throw new HttpError(405, 'Method not allowed')

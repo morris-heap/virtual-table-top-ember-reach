@@ -23,8 +23,8 @@ relevant ones before answering design questions or making edits:
 | [rules/core-rules.md](rules/core-rules.md) | Core mechanics: Tests, characters, callings, magic, combat, gear, advancement, open questions |
 | [rules/gm-guide.md](rules/gm-guide.md) | Foe stat blocks, encounter budgets, starter adventure |
 | [sheets/character-sheet.md](sheets/character-sheet.md) | Character sheet template (must match the rules) |
-| [data/](data/) | Machine-readable game numbers used by the app and API (`core.json`, `character.json`, `adventure.json`), and the built-in adventures in `data/adventures/`. Must match the rules files |
-| [docs/adr/](docs/adr/) | Architecture decisions: [0001](docs/adr/0001-companion-app-stack.md) app stack, [0003](docs/adr/0003-backend-dynamodb-lambda.md) backend (replaced [0002](docs/adr/0002-backend-postgres.md)), [0004](docs/adr/0004-auth-cognito.md) sign-in, [0005](docs/adr/0005-profile-and-adventures.md) profile, player ID and private adventures |
+| [data/](data/) | Machine-readable game numbers used by the app and API (`core.json`, `character.json`, `adventure.json`, `game.json`), and the built-in adventures in `data/adventures/`. Must match the rules files |
+| [docs/adr/](docs/adr/) | Architecture decisions: [0001](docs/adr/0001-companion-app-stack.md) app stack, [0003](docs/adr/0003-backend-dynamodb-lambda.md) backend (replaced [0002](docs/adr/0002-backend-postgres.md)), [0004](docs/adr/0004-auth-cognito.md) sign-in, [0005](docs/adr/0005-profile-and-adventures.md) profile, player ID and private adventures, [0006](docs/adr/0006-games.md) Games |
 | [docs/mockups/](docs/mockups/) | Character sheet UI mockups (view and guided-creation edit mode) for VTTER-47 |
 
 ## How we establish rules (workflow)
@@ -87,8 +87,9 @@ in `app/`, then `npx wrangler deploy`); `.github/workflows/app.yml` checks pull 
 - **Screens and routing:** signed-in players get Home (Heroes | Adventures), Profile, the adventure editor and the Test
   roller. Routes are a pure table in `app/src/router.ts` (hand-rolled, no router library), and `/` must stay Home because
   it is the Cognito redirect. Calls to the API go through `app/src/api/client.ts` and never send a user id.
-  Built-in adventures are `data/adventures/*.json`, listed in `app/src/adventures/builtIn.ts`. Games and the friends list
-  are VTTER-72 and VTTER-73. **Party size has no hard cap**: `data/core.json` `party.recommendedMax` (5) is advice, so
+  Built-in adventures are `data/adventures/*.json`, listed in `app/src/adventures/builtIn.ts` **and** in `api/src/game.ts`
+  (`BUILT_IN_IDS`), so add both when you add one. Games (VTTER-72, `/games/:id`) are created from an adventure on Home. The
+  friends list is VTTER-73. **Party size has no hard cap**: `data/core.json` `party.recommendedMax` (5) is advice, so
   warn, never block.
 - Commands (run in `app/`): `npm install`, `npm run dev`, `npm test`, `npm run lint`, `npm run build`.
   **Run test, lint and build before you commit app changes.**
@@ -112,7 +113,10 @@ through GitHub OIDC (role `emberreach-github-deploy`, environment `aws`).
   GitHub or code, so keep it that way: CI uses OIDC and the function uses its role.
 - One item per hero: key `ownerId` + `id`. Sheet fields are item attributes, and lists are native DynamoDB lists and maps,
   never JSON strings. The same partition also holds the profile (`id: profile`), adventures (`id: adv#<uuid>`) and the
-  player ID lookup (`ownerId: _player`) ([ADR 0005](docs/adr/0005-profile-and-adventures.md)). Every non-hero item has a
+  player ID lookup (`ownerId: _player`) ([ADR 0005](docs/adr/0005-profile-and-adventures.md)), plus Games (`id: game#<uuid>`
+  under the GM), a member pointer per player (`id: gm#<uuid>`) and a Game lookup (`ownerId: _game`)
+  ([ADR 0006](docs/adr/0006-games.md)). **Every Game read goes through the caller's member pointer**, so keep it that way and
+  never return Cognito ids. Every non-hero item has a
   `kind` attribute, which the hero list filters on, so give any new item kind one. Adventures are private to their owner:
   the API accepts only the visibilities in `data/adventure.json` `liveVisibilities`. The player ID is public, and the Cognito
   `sub` never leaves the API. Allowed values come from `/data/character.json` and `/data/core.json`. Single-hero reads are

@@ -23,8 +23,13 @@ const store: CharacterStore = {
 }
 
 const unused = async () => { throw new Error('unused') }
-const profiles = { getOrCreate: unused, update: unused }
+const profiles = { getOrCreate: unused, update: unused, peek: async () => null, ownerOfPlayer: async () => null }
 const adventures = { list: async () => [], get: async () => null, save: unused, delete: async () => false }
+const games = {
+  getForMember: async () => null, listFor: async () => [], countOwned: async () => 0, countJoined: async () => 0,
+  save: unused, delete: async () => false, gmOf: async () => null, getByGm: async () => null,
+  addMember: async () => null, removeMember: async () => {},
+}
 
 describe('Lambda adapter', () => {
   it('builds a Request with the path, query, headers and a decoded base64 body', async () => {
@@ -39,7 +44,7 @@ describe('Lambda adapter', () => {
   })
 
   it('returns status, CORS headers and body from the handler', async () => {
-    const h = makeHandler({ store, profiles, adventures, allowedOrigins: [ORIGIN], verifyToken: async () => null })
+    const h = makeHandler({ store, profiles, adventures, games, allowedOrigins: [ORIGIN], verifyToken: async () => null })
     const res = await h(event('GET', '/health'))
     expect(res.statusCode).toBe(200)
     expect(res.headers?.['access-control-allow-origin']).toBe(ORIGIN)
@@ -47,7 +52,7 @@ describe('Lambda adapter', () => {
   })
 
   it('answers the CORS preflight with 204', async () => {
-    const res = await makeHandler({ store, profiles, adventures, allowedOrigins: [ORIGIN], verifyToken: async () => null })(event('OPTIONS', '/characters'))
+    const res = await makeHandler({ store, profiles, adventures, games, allowedOrigins: [ORIGIN], verifyToken: async () => null })(event('OPTIONS', '/characters'))
     expect(res.statusCode).toBe(204)
     expect(res.body).toBe('')
   })

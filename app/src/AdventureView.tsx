@@ -1,12 +1,17 @@
-// A built-in adventure, read-only (VTTER-71). Playing one, solo or with a GM, comes with Games (VTTER-72).
+// A built-in adventure, read-only (VTTER-71). Start a Game from it to play solo or with a GM (VTTER-72).
+import { profileApi } from './api/client.ts'
 import type { Auth } from './auth/useAuth.ts'
 import { findBuiltIn } from './adventures/builtIn.ts'
 import { levelRange, sceneLabel } from './engine/adventure.ts'
 import Link from './Link.tsx'
 import Shell from './Shell.tsx'
+import StartGame from './StartGame.tsx'
+import { useLoad } from './useLoad.ts'
 
 export default function AdventureView({ auth, slug }: { auth: Auth; slug: string }) {
   const a = findBuiltIn(slug)
+  const profile = useLoad(profileApi.get)
+  const isGm = profile.state.status === 'ready' && profile.state.data.gameMaster
   if (!a) {
     return (
       <Shell auth={auth}>
@@ -24,7 +29,8 @@ export default function AdventureView({ auth, slug }: { auth: Auth; slug: string
 
       <section className="panel" aria-label="Summary">
         <p>{a.summary}</p>
-        <p className="muted">Playing this adventure is coming soon.</p>
+        <p><StartGame adventure={{ source: 'builtin', id: a.id }} title={a.title} canSolo={a.soloPlayable} isGm={isGm} /></p>
+        <p className="muted">Start a Game to play it. Playing the scenes themselves comes in a later release.</p>
       </section>
 
       <section className="panel" aria-labelledby="scenes-title">
