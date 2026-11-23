@@ -106,6 +106,7 @@ describe('CORS', () => {
     expect(res.status).toBe(204)
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe(ORIGIN)
     expect(res.headers.get('Access-Control-Allow-Headers')).toContain('Authorization')
+    expect(res.headers.get('Access-Control-Expose-Headers')).toContain('Retry-After')
   })
   it('sends no CORS headers to other origins', async () => {
     const res = await call(new MemoryStore(), 'GET', '/health', { origin: 'https://evil.example' })

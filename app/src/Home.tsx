@@ -1,7 +1,9 @@
+import HeroTools from './characters/HeroTools.tsx'
+import { characters as heroesApi } from './characters/current.ts'
 // Home for a signed-in player (VTTER-71): your Games, then your most recent heroes and adventures.
 // The full lists live on their own screens: /heroes (Heroes.tsx) and /adventures (Adventures.tsx).
 import core from '../../data/core.json'
-import { adventuresApi, gamesApi, heroesApi, profileApi } from './api/client.ts'
+import { adventuresApi, gamesApi, profileApi } from './api/client.ts'
 import type { Auth } from './auth/useAuth.ts'
 import { AdventureRows, NO_ADVENTURES } from './Adventures.tsx'
 import { HeroRows, NO_HEROES } from './Heroes.tsx'
@@ -97,6 +99,7 @@ export default function Home({ auth, name }: { auth: Auth; name: string }) {
           <p className="fine">Want something ready to play? <Link to="/adventures">Browse the built-in adventures</Link>.</p>
         </section>
       </div>
+      <HeroTools auth={auth} reload={heroes.reload} />
     </Shell>
   )
 }

@@ -289,3 +289,8 @@ button.brand:hover span, a.brand:hover span { color: var(--ember); }
 .stat-grid dd { margin: 0; font-weight: 700; font-size: 1.15rem; }
 .heading-link { color: inherit; text-decoration: none; }
 .heading-link:hover { color: var(--ember); }
+
+/* Editable character sheet groups. */
+.form fieldset { min-width: 0; margin: 0; padding: 16px; border: 1px solid var(--border); border-radius: 12px; }
+.form legend { padding: 0 6px; font-weight: 700; }
+.form fieldset > .account-btn { margin-top: 12px; }

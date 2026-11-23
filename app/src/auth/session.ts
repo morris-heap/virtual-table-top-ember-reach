@@ -5,6 +5,7 @@ import {
   authorizeUrl, checkIdToken, codeExchangeBody, isExpiring, logoutUrl, pkceChallenge, randomString, readCallback,
   refreshBody, tokensFromResponse, userFromClaims, decodeJwt, type AuthConfig, type SocialProvider, type Tokens, type User,
 } from './oauth.ts'
+import { ApiError } from '../api/request.ts'
 
 const TOKENS = 'emberreach.auth.tokens'
 const PENDING = 'emberreach.auth.pending'
@@ -34,9 +35,9 @@ async function tokenRequest(cfg: AuthConfig, body: URLSearchParams): Promise<unk
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body,
-  })
+  }).catch(() => { throw new ApiError("Can't reach sign-in. Will retry when connected.", 0) })
   const json = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(`Sign-in failed: ${(json as { error?: string }).error ?? res.status}`)
+  if (!res.ok) throw new ApiError(`Sign-in failed: ${(json as { error?: string }).error ?? res.status}`, res.status)
   return json
 }
 
@@ -88,22 +89,27 @@ export function currentUser(): User | null {
 }
 
 /** A valid access token for the API, refreshed if it's about to expire. Null when signed out. */
-export async function getAccessToken(cfg: AuthConfig): Promise<string | null> {
+let refreshing: Promise<string | null> | undefined
+export async function getAccessToken(cfg: AuthConfig, force = false): Promise<string | null> {
+  if (refreshing) return refreshing
   const t = load<Tokens>(TOKENS)
   if (!t) return null
-  if (!isExpiring(t, Date.now())) return t.accessToken
+  if (!force && !isExpiring(t, Date.now())) return t.accessToken
   if (!t.refreshToken) {
-    store(TOKENS, null)
     return null
   }
-  try {
-    const fresh = tokensFromResponse(await tokenRequest(cfg, refreshBody(cfg, t.refreshToken)), Date.now(), t.refreshToken)
+  const refreshToken = t.refreshToken
+  refreshing = (async () => { try {
+    const fresh = tokensFromResponse(await tokenRequest(cfg, refreshBody(cfg, refreshToken)), Date.now(), refreshToken)
+    if (load<Tokens>(TOKENS)?.refreshToken !== t.refreshToken) return null
     store(TOKENS, fresh)
     return fresh.accessToken
-  } catch {
-    store(TOKENS, null) // refresh token expired or revoked
+  } catch (error) {
+    // Retain account identity and pending edits until an explicit sign-out. A network failure is not logout.
+    if (error instanceof ApiError && (error.status === 0 || error.status >= 500)) throw error
     return null
-  }
+  } finally { refreshing = undefined } })()
+  return refreshing
 }
 
 /** Revokes the refresh token, clears local tokens, and ends the managed login session. */

@@ -1,5 +1,6 @@
+import HeroTools from './characters/HeroTools.tsx'
 // All your heroes, and the way to make a new one. Home shows the most recent few with HeroRows.
-import { heroesApi } from './api/client.ts'
+import { characters as heroesApi } from './characters/current.ts'
 import type { HeroSummary } from './api/types.ts'
 import type { Auth } from './auth/useAuth.ts'
 import Link from './Link.tsx'
@@ -41,6 +42,7 @@ export default function Heroes({ auth }: { auth: Auth }) {
             ? <p className="muted">{NO_HEROES}</p>
             : <HeroRows heroes={sorted} />}
       </section>
+      <HeroTools auth={auth} reload={heroes.reload} />
     </Shell>
   )
 }

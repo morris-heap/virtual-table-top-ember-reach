@@ -1,7 +1,8 @@
+import { parseSheet } from '../../api/src/sheet.ts'
 // The New hero form (/heroes/new): name, Ancestry and Calling, saved as a level 1 hero.
 // Guided creation of the rest of the sheet is VTTER-47.
 import { useState, type FormEvent } from 'react'
-import { heroesApi } from './api/client.ts'
+import { characters as heroesApi } from './characters/current.ts'
 import type { HeroSummary } from './api/types.ts'
 import { ANCESTRIES, CALLINGS, emptyHero, heroProblems, NAME_MAX, newHeroSheet, type NewHero as Draft } from './engine/hero.ts'
 
@@ -18,7 +19,7 @@ export default function NewHero({ onCreated, onCancel }: { onCreated: (hero: Her
     if (issues.length) return setShowProblems(true)
     setSaving(true)
     try {
-      const saved = await heroesApi.save(crypto.randomUUID(), newHeroSheet(draft))
+      const saved = await heroesApi.save(crypto.randomUUID(), parseSheet(newHeroSheet(draft)))
       onCreated({ id: saved.id, name: saved.name, level: saved.level, ancestry: saved.ancestry, calling: saved.calling, updatedAt: saved.updatedAt })
     } catch (err) {
       setError((err as Error).message)
