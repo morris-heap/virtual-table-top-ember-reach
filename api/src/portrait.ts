@@ -15,6 +15,8 @@ export interface PortraitStore {
   uploadUrl(ownerId: string, heroId: string, upload: PortraitUpload): Promise<string>
   /** A signed GET URL, or null if the hero has no portrait. */
   downloadUrl(ownerId: string, heroId: string): Promise<string | null>
+  /** Signed read URLs for every hero of this owner that has a portrait, keyed by hero id. */
+  list(ownerId: string): Promise<Record<string, string>>
   delete(ownerId: string, heroId: string): Promise<void>
 }
 

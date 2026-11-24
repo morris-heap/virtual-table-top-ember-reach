@@ -181,6 +181,12 @@ async function portraitRoute(req: Request, heroId: string, owner: string, deps: 
   return json({ url, expiresIn: PORTRAIT.urlSeconds }, 200, cors)
 }
 
+/** `GET /portraits`: signed read URLs for all of the caller's hero portraits, in one call for the hero lists. */
+async function portraitsRoute(req: Request, owner: string, deps: Deps, cors: Record<string, string>): Promise<Response> {
+  if (req.method !== 'GET') throw new HttpError(405, 'Method not allowed')
+  return json({ portraits: await deps.portraits.list(owner), expiresIn: PORTRAIT.urlSeconds }, 200, cors)
+}
+
 async function profileRoute(req: Request, owner: string, deps: Deps, cors: Record<string, string>): Promise<Response> {
   switch (req.method) {
     case 'GET':
@@ -368,16 +374,17 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
 
     const resource = parts[0]
-    const maxParts = resource === 'profile' ? 1 : resource === 'games' ? 4 : resource === 'characters' ? 3 : 2
+    const maxParts = resource === 'profile' || resource === 'portraits' ? 1 : resource === 'games' ? 4 : resource === 'characters' ? 3 : 2
     // Three parts is only ever /games/:id/hero (VTTER-77) or /characters/:id/portrait (VTTER-55);
     // gamesRoute rejects any other games segment.
-    if (!['characters', 'profile', 'adventures', 'games'].includes(resource) || parts.length > maxParts
+    if (!['characters', 'profile', 'adventures', 'games', 'portraits'].includes(resource) || parts.length > maxParts
       || (parts.length === 3 && resource !== 'games' && !(resource === 'characters' && parts[2] === 'portrait'))) {
       throw new HttpError(404, 'Not found')
     }
     const owner = await ownerOf(req, deps.verifyToken)
 
     // `return await` so errors thrown inside a route are caught below and become 4xx/5xx responses.
+    if (resource === 'portraits') return await portraitsRoute(req, owner, deps, cors)
     if (resource === 'profile') return await profileRoute(req, owner, deps, cors)
     if (resource === 'games') return await gamesRoute(req, parts, owner, deps, cors)
 

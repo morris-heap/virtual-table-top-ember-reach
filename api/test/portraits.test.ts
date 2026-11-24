@@ -40,7 +40,7 @@ function setup() {
   return { call, hero, portraits }
 }
 
-const png = { contentType: 'image/png', size: 1000 }
+const png = { contentType: 'image/webp', size: 1000 }
 
 describe('portrait routes (VTTER-55)', () => {
   it('requires sign-in', async () => {
@@ -58,7 +58,7 @@ describe('portrait routes (VTTER-55)', () => {
     expect(res.status).toBe(200)
     expect(await res.json()).toMatchObject({
       method: 'PUT', expiresIn: PORTRAIT.urlSeconds,
-      headers: { 'Content-Type': 'image/png', 'Content-Length': '1000' },
+      headers: { 'Content-Type': 'image/webp', 'Content-Length': '1000' },
     })
     // The key is built from the verified owner, never from the request.
     expect(portraits.uploads).toEqual([{ ownerId: A, heroId: HERO, ...png }])
@@ -69,8 +69,8 @@ describe('portrait routes (VTTER-55)', () => {
     hero(A)
     for (const bad of [
       { contentType: 'image/svg+xml', size: 10 }, { contentType: 'text/html', size: 10 },
-      { contentType: 'image/png', size: PORTRAIT.maxBytes + 1 }, { contentType: 'image/png', size: 0 },
-      { contentType: 'image/png', size: 1.5 }, { contentType: 'image/png' }, null, [],
+      { contentType: 'image/webp', size: PORTRAIT.maxBytes + 1 }, { contentType: 'image/webp', size: 0 },
+      { contentType: 'image/webp', size: 1.5 }, { contentType: 'image/webp' }, { contentType: 'image/png', size: 10 }, null, [],
     ]) {
       expect((await call('POST', A, bad)).status).toBe(400)
     }
@@ -107,6 +107,18 @@ describe('portrait routes (VTTER-55)', () => {
     await call('POST', A, png)
     expect((await call('DELETE', A, undefined, `/characters/${HERO}`)).status).toBe(204)
     expect(portraits.objects.size).toBe(0)
+  })
+
+  it("lists only the caller's own portraits in one call", async () => {
+    const { call, hero } = setup()
+    hero(A)
+    expect((await call('GET', null, undefined, '/portraits')).status).toBe(401)
+    expect(await (await call('GET', A, undefined, '/portraits')).json()).toMatchObject({ portraits: {} })
+    await call('POST', A, png)
+    const mine = (await (await call('GET', A, undefined, '/portraits')).json()) as { portraits: Record<string, string> }
+    expect(Object.keys(mine.portraits)).toEqual([HERO])
+    expect((await (await call('GET', B, undefined, '/portraits')).json() as { portraits: object }).portraits).toEqual({})
+    expect((await call('PUT', A, png, '/portraits')).status).toBe(405)
   })
 
   it('rejects other methods, a bad id and other sub-paths', async () => {

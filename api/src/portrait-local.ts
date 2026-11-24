@@ -13,6 +13,11 @@ export class LocalPortraitStore implements PortraitStore {
     const key = portraitKey(ownerId, heroId)
     return this.images.has(key) ? `${this.base}/_portraits/${key}` : null
   }
+  async list(ownerId: string) {
+    const urls: Record<string, string> = {}
+    for (const key of this.images.keys()) if (key.startsWith(`${ownerId}/`)) urls[key.slice(ownerId.length + 1)] = `${this.base}/_portraits/${key}`
+    return urls
+  }
   async delete(ownerId: string, heroId: string) {
     this.images.delete(portraitKey(ownerId, heroId))
   }

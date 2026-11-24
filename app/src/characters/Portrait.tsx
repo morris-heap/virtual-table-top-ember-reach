@@ -42,7 +42,7 @@ export default function Portrait({ heroId, signedIn, editable }: { heroId: strin
             {busy ? 'Working…' : url ? 'Replace portrait' : 'Upload portrait'}
           </button>
           {url && <button type="button" className="account-btn danger" disabled={busy} onClick={() => void remove()}>Remove</button>}
-          <small className="cs-portrait-note">PNG, JPEG or WebP, up to 1 MB. Only you can see it.</small>
+          <small className="cs-portrait-note">Any PNG, JPEG or WebP. It is shrunk to fit. Only you can see it.</small>
         </div>
       )}
       {shownError && <p className="notice error" role="alert">{shownError}</p>}

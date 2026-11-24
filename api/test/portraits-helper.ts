@@ -12,6 +12,9 @@ export class MemoryPortraits implements PortraitStore {
   async downloadUrl(ownerId: string, heroId: string) {
     return this.objects.has(`${ownerId}/${heroId}`) ? `https://bucket.test/${ownerId}/${heroId}?sig=get` : null
   }
+  async list(ownerId: string) {
+    return Object.fromEntries([...this.objects].filter(k => k.startsWith(`${ownerId}/`)).map(k => [k.slice(ownerId.length + 1), `https://bucket.test/${k}?sig=get`]))
+  }
   async delete(ownerId: string, heroId: string) {
     this.objects.delete(`${ownerId}/${heroId}`)
   }
