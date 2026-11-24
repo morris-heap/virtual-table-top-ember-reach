@@ -171,13 +171,13 @@ export function helpFor(topic: string, sheet: CharacterSheet): Help {
       title: 'Attacks', ...base,
       paragraphs: ["To hit is what you roll to hit, like 1d20 + 1. If the total meets the foe's Defense, the attack hits. The GM never rolls.",
         'It is the Attribute you attack with plus your Melee, Ranged or Spellcraft rank. Might for heavy weapons, Grace for finesse and ranged ones.',
-        'Weapon / Spell properties are what the attack does besides damage: range, fire, throwable. Use Notes for anything else.'],
+        'Properties are what the attack does besides damage: range, fire, throwable. Use Notes for anything else.'],
       rule: rule('Core rules §6.4 Attacking', '64-attacking-heroes-roll'),
     }
     case 'attackName': return { title: 'Weapon / Spell', paragraphs: ['What you attack with, like Dagger or Fireball. Attack spells you know can be listed here too.'], rule: rule('Core rules §6.4 Attacking', '64-attacking-heroes-roll') }
     case 'toHit': return { title: 'To hit', ...base, paragraphs: ["What you roll to hit, like 1d20 + 1: a d20 plus the Attribute you attack with and your Melee, Ranged or Spellcraft rank. If the total meets the foe's Defense, you hit."], rule: rule('Core rules §6.4 Attacking', '64-attacking-heroes-roll') }
     case 'damage': return { title: 'Damage', paragraphs: ['What you roll on a hit, like 1d6 + 1. Weapon dice are in the gear tables: d6 light, d8 versatile, d12 heavy.'], rule: rule('Core rules §7.1 Weapons', '71-weapons') }
-    case 'properties': return { title: 'Weapon / Spell properties', paragraphs: ['What the attack does besides damage: range, fire, throwable, two-handed.'], rule: rule('Core rules §7.1 Weapons', '71-weapons') }
+    case 'properties': return { title: 'Properties', paragraphs: ['What the attack does besides damage: range, fire, throwable, two-handed.'], rule: rule('Core rules §7.1 Weapons', '71-weapons') }
     case 'attackNotes': return { title: 'Notes', paragraphs: ['Anything else you want to remember about this attack.'], rule: rule('Core rules §6.4 Attacking', '64-attacking-heroes-roll') }
     case 'gearList': return { title: 'Gear list', ...base, paragraphs: [calling ? `Your ${sheet.calling} kit: ${calling.kit}.` : 'Everything your hero carries.'], rule: rule('Core rules §7.3 Calling kits', '73-calling-kits') }
     case 'notes': return { title: 'Notes', paragraphs: ["Anything you want to remember: clues, debts, the GM's rulings."], rule: rule('Core rules §3.4 Backgrounds', '34-backgrounds-pick-one-or-write-your-own-with-the-gm') }

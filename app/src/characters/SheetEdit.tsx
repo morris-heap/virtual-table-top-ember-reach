@@ -245,7 +245,7 @@ export default function SheetEdit({ sheet, change, error }: { sheet: CharacterSh
                     <input id={`cs-atk-test-${i}`} className="cs-in" placeholder="1d20 + 1" value={a.toHit} maxLength={40} onChange={e => patch({ toHit: e.target.value })} /></div>
                   <div className="cs-f"><div className="cs-flabel"><label htmlFor={`cs-atk-dmg-${i}`}>Damage</label><Help topic="damage" sheet={sheet} label="Damage" /></div>
                     <input id={`cs-atk-dmg-${i}`} className="cs-in" placeholder="1d6 + 1" value={a.damage} maxLength={40} onChange={e => patch({ damage: e.target.value })} /></div>
-                  <div className="cs-f"><div className="cs-flabel"><label htmlFor={`cs-atk-props-${i}`}>Weapon / Spell properties</label><Help topic="properties" sheet={sheet} label="Weapon / Spell properties" /></div>
+                  <div className="cs-f"><div className="cs-flabel"><label htmlFor={`cs-atk-props-${i}`}>Properties</label><Help topic="properties" sheet={sheet} label="Properties" /></div>
                     <input id={`cs-atk-props-${i}`} className="cs-in" placeholder="Throwable (near), fire, range far…" value={a.properties} maxLength={300} onChange={e => patch({ properties: e.target.value })} /></div>
                   <div className="cs-f"><div className="cs-flabel"><label htmlFor={`cs-atk-notes-${i}`}>Notes</label><Help topic="attackNotes" sheet={sheet} label="Notes" /></div>
                     <input id={`cs-atk-notes-${i}`} className="cs-in" value={a.notes} maxLength={300} onChange={e => patch({ notes: e.target.value })} /></div>
