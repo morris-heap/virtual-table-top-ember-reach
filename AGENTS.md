@@ -213,3 +213,31 @@ Constraints for each level:
 - MUST flag best practices and explain trade-offs
 - MUST still execute the user's choice if they disagree with a suggestion
 <!-- END AWS Agent Toolkit rules -->
+
+
+## External Tools
+
+Use existing CLI tools instead of MCP servers whenever possible.
+
+### Git and GitHub
+- Use `git` for local repository operations.
+- Use `gh` for GitHub issues, pull requests, and repository information.
+- Do not use GitHub MCP.
+- Prefer `gh --json` and `--jq` to return only necessary fields.
+
+### Jira
+- Use `python scripts/jira.py`.
+- Load credentials from `.env`.
+- Do not use Jira MCP.
+
+### Cloudflare
+- Use `python scripts/cloudflare.py`
+- Load credentials from `.env`.
+- Do not use Cloudflare MCP.
+
+### Token Efficiency
+- Use existing CLI commands before writing new integrations.
+- Return only necessary information.
+- Avoid verbose logs and full API responses.
+- Never display secrets.
+- Ask before modifying external services.
