@@ -7,6 +7,30 @@ Format: `### YYYY-MM-DD — Title` · **Decision** · **Why** · **Affects** (fi
 
 ---
 
+### 2026-11-24 — The 3D dice tray (VTTER-79)
+
+**Decision:** Product rules for the companion app. No change to the d20 rules, so the rules stay at **v0.2**.
+
+1. **The Dice tray is a tab on the Test roller page.** It is a free dice roller: any mix of d4, d6, d8, d10, d12, d20 and
+   d100, totalled. It applies no Attributes, Skill ranks, DCs, Boons/Banes or Momentum, and the Test roller is unchanged.
+2. **Hover gathers, click releases.** Over the tray the whole pool gathers under the cursor, and a click throws it the way
+   the mouse is moving, harder than the hand moves (a throw is the mouse speed times 1.6, up to a cap). The Roll button and Space throw without a mouse. Touch: hold to gather, lift to release.
+3. **The result is read from the resting dice.** A die that lands cocked is not counted until it is re-thrown, and a re-throw
+   drops the die in the emptiest part of the tray, away from the other dice.
+4. **A d100 is a tens die (00-90) plus a units d10 (0-9)**, and 00 + 0 counts as 100.
+5. **At most 20 physical dice per throw**, and a d100 is two of them. This is a frame-rate limit, not a rule.
+6. **The tray grows with the pool**: the table's area scales with the number of dice (up to 1.7x its base width), so a big
+   throw has room to spread. **Expand** makes the tray fill the window (Esc closes it) with the total shown over it.
+7. **Colors are a local display preference** (body, numbers, finish, all dice or per die type), saved on the device.
+
+**Why:** Players asked for dice that feel physical. Reading results from the settled dice keeps the number honest, so what
+is on screen is what counts. See [ADR 0007](adr/0007-3d-dice-tray.md).
+
+**Affects:** app/ (`dice/`, `engine/dice*.ts`, `engine/polyhedra.ts`, `Roller.tsx`), docs/adr/0007-3d-dice-tray.md,
+docs/mockups/dice-tray.html, AGENTS.md. No rules text and no `data/` changes.
+
+---
+
 ### 2026-11-24 — The character sheet UI (VTTER-47)
 
 **Decision:** Product rules for the companion app. No change to the d20 rules, so the rules stay at **v0.2**.

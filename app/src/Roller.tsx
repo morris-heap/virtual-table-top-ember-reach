@@ -1,11 +1,16 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import core from '../../data/core.json'
 import AccountBar from './auth/AccountBar.tsx'
 import type { Auth } from './auth/useAuth.ts'
 import { Logo } from './Landing.tsx'
 import { DEGREE_HINT, DEGREE_LABEL, endScene, MAX_STEPS, netModifierDie, rollTest, type TestResult } from './engine/dice'
 
+// The 3D dice tray loads on demand, so the Test roller's first load stays small (VTTER-79).
+const DiceTray = lazy(() => import('./dice/DiceTray.tsx'))
+
 const MOMENTUM_MAX = core.momentum.max
+
+type Mode = 'test' | 'tray'
 
 function Stepper({ label, value, min, max, signed = false, onChange }: {
   label: string; value: number; min: number; max: number; signed?: boolean; onChange: (v: number) => void
@@ -37,6 +42,7 @@ export default function Roller({ auth, onHome }: { auth: Auth; onHome?: () => vo
   const [banes, setBanes] = useState(0)
   const [momentum, setMomentum] = useState(0)
   const [history, setHistory] = useState<TestResult[]>([])
+  const [mode, setMode] = useState<Mode>('test')
   const last = history[0]
 
   function onRoll() {
@@ -46,7 +52,7 @@ export default function Roller({ auth, onHome }: { auth: Auth; onHome?: () => vo
   }
 
   return (
-    <main>
+    <main className={mode === 'tray' ? 'wide' : undefined}>
       <div className="topbar">
         {onHome
           ? <button type="button" className="brand" onClick={onHome} aria-label="Emberreach home"><Logo size={26} /><span>Emberreach</span></button>
@@ -55,9 +61,28 @@ export default function Roller({ auth, onHome }: { auth: Auth; onHome?: () => vo
       </div>
       <header>
         <p className="eyebrow">Emberreach · v{core.version}</p>
-        <h1>Test Roller</h1>
-        <p className="sub">d20 + Attribute + Skill vs DC. Boons and Banes cancel one for one.</p>
+        <h1>{mode === 'test' ? 'Test Roller' : 'Dice Tray'}</h1>
+        <p className="sub">
+          {mode === 'test'
+            ? 'd20 + Attribute + Skill vs DC. Boons and Banes cancel one for one.'
+            : 'Throw any mix of dice and add them up. For the table: no Attributes, DCs or Momentum.'}
+        </p>
       </header>
+
+      <div className="tabs" role="tablist" aria-label="Roller mode">
+        <button type="button" role="tab" id="tab-test" aria-selected={mode === 'test'} aria-controls="roller-panel" onClick={() => setMode('test')}>Test</button>
+        <button type="button" role="tab" id="tab-tray" aria-selected={mode === 'tray'} aria-controls="roller-panel" onClick={() => setMode('tray')}>Dice tray</button>
+      </div>
+
+      {mode === 'tray' && (
+        <div id="roller-panel" role="tabpanel" aria-labelledby="tab-tray" className="roller-panel">
+          <Suspense fallback={<p className="muted" role="status">Loading the dice tray…</p>}>
+            <DiceTray />
+          </Suspense>
+        </div>
+      )}
+
+      {mode === 'test' && <div id="roller-panel" role="tabpanel" aria-labelledby="tab-test" className="roller-panel">
 
       <section className="panel" aria-label="Test setup">
         <div className="grid">
@@ -128,6 +153,7 @@ export default function Roller({ auth, onHome }: { auth: Auth; onHome?: () => vo
           </ol>
         </section>
       )}
+      </div>}
 
       <footer>First iteration of the Emberreach companion · <a href="https://github.com/morris-heap/virtual-table-top-ember-reach">GitHub</a></footer>
     </main>
