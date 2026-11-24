@@ -1,3 +1,4 @@
+import { MemoryPortraits } from './portraits-helper.ts'
 import { describe, expect, it } from 'vitest'
 import type { AdventureDraft, AdventureRecord } from '../src/adventure.ts'
 import { parseGame, type GameDraft, type GameRecord } from '../src/game.ts'
@@ -141,7 +142,7 @@ async function world() {
     if (body !== undefined) headers['Content-Type'] = 'application/json'
     return handle(
       new Request(`https://api.test${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }),
-      { store: heroes, profiles, adventures, games, allowedOrigins: [ORIGIN], verifyToken },
+      { store: heroes, profiles, adventures, games, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken },
     ) as unknown as Promise<Reply>
   }
   const gm = await profiles.getOrCreate(GM)

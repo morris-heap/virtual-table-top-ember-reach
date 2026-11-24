@@ -1,5 +1,5 @@
 // The read-only character sheet (docs/mockups/character-sheet-ui.html).
-import { Fragment } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import character from '../../../data/character.json'
 import { callingInfo, derive, signed, woundBanes, type CharacterSheet } from '../engine/sheet.ts'
 
@@ -35,7 +35,7 @@ function Vital({ label, value, max, note }: { label: string; value: string | num
   )
 }
 
-export default function SheetView({ sheet }: { sheet: CharacterSheet }) {
+export default function SheetView({ sheet, portrait }: { sheet: CharacterSheet; portrait: ReactNode }) {
   const d = derive(sheet)
   const banes = woundBanes(sheet)
   const maxRank = sheet.level >= 7 ? character.skillRank.maxAtLevel7 : character.skillRank.max
@@ -83,14 +83,7 @@ export default function SheetView({ sheet }: { sheet: CharacterSheet }) {
           </div>
         </div>
 
-        <div className="cs-portrait" aria-label="Character portrait">
-          <div className="cs-portrait-inner">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
-            </svg>
-            <span>Portraits are coming</span>
-          </div>
-        </div>
+        {portrait}
       </section>
 
       <div className="cs-layout">

@@ -68,7 +68,7 @@ relevant ones before answering design questions or making edits:
   (Older history uses the previous project key, KAN.)
 - Current epics: VTTER-46 UI / UX (VTTER-47 Character Sheet UI, VTTER-71 Home, Profile and private adventures,
   then VTTER-72 Games and VTTER-73 friends list), VTTER-51 Backend
-  (VTTER-53 Cognito login done; VTTER-55 portraits and VTTER-56 app ↔ API still to do).
+  (VTTER-53 Cognito login done; VTTER-55 portraits done (API and the upload UI on the hero sheet); VTTER-56 app ↔ API still to do).
 - Write commit messages in the imperative and say which rules changed (for example "Rebalance Hexer Grit to 8 + 3/level").
 
 ## Companion app (`/app`)
@@ -123,7 +123,10 @@ through GitHub OIDC (role `emberreach-github-deploy`, environment `aws`).
   the API accepts only the visibilities in `data/adventure.json` `liveVisibilities`. The player ID is public, and the Cognito
   `sub` never leaves the API. Allowed values come from `/data/character.json` and `/data/core.json`. Single-hero reads are
   strongly consistent (a read right after a save or delete must be fresh), so keep `ConsistentRead`.
-- The function's role gets only the DynamoDB actions `api/src/store.ts` uses. If you add a call, add its action in
+- Portraits are in a private S3 bucket (stack `EmberreachData`), reached only through signed URLs that `/characters/:id/portrait`
+  hands to the hero's owner ([ADR 0003](docs/adr/0003-backend-dynamodb-lambda.md)). Never make the bucket public or return
+  an object key.
+- The function's role gets only the DynamoDB and S3 actions `api/src/store.ts` and `api/src/portrait-store.ts` use. If you add a call, add its action in
   `infra/lib/api-stack.ts`.
 - Don't rename CDK construct ids in `infra/lib/data-stack.ts`. That replaces the table. Always `cdk diff` first.
 - Sign-in is Cognito (stack `EmberreachAuth`, [ADR 0004](docs/adr/0004-auth-cognito.md)): OAuth 2.0 code + PKCE from the app,

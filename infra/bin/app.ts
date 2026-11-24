@@ -1,13 +1,13 @@
 // CDK app for the Emberreach API on AWS (docs/adr/0003-backend-dynamodb-lambda.md).
 // Stacks:
 //   EmberreachGithubDeploy  one-time: GitHub OIDC provider + the role CI assumes to deploy (deploy by hand)
-//   EmberreachData          the DynamoDB table (termination protection on; the table is retained)
+//   EmberreachData          the DynamoDB table and the private portrait bucket (termination protection on; both retained)
 //   EmberreachAuth          the Cognito user pool, managed login domain and web app client (docs/adr/0004-auth-cognito.md)
 //   EmberreachApi           the Lambda function + API Gateway HTTP API (CI deploys this on pushes to main)
 import { App } from 'aws-cdk-lib'
 import { ApiStack } from '../lib/api-stack.ts'
 import { AuthStack } from '../lib/auth-stack.ts'
-import { DataStack, TABLE_NAME } from '../lib/data-stack.ts'
+import { DataStack, PORTRAIT_BUCKET_NAME, TABLE_NAME } from '../lib/data-stack.ts'
 import { GithubDeployStack } from '../lib/github-deploy-stack.ts'
 
 const app = new App()
@@ -32,7 +32,7 @@ new GithubDeployStack(app, 'EmberreachGithubDeploy', {
   // The repo uses GitHub's immutable OIDC subjects (owner and repo ids in the sub claim).
   immutableSubPrefix: 'repo:morris-heap@359005383/virtual-table-top-ember-reach@1465011793',
 })
-new DataStack(app, 'EmberreachData', { env, terminationProtection: true })
+new DataStack(app, 'EmberreachData', { env, terminationProtection: true, allowedOrigins: [APP_ORIGIN, DEV_ORIGIN] })
 new AuthStack(app, 'EmberreachAuth', {
   env,
   terminationProtection: true,
@@ -49,5 +49,6 @@ new AuthStack(app, 'EmberreachAuth', {
 new ApiStack(app, 'EmberreachApi', {
   env,
   tableName: TABLE_NAME,
+  portraitBucketName: PORTRAIT_BUCKET_NAME,
   allowedOrigins: [APP_ORIGIN, DEV_ORIGIN],
 })

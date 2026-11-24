@@ -54,4 +54,10 @@ Region **us-east-2**, Free plan with credits) and want the whole backend in one 
 - Gone: Hyperdrive, Optilogic firewall repair, the cron, `pg`, SQL migrations and Cloudflare deploys. Changing the
   item shape is a code change (and, if needed, a backfill script), not a migration file.
 - The old Optilogic test rows are not migrated. They were test data.
-- Portraits (VTTER-55) can go in S3 in the same Region.
+- **Portraits (VTTER-55)** live in the private S3 bucket `emberreach-portraits-<account>` (stack `EmberreachData`, same Region),
+  one object per hero at `<ownerId>/<heroId>`. The bucket blocks all public access, encrypts at rest and requires TLS.
+  The browser never gets a public URL: `POST /characters/:id/portrait` (`{contentType, size}`) returns a signed PUT URL
+  for exactly that type and size, `GET` returns a signed read URL (404 if none), and `DELETE` removes it. Only the hero's
+  owner can ask, and the key is built from the verified token's `sub`. The app crops and shrinks every image to 256×341 and sends WebP (JPEG where the browser cannot), and the API accepts only those, up to 200 KB. `GET /portraits` returns signed URLs for all of the owner's heroes in one call, for the hero lists. Limits (5-minute URLs)
+  are in `data/character.json` `portrait`. Deleting a hero deletes its portrait. The portrait is not an attribute on the
+  hero item, because a sheet save replaces the whole item.

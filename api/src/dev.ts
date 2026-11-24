@@ -1,12 +1,15 @@
 // Local dev server: `npm run dev` → http://127.0.0.1:8787, against the real DynamoDB table using your
 // AWS CLI profile (AWS_PROFILE, default ember-reach). Not deployed. Set USER_POOL_ID and USER_POOL_CLIENT_ID
-// (EmberreachAuth outputs) so it accepts the app's access tokens.
+// (EmberreachAuth outputs) so it accepts the app's access tokens. Portraits stay in memory unless PORTRAIT_BUCKET is set.
 import { createServer } from 'node:http'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
+import { S3Client } from '@aws-sdk/client-s3'
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import { cognitoVerifier } from './auth.ts'
 import { DynamoGameStore } from './game-store.ts'
 import { handle } from './handler.ts'
+import { LocalPortraitStore } from './portrait-local.ts'
+import { S3PortraitStore } from './portrait-store.ts'
 import { DynamoAdventureStore, DynamoCharacterStore, DynamoProfileStore } from './store.ts'
 
 const PORT = Number(process.env.PORT ?? 8787)
@@ -19,6 +22,9 @@ const store = new DynamoCharacterStore(db, table)
 const profiles = new DynamoProfileStore(db, table)
 const adventures = new DynamoAdventureStore(db, table)
 const games = new DynamoGameStore(db, table)
+// With PORTRAIT_BUCKET set, portraits go to that S3 bucket. Without it, they stay in memory in this process.
+const local = process.env.PORTRAIT_BUCKET ? null : new LocalPortraitStore(`http://127.0.0.1:${PORT}`)
+const portraits = local ?? new S3PortraitStore(new S3Client({}), process.env.PORTRAIT_BUCKET!)
 const allowedOrigins = ['http://localhost:5173', 'https://emberreach.morris-heap.com']
 const verifyToken = cognitoVerifier(process.env.USER_POOL_ID, process.env.USER_POOL_CLIENT_ID)
 
@@ -27,10 +33,18 @@ createServer(async (req, res) => {
   for await (const c of req) chunks.push(c as Buffer)
   const headers = new Headers()
   for (const [k, v] of Object.entries(req.headers)) if (typeof v === 'string') headers.set(k, v)
+  // The local stand-in for S3's signed URLs.
+  if (local && req.url?.startsWith('/_portraits/')) {
+    const cors = { 'Access-Control-Allow-Origin': 'http://localhost:5173', 'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS', 'Access-Control-Allow-Headers': 'content-type' }
+    if (req.method === 'OPTIONS') { res.writeHead(204, cors).end(); return }
+    const [status, type, body] = local.serve(req.method ?? 'GET', req.url.slice('/_portraits/'.length), String(req.headers['content-type'] ?? ''), Buffer.concat(chunks))
+    res.writeHead(status, { ...cors, 'Content-Type': type }).end(body)
+    return
+  }
   const hasBody = req.method !== 'GET' && req.method !== 'HEAD' && chunks.length > 0
   const out = await handle(
     new Request(`http://127.0.0.1:${PORT}${req.url}`, { method: req.method, headers, body: hasBody ? Buffer.concat(chunks) : undefined }),
-    { store, profiles, adventures, games, allowedOrigins, verifyToken },
+    { store, profiles, adventures, games, portraits, allowedOrigins, verifyToken },
   )
   res.writeHead(out.status, Object.fromEntries(out.headers.entries()))
   res.end(Buffer.from(await out.arrayBuffer()))

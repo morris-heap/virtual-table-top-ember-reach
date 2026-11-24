@@ -3,15 +3,24 @@ import HeroTools from './characters/HeroTools.tsx'
 import { characters as heroesApi } from './characters/current.ts'
 import type { HeroSummary } from './api/types.ts'
 import type { Auth } from './auth/useAuth.ts'
+import { portraitApi } from './characters/portrait.ts'
 import Link from './Link.tsx'
 import Shell, { LoadState } from './Shell.tsx'
 import { useLoad } from './useLoad.ts'
 
+/** Your portraits keyed by hero id, in one request. Empty when signed out or if it fails: a list never needs them. */
+function usePortraits(): Record<string, string> {
+  const loaded = useLoad(() => portraitApi.urls().catch(() => ({}) as Record<string, string>))
+  return loaded.state.status === 'ready' ? loaded.state.data : {}
+}
+
 export function HeroRows({ heroes }: { heroes: HeroSummary[] }) {
+  const portraits = usePortraits()
   return (
     <ul className="rows">
       {heroes.map(h => (
-        <li key={h.id} className="row">
+        <li key={h.id} className={portraits[h.id] ? 'row has-portrait' : 'row'}>
+          {portraits[h.id] && <img className="row-portrait" src={portraits[h.id]} alt="" />}
           <Link to={{ name: 'hero', id: h.id }}><b>{h.name}</b></Link>
           <span className="muted">Level {h.level}{h.ancestry && ` · ${h.ancestry}`}{h.calling && ` ${h.calling}`}</span>
         </li>
