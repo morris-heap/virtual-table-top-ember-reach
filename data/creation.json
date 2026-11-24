@@ -1,0 +1,146 @@
+{
+  "$comment": "Hero creation data for the character sheet UI (VTTER-47). Source of truth: rules/core-rules.md §3 (making a hero, ancestries, backgrounds, derived numbers), §4 (callings), §5.3 (starting spells), §7.3 (kits). Change both together (see AGENTS.md).",
+  "version": "0.2",
+  "attributeArray": [3, 2, 1, 1, 0, -1],
+  "ancestryCapAtLevel1": 4,
+  "freeSkillRanks": 2,
+  "backgroundSkillRanks": 2,
+  "talentsAtLevel1": 2,
+  "talentsPerLevel": 1,
+  "speed": 2,
+  "startingSilver": 20,
+  "startingSupply": 3,
+  "ancestries": {
+    "Human": { "bonus": { "any": 1 }, "extraSkillRanks": 1, "extraTalents": 1, "trait": "Adaptable: +1 extra skill rank and 1 extra talent at level 1" },
+    "Stoneborn": { "bonus": { "attributes": ["Might"] }, "extraWoundSlots": 1, "trait": "Bedrock: once per scene, ignore being knocked prone, pushed, or grabbed. Can see in darkness as if in dim light" },
+    "Wildkin": { "bonus": { "attributes": ["Grace", "Wits"] }, "trait": "Instinct: you can never be surprised. Pick one beast perk: keen nose, claws (d6 unarmed), night eyes, or a +2 bonus to jumping" },
+    "Emberkin": { "bonus": { "attributes": ["Spirit"] }, "trait": "Inner Flame: resist fire and cold (halve that damage). Once per rest, you can shed light in a 10 m radius or ignite something you touch" },
+    "Hollowborn": { "bonus": { "attributes": ["Lore", "Might"] }, "trait": "Unliving: don't eat, sleep, or breathe. Immune to poison and disease. Healing magic heals you for half, but repair (a Craft Test during a rest) heals you fully" }
+  },
+  "backgrounds": [
+    { "name": "Ash-farmer", "skills": ["Nature", "Athletics"], "contact": "A village elder who owes you a favor" },
+    { "name": "Forge-scavenger", "skills": ["Craft", "Notice"], "contact": "A fence in the Ruin Market" },
+    { "name": "Temple foundling", "skills": ["Medicine", "Insight"], "contact": "A priest of the Last Flame" },
+    { "name": "Disgraced noble", "skills": ["Persuade", "History"], "contact": "An estranged sibling at court" },
+    { "name": "Caravan guard", "skills": ["Survival", "Intimidate"], "contact": "A merchant who trusts you" },
+    { "name": "Street performer", "skills": ["Perform", "Sleight"], "contact": "A gossip who hears everything" },
+    { "name": "Hedge scholar", "skills": ["Arcana", "History"], "contact": "A rival academic" },
+    { "name": "Deserter", "skills": ["Stealth", "Melee"], "contact": "An old squad-mate, still enlisted" }
+  ],
+  "callings": {
+    "Warden": {
+      "grit": { "base": 12, "perLevel": 5 }, "ember": { "base": 2, "attribute": "Spirit" }, "armor": "heavy",
+      "skills": { "Melee": 2, "Athletics": 1 },
+      "signature": "Bulwark",
+      "signatureText": "As a Reaction, when an ally within reach is attacked, you take the hit instead and roll your own dodge with a Boon.",
+      "talents": [
+        { "name": "Taunt", "cost": "1 Ember", "text": "One foe must target you on its next turn or take a Bane on every attack." },
+        { "name": "Shield Wall", "text": "Allies adjacent to you get +1 Dodge." },
+        { "name": "Unbreakable", "text": "Once per rest, when you'd take a Wound, take it as 5 Grit damage instead." },
+        { "name": "Shove", "text": "When you hit, also push the target one zone or knock it prone." },
+        { "name": "Sentinel", "text": "Foes that leave your reach provoke a free attack." },
+        { "name": "Iron Oath", "text": "+2 Will, immune to fear while your Oath is active." }
+      ],
+      "kit": "Versatile weapon, shield, heavy armor", "shield": true
+    },
+    "Blade": {
+      "grit": { "base": 10, "perLevel": 4 }, "ember": { "base": 2, "attribute": "Grace" }, "armor": "light",
+      "skills": { "Melee": 2, "Athletics": 1 },
+      "signature": "Flurry",
+      "signatureText": "When you hit with a Strong success, make one extra attack right away (no Momentum needed).",
+      "talents": [
+        { "name": "Riposte", "text": "When you dodge an attack with a Strong success, deal your weapon die in damage." },
+        { "name": "Twin Fang", "text": "Fight with two light weapons and roll both damage dice, keep the higher." },
+        { "name": "Blooded", "cost": "1 Ember", "text": "+1 weapon die of damage to a foe already below half Grit." },
+        { "name": "Dancer", "text": "Moving through foes' zones never provokes." },
+        { "name": "Executioner", "text": "Your critical range is 19–20." },
+        { "name": "Battle Trance", "cost": "2 Ember", "text": "For one round, take two Actions." }
+      ],
+      "kit": "Two light weapons or one versatile weapon, light armor", "shield": false
+    },
+    "Hexer": {
+      "grit": { "base": 8, "perLevel": 3 }, "ember": { "base": 4, "attribute": "Lore" }, "armor": "none",
+      "skills": { "Spellcraft": 2, "Arcana": 1 },
+      "signature": "Arcane Casting",
+      "signatureText": "Casts Arcane spells with Lore. Starts with 3 spells and learns 1 per level.",
+      "casting": { "attribute": "Lore", "list": "Arcane", "startingSpells": 3, "perLevel": 1 },
+      "talents": [
+        { "name": "Overchannel", "text": "Add +1 spell die to a spell, but take a Bane on the cast." },
+        { "name": "Ember Shield", "cost": "Reaction · 1 Ember", "text": "+3 Dodge against one attack." },
+        { "name": "Twinned", "cost": "+1 Ember", "text": "Single-target spells can hit two targets." },
+        { "name": "Quiet Casting", "text": "Cast without words or gestures." },
+        { "name": "Ward-sense", "text": "Always sense magic within 10 m." },
+        { "name": "Familiar", "text": "A small ember-spirit scouts, carries, and can deliver touch spells." }
+      ],
+      "kit": "A focus (wand or orb), dagger, a spellbook, ink", "shield": false
+    },
+    "Mender": {
+      "grit": { "base": 9, "perLevel": 4 }, "ember": { "base": 4, "attribute": "Spirit" }, "armor": "medium",
+      "skills": { "Spellcraft": 2, "Medicine": 1 },
+      "signature": "Divine Casting",
+      "signatureText": "Casts Divine spells with Spirit. Starts with 3 spells and learns 1 per level. Always has Mend Wounds.",
+      "casting": { "attribute": "Spirit", "list": "Divine", "startingSpells": 3, "perLevel": 1, "always": ["Mend Wounds"] },
+      "talents": [
+        { "name": "Sanctuary", "cost": "2 Ember", "text": "Your zone becomes holy ground. Foes there take a Bane until your next turn." },
+        { "name": "Stitch the Soul", "text": "During a rest, remove 1 extra Wound from one ally." },
+        { "name": "Searing Faith", "text": "Your melee hits deal +1d4 fire damage." },
+        { "name": "Last Rites", "cost": "Reaction · 2 Ember", "text": "An ally about to be taken Down stays at 1 Grit instead." },
+        { "name": "Beacon", "text": "Shed holy light. Undead and shadow foes take a Bane against you." },
+        { "name": "Shared Burden", "text": "When you heal someone, you also heal half that amount." }
+      ],
+      "kit": "A mace or staff, shield, medium armor, a holy symbol, bandages (3 uses: +1d6 Grit)", "shield": true
+    },
+    "Pathfinder": {
+      "grit": { "base": 9, "perLevel": 4 }, "ember": { "base": 2, "attribute": "Wits" }, "armor": "light",
+      "skills": { "Ranged": 2, "Survival": 1 },
+      "signature": "Quarry",
+      "signatureText": "Mark one foe per scene. You get a Boon on all Tests against it and always know where it is.",
+      "talents": [
+        { "name": "Volley", "cost": "1 Ember", "text": "Attack every foe in one zone with a single roll." },
+        { "name": "Trapper", "text": "During a rest, set 2 traps. Each deals 2d6 and roots its victim in place." },
+        { "name": "Ghost Step", "text": "Stealth in the wilds always gets a Boon." },
+        { "name": "Animal Companion", "text": "A hawk, hound, or wolf that acts on your turn." },
+        { "name": "Pinning Shot", "text": "When you hit, the target's Speed drops to 0 until its next turn." },
+        { "name": "Guide", "text": "The party never gets lost and gains +1 Supply die step when traveling." }
+      ],
+      "kit": "Bow and 20 arrows, light weapon, light armor, a snare kit", "shield": false
+    },
+    "Silvertongue": {
+      "grit": { "base": 8, "perLevel": 3 }, "ember": { "base": 3, "attribute": "Presence" }, "armor": "light",
+      "skills": { "Persuade": 2, "Deceive": 1, "Stealth": 1 },
+      "signature": "Opening",
+      "signatureText": "Once per round, when you hit a foe that an ally is next to, or one that hasn't acted yet, add +2d6 damage.",
+      "talents": [
+        { "name": "Inspire", "cost": "Reaction · 1 Ember", "text": "Give an ally a Boon on any Test." },
+        { "name": "Silver Song", "cost": "2 Ember", "text": "All allies in your zone recover 1d6 Grit." },
+        { "name": "Cutpurse", "text": "Sleight Tests to steal or plant items always get a Boon." },
+        { "name": "Mockery", "cost": "1 Ember", "text": "One foe takes a Bane on its next attack and must target you." },
+        { "name": "A Friend Everywhere", "text": "In any town, you know someone useful." },
+        { "name": "Vanish", "text": "Once per scene, after an attack, become hidden if any cover is nearby." }
+      ],
+      "kit": "Light weapon, light armor, a disguise kit, lockpicks, 1 vial of poison (+1d6, one hit)", "shield": false
+    }
+  },
+  "spellLists": {
+    "Arcane": [
+      { "name": "Ember Bolt", "ember": 0, "target": "1 foe, Defense", "effect": "1d10 fire damage, range far" },
+      { "name": "Shatter", "ember": 1, "target": "1 zone, Defense", "effect": "2d6 thunder damage to all, objects crack" },
+      { "name": "Binding Glyph", "ember": 1, "target": "1 foe, Resolve", "effect": "Target cannot move until it passes DC 12 at the end of its turn" },
+      { "name": "Blink", "ember": 1, "target": "Self", "effect": "Teleport 2 zones as a Reaction" },
+      { "name": "Veil", "ember": 1, "target": "Self/ally, DC 12", "effect": "Invisible until you attack or the scene ends" },
+      { "name": "Forge Lance", "ember": 3, "target": "Line, Defense", "effect": "3d8 fire damage, ignores armor" },
+      { "name": "Mindspike", "ember": 1, "target": "1 foe, Resolve", "effect": "2d6 psychic damage, target takes a Bane on its next action" },
+      { "name": "Kindle", "ember": 0, "target": "Utility", "effect": "Light, small flames, warm or chill an object" }
+    ],
+    "Divine": [
+      { "name": "Mend Wounds", "ember": 1, "target": "Ally in reach, auto", "effect": "Heal 2d6 + Spirit Grit" },
+      { "name": "Radiant Lash", "ember": 0, "target": "1 foe, Defense", "effect": "1d8 radiant damage. Undead take a Bane next turn" },
+      { "name": "Bless", "ember": 1, "target": "Allies in zone", "effect": "Boon on their next Test" },
+      { "name": "Ward of Flame", "ember": 1, "target": "Ally", "effect": "+2 Dodge until the end of the scene" },
+      { "name": "Rekindle", "ember": 3, "target": "Downed ally, DC 14", "effect": "Revive at half Grit and remove 1 Wound" },
+      { "name": "Smite the Dark", "ember": 2, "target": "1 foe, Resolve", "effect": "3d6 radiant damage, doubled against undead" },
+      { "name": "Calm", "ember": 1, "target": "1 creature, Resolve", "effect": "Ends fear or rage. Hostile NPCs stop to talk" },
+      { "name": "Purify", "ember": 0, "target": "Utility", "effect": "Cleanse food, water, poison, or disease" }
+    ]
+  }
+}

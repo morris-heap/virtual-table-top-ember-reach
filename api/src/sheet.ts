@@ -6,7 +6,8 @@ import core from '../../data/core.json'
 export const ATTRIBUTES = core.attributes.map(a => a.toLowerCase()) as AttributeKey[]
 export type AttributeKey = 'might' | 'grace' | 'wits' | 'lore' | 'spirit' | 'presence'
 
-export interface Attack { name: string; testBonus: number; damage: string; notes: string }
+/** One weapon or attack spell. To hit and damage are free text, like "+5" and "d6 + 1". */
+export interface Attack { name: string; toHit: string; damage: string; properties: string; notes: string }
 export interface Spell { name: string; ember: number; target: string; effect: string }
 
 export interface CharacterSheet {
@@ -86,6 +87,12 @@ export function oneOf(v: unknown, field: string, allowed: string[], def: string)
   return v
 }
 
+/** Heroes saved with a numeric testBonus: 5 becomes "+5", -1 becomes "-1", 0 stays blank. */
+function legacyToHit(v: unknown, field: string): string {
+  const n = int(v, field, -20, 50, 0)
+  return n > 0 ? `+${n}` : n < 0 ? String(n) : ''
+}
+
 export function parseSheet(body: unknown): CharacterSheet {
   const b = obj(body, 'body')
   const level = int(b.level, 'level', character.levels.min, character.levels.max, character.levels.min)
@@ -126,9 +133,10 @@ export function parseSheet(body: unknown): CharacterSheet {
       const o = obj(a, `attacks[${i}]`)
       return {
         name: text(o.name, `attacks[${i}].name`, { min: 1, max: 80 }),
-        testBonus: int(o.testBonus, `attacks[${i}].testBonus`, -20, 50, 0),
+        toHit: text(o.toHit ?? legacyToHit(o.testBonus, `attacks[${i}].testBonus`), `attacks[${i}].toHit`, { max: 40 }),
         damage: text(o.damage, `attacks[${i}].damage`, { max: 40 }),
-        notes: text(o.notes, `attacks[${i}].notes`, { max: 200 }),
+        properties: text(o.properties, `attacks[${i}].properties`, { max: 300 }),
+        notes: text(o.notes, `attacks[${i}].notes`, { max: 300 }),
       }
     }),
     signature: text(b.signature, 'signature', { max: 500 }),

@@ -42,11 +42,11 @@
 
 ## Attacks
 
-| Weapon / Spell | Test bonus | Damage | Notes |
-|---|:---:|:---:|---|
-| | | | |
-| | | | |
-| | | | |
+| Weapon / Spell | To hit | Damage | Properties | Notes |
+|---|:---:|:---:|---|---|
+| | | | | |
+| | | | | |
+| | | | | |
 
 ## Signature feature & talents
 

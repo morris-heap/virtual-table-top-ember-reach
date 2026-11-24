@@ -59,7 +59,7 @@ const kestrel = {
   attributes: { might: -1, grace: 1, wits: 2, lore: 3, spirit: 2, presence: 0 },
   grit: 6, ember: 4, deathFails: 0, wounds: ['Grace'],
   skills: { Arcana: 2, History: 1, Insight: 1, Notice: 1, Spellcraft: 2 },
-  attacks: [{ name: 'Ember Bolt', testBonus: 5, damage: '1d10', notes: 'Fire, far' }],
+  attacks: [{ name: 'Ember Bolt', toHit: '+5', damage: '1d10', properties: 'Fire, far', notes: '' }],
   signature: 'Arcane Casting', talents: ['Ember Shield', 'Familiar'],
   spells: [{ name: 'Ember Bolt', ember: 0, target: '1 foe, Defense', effect: '1d10 fire' }],
   armor: 'none', shield: false, silver: 20, supplyDie: 'd8', gear: 'Focus, dagger, spellbook, ink',
