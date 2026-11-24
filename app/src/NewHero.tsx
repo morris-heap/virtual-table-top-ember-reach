@@ -1,6 +1,6 @@
 import { parseSheet } from '../../api/src/sheet.ts'
 // The New hero form (/heroes/new): name, Ancestry and Calling, saved as a level 1 hero.
-// Guided creation of the rest of the sheet is VTTER-47.
+// The rest of the sheet is filled in by the guided editor (VTTER-47) once the hero exists.
 import { useState, type FormEvent } from 'react'
 import { characters as heroesApi } from './characters/current.ts'
 import type { HeroSummary } from './api/types.ts'

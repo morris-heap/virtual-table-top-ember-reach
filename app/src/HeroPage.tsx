@@ -1,6 +1,5 @@
 import SheetEditor from './characters/SheetEditor.tsx'
-// One hero: creation or the editable sheet with durable autosave.
-// Guided creation remains VTTER-47 (docs/mockups/).
+// One hero: creation, then the character sheet (View and guided Edit, VTTER-47) with durable autosave.
 import { useState } from 'react'
 import { characters as heroesApi } from './characters/current.ts'
 import type { Hero } from './api/types.ts'
@@ -44,7 +43,7 @@ export default function HeroPage({ auth, id }: { auth: Auth; id: string }) {
   const hero = useLoad(() => (isNew ? Promise.resolve(null) : heroesApi.get(id)), [id])
 
   return (
-    <Shell auth={auth}>
+    <Shell auth={auth} wide={!isNew}>
       {isNew
         ? (
           <>

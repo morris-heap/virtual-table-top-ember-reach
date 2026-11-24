@@ -1,5 +1,5 @@
 // Starting a new hero from Home: a name, an Ancestry and a Calling (rules/core-rules.md §3.2, §4).
-// The full guided creation (attributes, skills, gear) is VTTER-47. Names come from /data/character.json.
+// The rest of creation (attributes, skills, gear) is the guided sheet editor, VTTER-47. Names come from /data/character.json.
 import character from '../../../data/character.json'
 import core from '../../../data/core.json'
 
