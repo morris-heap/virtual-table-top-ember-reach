@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dice Tray Mockup</title>
+<!-- VTTER-79 UI mockup. Static, sample data only. Colors match app/src/index.css.
+     Shows the 3D dice tray as an extension of the Test Roller page. -->
+<style>
+  :root {
+    --bg: #f7f3ee; --panel: #ffffff; --text: #2a2420; --muted: #6e625a; --border: #e4dbd2;
+    --ember: #d9531e; --ember-soft: #fbe6dc; --gold: #b8860b; --good: #2f7d4f; --radius: 14px;
+    font: 15px/1.45 system-ui, 'Segoe UI', Roboto, sans-serif; color: var(--text); background: var(--bg);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  main { max-width: 860px; margin: 0 auto; padding: 24px 16px 40px; display: grid; gap: 14px; }
+  h1, h2 { margin: 0; line-height: 1.2; }
+  h1 { font-size: 28px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 10px; }
+  .eyebrow { margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--ember); font-weight: 700; }
+  .sub { margin: 4px 0 0; color: var(--muted); }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .tabs { display: flex; gap: 6px; }
+  .tab { border: 1px solid var(--border); background: var(--panel); border-radius: 999px; padding: 6px 16px; font-weight: 600; color: var(--muted); }
+  .tab.on { background: var(--ember); border-color: var(--ember); color: #fff; }
+
+  /* Picker */
+  .picker { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .die-pick { border: 1px solid var(--border); border-radius: 12px; padding: 8px 4px 6px; text-align: center; background: var(--bg); position: relative; }
+  .die-pick.has { border-color: var(--ember); background: var(--ember-soft); }
+  .die-pick svg { width: 44px; height: 44px; display: block; margin: 0 auto 2px; }
+  .die-pick b { display: block; font-size: 14px; }
+  .count { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 4px; font-size: 13px; }
+  .count span { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border); background: var(--panel); display: grid; place-items: center; line-height: 1; }
+  .badge { position: absolute; top: -7px; right: -7px; background: var(--ember); color: #fff; border-radius: 999px; font-size: 12px; font-weight: 700; min-width: 22px; height: 22px; display: grid; place-items: center; }
+  .formula { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .formula code { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 4px 10px; font-size: 15px; }
+  .btn { border: 1px solid var(--border); background: var(--panel); color: var(--text); border-radius: 10px; padding: 8px 14px; font: inherit; font-weight: 600; }
+  .btn.primary { background: var(--ember); border-color: var(--ember); color: #fff; }
+
+  /* Tray */
+  .tray-wrap { position: relative; }
+  .tray { height: 330px; border-radius: 18px; border: 10px solid #5b3a24; position: relative; overflow: hidden;
+    background: radial-gradient(ellipse at 50% 40%, #2f6b4a 0%, #1f4d35 70%, #173a29 100%);
+    box-shadow: inset 0 8px 30px rgba(0,0,0,.45); }
+  .tray .hint { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); color: #cfe6d8; font-size: 13px; background: rgba(0,0,0,.35); border-radius: 999px; padding: 4px 12px; white-space: nowrap; }
+  .die { position: absolute; filter: drop-shadow(0 10px 6px rgba(0,0,0,.45)); }
+  .die text { font: 700 17px system-ui; fill: #fff; text-anchor: middle; dominant-baseline: central; }
+  .tray-tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; }
+  .tray-tools .btn { padding: 4px 10px; font-size: 13px; background: rgba(255,255,255,.9); }
+  .mute { position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,.9); border-radius: 10px; padding: 4px 10px; font-size: 13px; font-weight: 600; }
+  .drag { position: absolute; left: 130px; top: 190px; width: 160px; height: 4px; border-radius: 4px; background: repeating-linear-gradient(90deg, #fff 0 8px, transparent 8px 14px); transform: rotate(-24deg); transform-origin: left; opacity: .85; }
+  .drag::after { content: ""; position: absolute; right: -6px; top: -5px; border-left: 12px solid #fff; border-top: 7px solid transparent; border-bottom: 7px solid transparent; }
+
+  /* Result */
+  .result { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; border-left: 6px solid var(--ember); }
+  .total { font-size: 56px; font-weight: 800; line-height: 1; color: var(--ember); min-width: 96px; text-align: center; }
+  .total small { display: block; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { border: 1px solid var(--border); background: var(--bg); border-radius: 10px; padding: 4px 10px; font-size: 14px; }
+  .chip i { font-style: normal; color: var(--muted); margin-right: 4px; }
+  .chip b { font-size: 16px; }
+  .chip.warn { border-color: #c98a00; background: #fff4d6; }
+  .math { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .legend { font-size: 13px; color: var(--muted); }
+  .note { font-size: 12px; color: var(--muted); margin: 0; }
+
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .sw { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--border); }
+  .sw.on { box-shadow: 0 0 0 2px var(--ember); }
+  .colors { display: grid; gap: 10px; }
+  .colors .row { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+  .colors label { font-size: 13px; font-weight: 600; color: var(--muted); min-width: 92px; }
+  .seg { display: flex; gap: 6px; }
+  .seg span { border: 1px solid var(--border); border-radius: 999px; padding: 3px 12px; font-size: 13px; background: var(--bg); }
+  .seg span.on { background: var(--ember-soft); border-color: var(--ember); font-weight: 700; }
+  .cursor { position: absolute; left: 372px; top: 176px; width: 28px; height: 28px; z-index: 9; filter: drop-shadow(0 2px 2px rgba(0,0,0,.5)); }
+  .dir { position: absolute; left: 410px; top: 172px; width: 190px; height: 5px; border-radius: 4px; background: repeating-linear-gradient(90deg,#fff 0 10px,transparent 10px 16px); transform: rotate(-14deg); transform-origin: left; opacity: .9; z-index: 9; }
+  .dir::after { content: ""; position: absolute; right: -8px; top: -7px; border-left: 16px solid #fff; border-top: 9px solid transparent; border-bottom: 9px solid transparent; }
+  .badge2 { position: absolute; left: 16px; bottom: 14px; background: rgba(0,0,0,.4); color: #eaf5ee; border-radius: 10px; padding: 4px 10px; font-size: 12px; }
+  .die text { fill: #fff; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">Emberreach · v0.2</p>
+    <h1>Test Roller</h1>
+    <p class="sub">d20 + Attribute + Skill vs DC. Boons and Banes cancel one for one.</p>
+  </header>
+
+  <nav class="tabs" aria-label="Roller mode">
+    <span class="tab">Test</span>
+    <span class="tab on">Dice tray</span>
+  </nav>
+
+  <section class="panel" aria-label="Choose dice">
+    <h2>Choose dice (any mix)</h2>
+    <div class="picker">
+      <!-- d4 -->
+      <div class="die-pick has"><span class="badge">2</span>
+        <svg viewBox="0 0 44 44"><polygon points="22,4 41,38 3,38" fill="#7a4fb5" stroke="#4d2c80" stroke-width="2"/><polygon points="22,4 22,38 3,38" fill="#000" opacity=".12"/></svg>
+        <b>d4</b><div class="count"><span>−</span> 2 <span>+</span></div></div>
+      <!-- d6 -->
+      <div class="die-pick has"><span class="badge">1</span><svg viewBox="0 0 44 44"><rect x="6" y="6" width="32" height="32" rx="6" fill="#b3402a" stroke="#7a2616" stroke-width="2"/></svg>
+        <b>d6</b><div class="count"><span>−</span> 1 <span>+</span></div></div>
+      <!-- d8 -->
+      <div class="die-pick"><svg viewBox="0 0 44 44"><polygon points="22,3 40,22 22,41 4,22" fill="#2f7d8a" stroke="#1b4f58" stroke-width="2"/></svg>
+        <b>d8</b><div class="count"><span>−</span> 0 <span>+</span></div></div>
+      <!-- d10 -->
+      <div class="die-pick has"><span class="badge">1</span>
+        <svg viewBox="0 0 44 44"><polygon points="22,3 40,16 34,40 10,40 4,16" fill="#c27a14" stroke="#85520a" stroke-width="2"/></svg>
+        <b>d10</b><div class="count"><span>−</span> 1 <span>+</span></div></div>
+      <!-- d12 -->
+      <div class="die-pick"><svg viewBox="0 0 44 44"><polygon points="22,3 38,13 38,31 22,41 6,31 6,13" fill="#3b6fb5" stroke="#244a80" stroke-width="2"/></svg>
+        <b>d12</b><div class="count"><span>−</span> 0 <span>+</span></div></div>
+      <!-- d20 -->
+      <div class="die-pick has"><span class="badge">1</span>
+        <svg viewBox="0 0 44 44"><polygon points="22,2 40,12 40,32 22,42 4,32 4,12" fill="#d9531e" stroke="#8f3210" stroke-width="2"/><polygon points="22,12 31,28 13,28" fill="#000" opacity=".15"/></svg>
+        <b>d20</b><div class="count"><span>−</span> 1 <span>+</span></div></div>
+      <!-- d100 -->
+      <div class="die-pick"><svg viewBox="0 0 44 44"><polygon points="16,4 30,12 28,30 12,32 6,16" fill="#c27a14" stroke="#85520a" stroke-width="2"/><polygon points="32,14 41,24 36,40 24,36 26,22" fill="#7a4fb5" stroke="#4d2c80" stroke-width="2"/></svg>
+        <b>d100</b><div class="count"><span>−</span> 0 <span>+</span></div></div>
+    </div>
+    <div class="formula">
+      <span class="legend">Pool:</span><code>2d4 + 1d6 + 1d8 + 1d10 + 1d12 + 1d20</code>
+      <span style="flex:1"></span>
+      <button class="btn">Clear pool</button>
+      <button class="btn primary">Roll (Space)</button>
+    </div>
+    <p class="note" style="margin-top:8px">d100 rolls a tens die (00–90) and a units d10 (0–9). 00 + 0 counts as 100.</p>
+  </section>
+
+
+  <section class="panel colors" aria-label="Dice colors">
+    <h2>Dice colors</h2>
+    <div class="row"><label>Dice body</label>
+      <div class="swatches"><span class="sw" style="background:#b3402a"></span><span class="sw on" style="background:#7a4fb5"></span><span class="sw" style="background:#2f7d8a"></span><span class="sw" style="background:#c27a14"></span><span class="sw" style="background:#3b6fb5"></span><span class="sw" style="background:#2a2420"></span><span class="sw" style="background:#f1e8e0"></span><span class="sw" style="background:conic-gradient(#d9531e,#c27a14,#2f7d4f,#3b6fb5,#7a4fb5,#d9531e)"></span></div></div>
+    <div class="row"><label>Number color</label>
+      <div class="swatches"><span class="sw on" style="background:#ffffff"></span><span class="sw" style="background:#f2c14e"></span><span class="sw" style="background:#2a2420"></span><span class="sw" style="background:conic-gradient(#d9531e,#c27a14,#2f7d4f,#3b6fb5,#7a4fb5,#d9531e)"></span></div></div>
+    <div class="row"><label>Finish</label><div class="seg"><span class="on">Opaque</span><span>Translucent</span><span>Metallic</span></div>
+      <label style="min-width:0">Apply to</label><div class="seg"><span class="on">All dice</span><span>Per die type</span></div></div>
+    <p class="note">The number color is checked against the body color and warns when the numbers would be hard to read. Choices are remembered on this device.</p>
+  </section>
+
+  <section class="tray-wrap" aria-label="Dice tray">
+    <div class="tray">
+      <div class="mute">🔊 Sound on</div>
+      <div class="tray-tools"><button class="btn">Reroll</button><button class="btn">Reset tray</button></div>
+      <!-- hover state: the whole pool is gathered in a tight group that follows the cursor -->
+      <svg class="die" style="left:262px;top:112px;transform:rotate(-25deg);z-index:1" width="74" height="74" viewBox="0 0 80 86"><polygon points="40,6 74,64 40,76" fill="#5a3490" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="52" y="52" transform="rotate(28 52 52)" style="font-size:13px">3</text><polygon points="40,6 40,76 6,64" fill="#7a4fb5" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="28" y="52" transform="rotate(-28 28 52)" style="font-size:13px">1</text><polygon points="6,64 40,76 74,64 40,58" fill="#9569cf" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="40" y="68" transform="rotate(0 40 68)" style="font-size:10px">4</text></svg><svg class="die" style="left:290px;top:60px;transform:rotate(6deg);z-index:1" width="74" height="74" viewBox="0 0 80 74"><polygon points="40,4 74,28 61,68 19,68 6,28" fill="#7a4fb5" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><polygon points="40,20 60,34 53,58 27,58 20,34" fill="#9569cf" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="40" y="40" transform="rotate(0 40 40)" style="font-size:12px">12</text><polygon points="40,4 74,28 60,34 40,20" fill="#5a3490" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="54" y="24" transform="rotate(-30 54 24)" style="font-size:9px">5</text><polygon points="6,28 40,4 40,20 20,34" fill="#472873" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="26" y="24" transform="rotate(30 26 24)" style="font-size:9px">9</text><polygon points="61,68 74,28 60,34 53,58" fill="#472873" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="62" y="50" transform="rotate(-70 62 50)" style="font-size:9px">7</text><polygon points="19,68 6,28 20,34 27,58" fill="#5a3490" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="18" y="50" transform="rotate(70 18 50)" style="font-size:9px">3</text><polygon points="19,68 61,68 53,58 27,58" fill="#7a4fb5" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="40" y="63" transform="rotate(0 40 63)" style="font-size:9px">10</text></svg><svg class="die" style="left:300px;top:150px;transform:rotate(-8deg);z-index:2" width="78" height="78" viewBox="0 0 80 86"><polygon points="40,10 70,26 40,42 10,26" fill="#9569cf" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="40" y="26" transform="rotate(0 40 26)" style="font-size:15px">5</text><polygon points="10,26 40,42 40,76 10,60" fill="#7a4fb5" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="24" y="52" transform="rotate(18 24 52)" style="font-size:15px">2</text><polygon points="70,26 40,42 40,76 70,60" fill="#5a3490" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="56" y="52" transform="rotate(-18 56 52)" style="font-size:15px">3</text></svg><svg class="die" style="left:368px;top:140px;transform:rotate(20deg);z-index:2" width="84" height="84" viewBox="0 0 80 90"><polygon points="40,4 72,30 40,50 8,30" fill="#9569cf" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="40" y="28" transform="rotate(0 40 28)" style="font-size:13px">7</text><polygon points="8,30 40,50 40,86 14,62" fill="#7a4fb5" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="26" y="60" transform="rotate(18 26 60)" style="font-size:13px">0</text><polygon points="72,30 40,50 40,86 66,62" fill="#5a3490" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="54" y="60" transform="rotate(-18 54 60)" style="font-size:13px">4</text></svg><svg class="die" style="left:325px;top:95px;transform:rotate(12deg);z-index:3" width="92" height="92" viewBox="0 0 90 90"><polygon points="45,4 84,26 84,64 45,86 6,64 6,26" fill="#7a4fb5" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><polygon points="45,16 70,60 20,60" fill="#9569cf" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="45" y="46" transform="rotate(0 45 46)" style="font-size:15px">20</text><polygon points="45,4 84,26 45,16" fill="#5a3490" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="45" y="16" transform="rotate(0 45 16)" style="font-size:9px">8</text><polygon points="84,26 84,64 70,60 45,16" fill="#472873" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="74" y="42" transform="rotate(-60 74 42)" style="font-size:10px">14</text><polygon points="6,26 45,16 20,60 6,64" fill="#5a3490" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="17" y="46" transform="rotate(60 17 46)" style="font-size:10px">2</text><polygon points="20,60 70,60 84,64 45,86 6,64" fill="#7a4fb5" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="45" y="71" transform="rotate(180 45 71)" style="font-size:11px">11</text></svg><svg class="die" style="left:345px;top:175px;transform:rotate(-14deg);z-index:4" width="76" height="76" viewBox="0 0 80 90"><polygon points="40,4 72,40 40,50 8,40" fill="#9569cf" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="40" y="34" transform="rotate(0 40 34)" style="font-size:13px">6</text><polygon points="8,40 40,50 40,86" fill="#7a4fb5" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="24" y="58" transform="rotate(24 24 58)" style="font-size:13px">1</text><polygon points="72,40 40,50 40,86" fill="#5a3490" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="56" y="58" transform="rotate(-24 56 58)" style="font-size:13px">3</text></svg><svg class="die" style="left:395px;top:98px;transform:rotate(30deg);z-index:1" width="64" height="64" viewBox="0 0 80 86"><polygon points="40,6 74,64 40,76" fill="#5a3490" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="52" y="52" transform="rotate(28 52 52)" style="font-size:13px">3</text><polygon points="40,6 40,76 6,64" fill="#7a4fb5" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="28" y="52" transform="rotate(-28 28 52)" style="font-size:13px">1</text><polygon points="6,64 40,76 74,64 40,58" fill="#9569cf" stroke="#2c1850" stroke-width="1.2" stroke-linejoin="round"/><text x="40" y="68" transform="rotate(0 40 68)" style="font-size:10px">4</text></svg><svg class="cursor" viewBox="0 0 24 24"><path d="M3 2l7 19 3-8 8-3z" fill="#fff" stroke="#222" stroke-width="1.5" stroke-linejoin="round"/></svg><div class="dir"></div>
+      <div class="badge2">Hovering · 7 dice gathered</div>
+      <div class="hint">Move to carry the dice · click to release them the way the mouse is moving</div>
+    </div>
+  </section>
+
+  <section class="panel result" aria-live="polite" aria-label="Dice result">
+    <div class="total"><small>Last roll</small>31</div>
+    <div>
+      <div class="chips">
+        <span class="chip"><i>d4</i><b>3</b></span>
+        <span class="chip"><i>d4</i><b>4</b></span>
+        <span class="chip"><i>d10</i><b>7</b></span>
+        <span class="chip"><i>d20</i><b>17</b></span>
+      </div>
+      <p class="math">3 + 4 + 7 + 17 = <b>31</b></p>
+      <div class="actions">
+        <span class="chip warn"><i>d6</i><b>?</b> cocked, tap to re-throw this die</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Roll history">
+    <h2>Recent rolls</h2>
+    <p class="legend" style="margin:0">2d6 + 1d8 = <b>14</b> · d100 (40 + 7) = <b>47</b> · 1d20 = <b>9</b></p>
+  </section>
+</main>
+</body>
+</html>

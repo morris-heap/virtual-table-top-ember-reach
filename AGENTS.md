@@ -24,7 +24,7 @@ relevant ones before answering design questions or making edits:
 | [rules/gm-guide.md](rules/gm-guide.md) | Foe stat blocks, encounter budgets, starter adventure |
 | [sheets/character-sheet.md](sheets/character-sheet.md) | Character sheet template (must match the rules) |
 | [data/](data/) | Machine-readable game numbers used by the app and API (`core.json`, `character.json`, `creation.json`, `adventure.json`, `game.json`), and the built-in adventures in `data/adventures/`. Must match the rules files |
-| [docs/adr/](docs/adr/) | Architecture decisions: [0001](docs/adr/0001-companion-app-stack.md) app stack, [0003](docs/adr/0003-backend-dynamodb-lambda.md) backend (replaced [0002](docs/adr/0002-backend-postgres.md)), [0004](docs/adr/0004-auth-cognito.md) sign-in, [0005](docs/adr/0005-profile-and-adventures.md) profile, player ID and private adventures, [0006](docs/adr/0006-games.md) Games |
+| [docs/adr/](docs/adr/) | Architecture decisions: [0001](docs/adr/0001-companion-app-stack.md) app stack, [0003](docs/adr/0003-backend-dynamodb-lambda.md) backend (replaced [0002](docs/adr/0002-backend-postgres.md)), [0004](docs/adr/0004-auth-cognito.md) sign-in, [0005](docs/adr/0005-profile-and-adventures.md) profile, player ID and private adventures, [0006](docs/adr/0006-games.md) Games, [0007](docs/adr/0007-3d-dice-tray.md) 3D dice tray |
 | [docs/mockups/](docs/mockups/) | Character sheet UI mockups (view and guided-creation edit mode) for VTTER-47 |
 
 ## How we establish rules (workflow)
@@ -85,7 +85,7 @@ in `app/`, then `npx wrangler deploy`); `.github/workflows/app.yml` checks pull 
   delete it until Cloudflare fixes preview builds (VTTER-67). Both files need a `previews` block.
 
 - **Screens and routing:** signed-in players get Home (Games, plus their newest heroes and adventures), Heroes (`/heroes`,
-  `/heroes/new`, `/heroes/<id>`), Adventures (`/adventures`, the editor, built-ins), Games, Profile and the Test roller.
+  `/heroes/new`, `/heroes/<id>`), Adventures (`/adventures`, the editor, built-ins), Games, Profile and the Test roller (which also holds the 3D **Dice tray** tab, VTTER-79, lazy-loaded from `app/src/dice/`).
   The top bar links Home, Heroes and Adventures. Routes are a pure table in `app/src/router.ts` (hand-rolled, no router library), and `/` must stay Home because
   it is the Cognito redirect. Calls to the API go through `app/src/api/client.ts` and never send a user id.
   Built-in adventures are `data/adventures/*.json`, listed in `app/src/adventures/builtIn.ts` **and** in `api/src/game.ts`
