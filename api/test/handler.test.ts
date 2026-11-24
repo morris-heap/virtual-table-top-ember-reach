@@ -1,3 +1,4 @@
+import { MemoryPortraits } from './portraits-helper.ts'
 import { describe, expect, it } from 'vitest'
 import { handle, MAX_BODY_BYTES, type CharacterStore } from '../src/handler.ts'
 import { parseSheet, type CharacterRecord, type CharacterSheet } from '../src/sheet.ts'
@@ -36,6 +37,7 @@ class MemoryStore implements CharacterStore {
 
 // Profile and adventure routes have their own tests (profile-adventures.test.ts); these tests never reach them.
 const unusedStores = {
+  portraits: new MemoryPortraits(),
   profiles: {
     getOrCreate: async () => { throw new Error('unused') }, update: async () => { throw new Error('unused') },
     peek: async () => null, ownerOfPlayer: async () => null,

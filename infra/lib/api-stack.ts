@@ -2,6 +2,7 @@ import { CfnOutput, Duration, Stack, type StackProps } from 'aws-cdk-lib'
 import { CfnStage, HttpApi } from 'aws-cdk-lib/aws-apigatewayv2'
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations'
 import { TableV2 } from 'aws-cdk-lib/aws-dynamodb'
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam'
 import { Architecture, Function, Runtime } from 'aws-cdk-lib/aws-lambda'
 import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs'
 import { StringParameter } from 'aws-cdk-lib/aws-ssm'
@@ -11,6 +12,7 @@ import { bundle } from './bundle.ts'
 
 export interface ApiStackProps extends StackProps {
   tableName: string
+  portraitBucketName: string
   allowedOrigins: string[]
 }
 
@@ -31,6 +33,7 @@ export class ApiStack extends Stack {
       timeout: Duration.seconds(10),
       environment: {
         TABLE_NAME: props.tableName,
+        PORTRAIT_BUCKET: props.portraitBucketName,
         ALLOWED_ORIGINS: props.allowedOrigins.join(','),
         // Published by EmberreachAuth; CloudFormation resolves them on every deploy of this stack.
         USER_POOL_ID: StringParameter.valueForStringParameter(this, AUTH_PARAMS.userPoolId),
@@ -44,6 +47,16 @@ export class ApiStack extends Stack {
     })
     // Exactly what api/src/store.ts calls.
     table.grant(fn, 'dynamodb:GetItem', 'dynamodb:Query', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem')
+
+    // Exactly what api/src/portrait-store.ts calls. ListBucket makes a missing portrait a 404 instead of a 403.
+    fn.addToRolePolicy(new PolicyStatement({
+      actions: ['s3:PutObject', 's3:GetObject', 's3:DeleteObject'],
+      resources: [`arn:${this.partition}:s3:::${props.portraitBucketName}/*`],
+    }))
+    fn.addToRolePolicy(new PolicyStatement({
+      actions: ['s3:ListBucket'],
+      resources: [`arn:${this.partition}:s3:::${props.portraitBucketName}`],
+    }))
 
     const api = new HttpApi(this, 'Api', {
       apiName: 'emberreach-api',

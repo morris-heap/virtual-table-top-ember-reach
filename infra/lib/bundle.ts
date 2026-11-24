@@ -24,8 +24,9 @@ export function bundle(entry: string) {
             target: 'node22',
             minify: true,
             sourcemap: true,
-            // The Node.js 22 runtime ships AWS SDK v3, so it isn't bundled.
-            external: ['@aws-sdk/*'],
+            // The Node.js 22 runtime ships the AWS SDK v3 clients, so they aren't bundled. The S3 request
+            // presigner (VTTER-55) is a helper package, so bundle it rather than rely on the runtime having it.
+            external: ['@aws-sdk/client-*', '@aws-sdk/lib-dynamodb'],
             logLevel: 'warning',
           })
           return true

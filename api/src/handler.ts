@@ -3,6 +3,7 @@
 import { parseAdventure, type AdventureDraft, type AdventureRecord, type AdventureSummary } from './adventure.ts'
 import gameData from '../../data/game.json'
 import { parseGame, type GameDraft, type GameRecord } from './game.ts'
+import { parsePortraitUpload, PORTRAIT, type PortraitStore } from './portrait.ts'
 import { isPlayerId, parseProfilePatch, type ProfilePatch, type ProfileRecord } from './profile.ts'
 import { parseSheet, ValidationError, type CharacterRecord, type CharacterSheet, type CharacterSummary } from './sheet.ts'
 
@@ -73,6 +74,7 @@ export interface Deps {
   profiles: ProfileStore
   adventures: AdventureStore
   games: GameStore
+  portraits: PortraitStore
   allowedOrigins: string[]
   verifyToken: VerifyToken
 }
@@ -98,7 +100,7 @@ function corsHeaders(origin: string | null, allowed: string[]): Record<string, s
   if (!origin || !allowed.includes(origin)) return {}
   return {
     'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Expose-Headers': 'Retry-After',
     'Access-Control-Max-Age': '86400',
@@ -154,6 +156,29 @@ async function itemRoute(
     default:
       throw new HttpError(405, 'Method not allowed')
   }
+}
+
+/** `/characters/:id/portrait` (VTTER-55). Only the hero's owner, and only a hero that exists. */
+async function portraitRoute(req: Request, heroId: string, owner: string, deps: Deps, cors: Record<string, string>): Promise<Response> {
+  const { portraits } = deps
+  if (req.method === 'DELETE') {
+    // Idempotent, and works even if the hero is already gone.
+    await portraits.delete(owner, heroId)
+    return json(null, 204, cors)
+  }
+  if (req.method !== 'GET' && req.method !== 'POST') throw new HttpError(405, 'Method not allowed')
+  if (!(await deps.store.get(owner, heroId))) throw new HttpError(404, 'Character not found')
+  if (req.method === 'POST') {
+    const upload = parsePortraitUpload(await readJson(req))
+    const url = await portraits.uploadUrl(owner, heroId, upload)
+    return json({
+      url, method: 'PUT', expiresIn: PORTRAIT.urlSeconds,
+      headers: { 'Content-Type': upload.contentType, 'Content-Length': String(upload.size) },
+    }, 200, cors)
+  }
+  const url = await portraits.downloadUrl(owner, heroId)
+  if (!url) throw new HttpError(404, 'No portrait')
+  return json({ url, expiresIn: PORTRAIT.urlSeconds }, 200, cors)
 }
 
 async function profileRoute(req: Request, owner: string, deps: Deps, cors: Record<string, string>): Promise<Response> {
@@ -343,10 +368,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
 
     const resource = parts[0]
-    const maxParts = resource === 'profile' ? 1 : resource === 'games' ? 4 : 2
-    // Three parts is only ever /games/:id/hero (VTTER-77); gamesRoute rejects any other third segment.
+    const maxParts = resource === 'profile' ? 1 : resource === 'games' ? 4 : resource === 'characters' ? 3 : 2
+    // Three parts is only ever /games/:id/hero (VTTER-77) or /characters/:id/portrait (VTTER-55);
+    // gamesRoute rejects any other games segment.
     if (!['characters', 'profile', 'adventures', 'games'].includes(resource) || parts.length > maxParts
-      || (parts.length === 3 && resource !== 'games')) {
+      || (parts.length === 3 && resource !== 'games' && !(resource === 'characters' && parts[2] === 'portrait'))) {
       throw new HttpError(404, 'Not found')
     }
     const owner = await ownerOf(req, deps.verifyToken)
@@ -367,10 +393,15 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (!UUID.test(id)) throw new HttpError(400, `${label} id must be a UUID`)
 
     if (resource === 'characters') {
+      if (parts.length === 3) return await portraitRoute(req, id, owner, deps, cors)
       return await itemRoute(req, label, cors, {
         get: () => deps.store.get(owner, id),
         save: body => deps.store.save(owner, id, parseSheet(body)),
-        remove: () => deps.store.delete(owner, id),
+        remove: async () => {
+          const removed = await deps.store.delete(owner, id)
+          if (removed) await deps.portraits.delete(owner, id) // the portrait goes with the hero
+          return removed
+        },
       })
     }
     return await itemRoute(req, label, cors, {

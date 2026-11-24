@@ -2,6 +2,7 @@
   "$comment": "Character sheet structure. Source of truth: rules/core-rules.md §3 (making a hero), §3.2 (ancestries), §4 (callings), §6.6 (Wounds, death rolls), §7.2 (armor), §8.1 (Supply), §9 (advancement), and sheets/character-sheet.md. Change both together (see AGENTS.md).",
   "version": "0.2",
   "levels": { "min": 1, "max": 10 },
+  "portrait": { "contentTypes": ["image/png", "image/jpeg", "image/webp"], "maxBytes": 1048576, "urlSeconds": 300 },
   "ancestries": ["Human", "Stoneborn", "Wildkin", "Emberkin", "Hollowborn"],
   "callings": ["Warden", "Blade", "Hexer", "Mender", "Pathfinder", "Silvertongue"],
   "attributeRange": { "min": -1, "max": 5 },

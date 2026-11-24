@@ -61,7 +61,7 @@ function Pick({ checked, onChange, name, cost, text }: { checked: boolean; onCha
   )
 }
 
-export default function SheetEdit({ sheet, change, error }: { sheet: CharacterSheet; change: Change; error: string }) {
+export default function SheetEdit({ sheet, change, error, portrait }: { sheet: CharacterSheet; change: Change; error: string; portrait: ReactNode }) {
   const set = (patch: Partial<CharacterSheet>) => change({ ...sheet, ...patch })
   const d = derive(sheet)
   const calling = callingInfo(sheet.calling)
@@ -171,14 +171,7 @@ export default function SheetEdit({ sheet, change, error }: { sheet: CharacterSh
           </div>
         </div>
 
-        <div className="cs-portrait" aria-label="Character portrait">
-          <div className="cs-portrait-inner">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
-            </svg>
-            <span>Portraits are coming</span>
-          </div>
-        </div>
+        {portrait}
       </section>
 
       <div className="cs-layout">

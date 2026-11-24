@@ -6,6 +6,7 @@ import type { Auth } from '../auth/useAuth.ts'
 import { creationSteps, SKILLS, type CharacterSheet } from '../engine/sheet.ts'
 import { characterRepository } from './current.ts'
 import { exportHero } from './repository.ts'
+import Portrait from './Portrait.tsx'
 import SheetEdit from './SheetEdit.tsx'
 import SheetView from './SheetView.tsx'
 
@@ -23,6 +24,7 @@ export default function SheetEditor({ hero, auth }: { hero: Hero; auth: Auth }) 
   const [valid, setValid] = useState(draft)
   const [error, setError] = useState('')
   const [mode, setMode] = useState<Mode>(() => (draft.level === 1 && creationSteps(draft).some(s => !s.done) ? 'edit' : 'view'))
+  const signedIn = auth.state.status === 'signedIn'
   const message = error || state.error?.message || ''
 
   function change(next: CharacterSheet) {
@@ -59,10 +61,10 @@ export default function SheetEditor({ hero, auth }: { hero: Hero; auth: Auth }) 
     </div>
     {error && <p className="notice error" role="alert">{error}</p>}
     {mode === 'view'
-      ? <SheetView sheet={valid} />
+      ? <SheetView sheet={valid} portrait={<Portrait heroId={hero.id} signedIn={signedIn} editable={false} />} />
       : <>
         <header className="cs-header"><p className="eyebrow">Level {draft.level} · {draft.ancestry} {draft.calling}</p><h1>{draft.name || 'Your hero'}</h1></header>
-        <SheetEdit sheet={draft} change={change} error={message} />
+        <SheetEdit sheet={draft} change={change} error={message} portrait={<Portrait heroId={hero.id} signedIn={signedIn} editable />} />
       </>}
   </section>
 }
