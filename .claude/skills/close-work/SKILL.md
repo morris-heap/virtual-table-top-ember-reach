@@ -117,7 +117,8 @@ and don't offer to ship until it's fixed or the user explicitly accepts it.
 1. **Commit** the agreed files. Write the message in the imperative, as `VTTER-<n>: <subject>`. If rules changed,
    say which in the body (for example "Rebalance Hexer Grit to 8 + 3/level"). End with the attribution line from
    the system reminder. Use a heredoc for the message.
-2. **Rebase** onto `origin/main` if it's behind. If there are conflicts, stop and ask. After rebasing, run the checks again.
+2. **Rebase** onto `origin/main` if it's behind. On a conflict, go to
+   [§3a Resolving a rebase conflict](#3a-resolving-a-rebase-conflict). After rebasing, run the checks again.
 3. **Push:** `git -C "$WT" push -u origin "$BRANCH"`. Use `--force-with-lease` only when the plan said to.
 4. **PR.** If there's none yet, run `gh pr create --base main --head "$BRANCH" --title "VTTER-<n>: <subject>"` with a
    body that has these parts: *Summary* (what and why), *Rules changed* (or "none"), *Checks* (what ran and passed),
@@ -133,6 +134,89 @@ and don't offer to ship until it's fixed or the user explicitly accepts it.
    Keep the local branch until the PR merges (tidy mode deletes it).
 
 Report the commit, the PR link, the Jira status, and whether the worktree was removed.
+
+## 3a. Resolving a rebase conflict
+
+A conflict is **not** automatically a stop. Resolve the mechanical ones, stop on anything that needs
+a human decision about which version is right. The division is what matters: a wrong resolution here
+silently reverts someone else's work, and the checks will not catch it because the file is
+self-consistent either way.
+
+List what conflicted before touching anything:
+
+```bash
+git -C "$WT" diff --name-only --diff-filter=U
+```
+
+### Resolve these yourself
+
+**Both sides appended to a list or log.** Keep both entries, in the file's own order:
+
+- `docs/decisions.md` — both added a dated entry. Keep both, **newest first**. Never drop one: each
+  records an approval that happened.
+- `docs/adr/` — if both branches claimed the same ADR number, renumber **yours** to the next free one
+  (check `origin/main`, not the local branch) and update every link to it.
+- `README.md` / `*/README.md` tables and lists, `MEMORY.md` — keep both rows.
+- *Open questions* in `rules/core-rules.md` — if one side removed a question and the other edited it,
+  the removal wins: it was settled, and the decision entry says so.
+
+**A lockfile** (`package-lock.json`). Never hand-merge it: the resolution has to come from
+`package.json`, not from reconciling two generated files. Take `origin/main`'s copy as the base and
+regenerate on top of it, so any dependency your branch added is re-applied:
+
+```bash
+git -C "$WT" checkout --ours -- <pkg>/package-lock.json
+cd "$WT/<pkg>" && npm install --package-lock-only && npm ci
+```
+
+**During a rebase the sides are inverted** (verified): `--ours` is `origin/main`, the branch being
+replayed **onto**, and `--theirs` is your own commit. This is the opposite of a merge, so reaching for
+`--theirs` here would silently discard everything `main` gained. `npm ci` at the end proves the
+regenerated lockfile still installs.
+
+**An import block, or two functions added to the same file in different places.** Keep both sides.
+
+### Stop and ask on these
+
+- **Any game number** that both sides changed — in `data/*.json`, `rules/`, `sheets/` or a table in
+  `README.md`. Which number is right is a rules decision, and it may be covered by a locked entry in
+  `docs/decisions.md` that one of the branches predates.
+- **The same rules sentence** rewritten on both sides.
+- **`infra/lib/*.ts`** — anything where both sides touched a construct. Resolving this wrong can
+  replace the table or the user pool. Edit infra files in place, and never reconstruct one from a
+  remembered copy.
+- **The same function body** changed on both sides, where keeping both is not possible.
+- **Anything you cannot explain in one sentence.** If the resolution needs a guess about intent, it
+  is not mechanical.
+
+When you stop: `git -C "$WT" rebase --abort`, so the branch is exactly as it was. Then report which
+files conflicted, what each side did, and what you would need to know to resolve it. Never resolve a
+rules conflict by picking the side that makes the tests pass.
+
+### After resolving
+
+1. `git -C "$WT" add <resolved files>` and `git -C "$WT" rebase --continue`.
+2. **Re-run every check for every package the branch touches** (§1). A conflict resolution is a code
+   change that nothing has verified: a textually clean merge can still be semantically broken.
+3. **Re-run the rules ripple check** (§1) if `rules/`, `sheets/`, `data/` or `docs/decisions.md` was
+   among the conflicted files. This is where a bad resolution shows up — a number that now disagrees
+   across files.
+4. **Show what you resolved** and how, as part of the plan in §2 or as its own short report if the
+   plan was already approved. Resolving a conflict is not covered by the earlier approval.
+5. Push with `--force-with-lease` (a rebase rewrites history).
+
+### Re-arming auto-merge
+
+A conflict **disarms** GitHub's auto-merge. If the PR had it on, it must be turned back on after the
+push, and only once the checks above pass:
+
+```bash
+gh pr merge <n> --auto --squash
+```
+
+**Only arm it when a check is still pending.** If CI has already gone green, `--auto` merges
+immediately rather than queuing, which deploys — so that is the user's call, not a step to take
+unasked. Say that the PR is ready and let them decide.
 
 ## 4. Tidy mode (PR already merged)
 
