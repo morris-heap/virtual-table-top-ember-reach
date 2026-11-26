@@ -95,6 +95,11 @@ in `app/`, then `npx wrangler deploy`); `.github/workflows/app.yml` checks pull 
   warn, never block. The warning counts **heroes**, not members, because each hero adds a turn to the Heroes' Phase.
 - Commands (run in `app/`): `npm install`, `npm run dev`, `npm test`, `npm run lint`, `npm run build`.
   **Run test, lint and build before you commit app changes.**
+- **End-to-end tests** (`app/e2e/`, Playwright) run against the **deployed** app with `npm run e2e`, not on pull
+  requests: they sign a throwaway user up through the real Cognito managed login, so they need the `ember-reach`
+  AWS profile. `e2e/throwaway-user.ts` deletes the Cognito user **and** its profile and `_player` rows afterwards;
+  deleting only the user would leave an orphaned player ID holding its slot. Override the target with
+  `E2E_BASE_URL`. Keep them serial (`workers: 1`): each one writes to the real table.
 - Game logic goes in `app/src/engine/` as pure functions with an injectable RNG, and every rule gets unit tests.
 - **Game numbers come from `/data/*.json`, never hard-coded.** When a rule's numbers change,
   update `rules/*.md` **and** `/data` in the same change (this is part of the ripple check above).
