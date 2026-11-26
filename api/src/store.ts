@@ -11,7 +11,10 @@ const LIST_LIMIT = 200
 const SUMMARY_FIELDS = ['id', 'name', 'level', 'ancestry', 'calling', 'updatedAt'] as const
 const ADVENTURE_SUMMARY_FIELDS = ['id', 'title', 'summary', 'levelMin', 'levelMax', 'visibility', 'updatedAt'] as const
 
-// Other item kinds share the owner's partition with heroes (docs/adr/0005). Heroes have no `kind`.
+// Every kind in the owner's partition is keyed `<kind>#<id>` and carries a `kind` attribute
+// (docs/adr/0005). Heroes were the last exception: a bare UUID, found by the absence of `kind`, which
+// made the hero list read the whole partition and throw most of it away (VTTER-98).
+const HERO_PREFIX = 'hero#'
 const ADVENTURE_PREFIX = 'adv#'
 const PROFILE_ID = 'profile'
 export const PLAYER_LOOKUP_OWNER = '_player' // (ownerId '_player', id <playerId>) -> owner, so a player ID is unique
@@ -62,17 +65,17 @@ export class DynamoCharacterStore implements CharacterStore {
     const items: CharacterSummary[] = []
     let start: Record<string, unknown> | undefined
     do {
+      // A range read on the prefix: the profile, adventures, Games and member pointers sharing this
+      // partition are never read, so a hero list costs the heroes and nothing else.
       const page = await guard(() => this.db.send(new QueryCommand({
         TableName: this.table,
-        KeyConditionExpression: 'ownerId = :o',
-        // Heroes only: the profile and adventures live in the same partition and carry a `kind`.
-        FilterExpression: 'attribute_not_exists(#kind)',
-        ExpressionAttributeValues: { ':o': ownerId },
+        KeyConditionExpression: 'ownerId = :o AND begins_with(id, :p)',
+        ExpressionAttributeValues: { ':o': ownerId, ':p': HERO_PREFIX },
         ProjectionExpression: SUMMARY_FIELDS.map(f => `#${f}`).join(', '),
-        ExpressionAttributeNames: { ...Object.fromEntries(SUMMARY_FIELDS.map(f => [`#${f}`, f])), '#kind': 'kind' },
+        ExpressionAttributeNames: Object.fromEntries(SUMMARY_FIELDS.map(f => [`#${f}`, f])),
         ExclusiveStartKey: start,
       })))
-      items.push(...(page.Items ?? []) as CharacterSummary[])
+      for (const it of (page.Items ?? []) as CharacterSummary[]) items.push(toHero(it))
       start = page.LastEvaluatedKey
     } while (start)
     return items.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, LIST_LIMIT)
@@ -81,31 +84,31 @@ export class DynamoCharacterStore implements CharacterStore {
   async get(ownerId: string, id: string) {
     // Strongly consistent, so a read right after a save sees it.
     const res = await guard(() => this.db.send(new GetCommand({
-      TableName: this.table, Key: { ownerId, id }, ConsistentRead: true,
+      TableName: this.table, Key: { ownerId, id: HERO_PREFIX + id }, ConsistentRead: true,
     })))
-    return (res.Item as CharacterRecord | undefined) ?? null
+    return res.Item ? toHero(res.Item as CharacterRecord) : null
   }
 
   async save(ownerId: string, id: string, sheet: CharacterSheet) {
     const now = new Date().toISOString()
-    const { names, values, sets } = setExpression({ ...sheet, updatedAt: now })
+    const { names, values, sets } = setExpression({ ...sheet, kind: 'hero', updatedAt: now })
     names['#createdAt'] = 'createdAt'
     values[':now'] = now
     sets.push('#createdAt = if_not_exists(#createdAt, :now)')
     const res = await guard(() => this.db.send(new UpdateCommand({
       TableName: this.table,
-      Key: { ownerId, id },
+      Key: { ownerId, id: HERO_PREFIX + id },
       UpdateExpression: `SET ${sets.join(', ')}`,
       ExpressionAttributeNames: names,
       ExpressionAttributeValues: values,
       ReturnValues: 'ALL_NEW',
     })))
-    return res.Attributes as CharacterRecord
+    return toHero(res.Attributes as CharacterRecord)
   }
 
   async delete(ownerId: string, id: string) {
     const res = await guard(() => this.db.send(new DeleteCommand({
-      TableName: this.table, Key: { ownerId, id }, ReturnValues: 'ALL_OLD',
+      TableName: this.table, Key: { ownerId, id: HERO_PREFIX + id }, ReturnValues: 'ALL_OLD',
     })))
     return res.Attributes !== undefined
   }
@@ -254,6 +257,16 @@ export class DynamoAdventureStore implements AdventureStore {
 }
 
 /** Strip the storage prefix and the internal `kind` marker. */
+/**
+ * Strip the storage prefix and `kind` so what leaves the API is what it always was: a hero whose `id`
+ * is the bare UUID. The prefix is a storage detail, and the bare UUID is what the app puts in a URL,
+ * what a member pointer stores as `heroId`, and what keys the S3 portrait object.
+ */
+function toHero<T extends { id: string }>(item: T & { kind?: string }): T {
+  const { kind: _kind, ...rest } = item
+  return { ...rest, id: item.id.startsWith(HERO_PREFIX) ? item.id.slice(HERO_PREFIX.length) : item.id } as T
+}
+
 function toAdventure(item: AdventureRecord & { kind?: string }): AdventureRecord {
   const { kind: _kind, ...rest } = item
   return { ...rest, id: item.id.slice(ADVENTURE_PREFIX.length) }

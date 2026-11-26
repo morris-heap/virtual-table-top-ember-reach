@@ -140,8 +140,10 @@ through GitHub OIDC (role `emberreach-github-deploy`, environment `aws`).
   field by field and never spread an index row: a GSI row carries `ownerId`, the GM's Cognito `sub`. For the same
   reason its page cursor holds **only** `updatedAt`; a GSI `LastEvaluatedKey` would publish that `sub`.
   Game names are unique **per GM**, not globally (a campaign can run for years), and a clash is a 409.
-  Every non-hero item has a
-  `kind` attribute, which the hero list filters on, so give any new item kind one. Adventures are private to their owner:
+  **Every item is keyed `<kind>#<id>` and carries a `kind` attribute** — heroes included since VTTER-98.
+  Give any new kind both, so it can be listed with `begins_with` and no query ever needs a `FilterExpression`
+  over the whole partition. The prefix is storage only: strip it on the way out, as `toHero`/`toAdventure` do,
+  because the app, member pointers (`heroId`) and S3 portrait keys all use the bare UUID. Adventures are private to their owner:
   the API accepts only the visibilities in `data/adventure.json` `liveVisibilities`. The player ID is public, and the Cognito
   `sub` never leaves the API. Allowed values come from `/data/character.json` and `/data/core.json`. Single-hero reads are
   strongly consistent (a read right after a save or delete must be fresh), so keep `ConsistentRead`.
