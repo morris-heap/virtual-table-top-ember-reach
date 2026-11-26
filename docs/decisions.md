@@ -25,7 +25,12 @@ Format: `### YYYY-MM-DD — Title` · **Decision** · **Why** · **Affects** (fi
    many people and heroes are at the table, newest activity first.
 6. **Party size still has no hard cap.** Past five heroes a browse row shows advice and the Join button stays
    enabled.
-7. **Existing Games were deleted, not migrated.** The three Games in the live table on 2026-11-25 were all
+7. **The index keys are generic (`gsi1pk` / `gsi1sk`), not named for this query.** One shared sparse index
+   serves every kind that needs cross-partition listing; each writes its own namespaced partition value
+   (`game#public` here). A table allows only 20 GSIs and each one charges write capacity on every indexed
+   write, so per-purpose indexes get expensive as item kinds multiply. Decided before the index shipped,
+   because renaming an index key afterwards replaces the index.
+8. **Existing Games were deleted, not migrated.** The three Games in the live table on 2026-11-25 were all
    private test tables, so they were removed before the rule shipped rather than back-filling reservations.
    Heroes, profiles, player IDs and adventures were untouched.
 
@@ -41,7 +46,7 @@ Format: `### YYYY-MM-DD — Title` · **Decision** · **Why** · **Affects** (fi
 
 **Affects:** api/ (`GET /games/public`, name reservations, 409 on a clash), app/ (`/games` browse screen, the
 listing toggle on a Game page, `newGame` starts unlisted), data/game.json (`listedKey`, `browsePageMax`),
-infra/ (sparse `PublicGames` index and its `dynamodb:Query` grant),
+infra/ (the shared sparse `gsi1` index and its `dynamodb:Query` grant),
 docs/adr/0008-public-games-and-unique-names.md, AGENTS.md. No rules text and no `data/` number changes:
 `party.recommendedMax` stays 5.
 

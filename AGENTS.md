@@ -129,8 +129,12 @@ through GitHub OIDC (role `emberreach-github-deploy`, environment `aws`).
   never JSON strings. The same partition also holds the profile (`id: profile`), adventures (`id: adv#<uuid>`) and the
   player ID lookup (`ownerId: _player`) ([ADR 0005](docs/adr/0005-profile-and-adventures.md)), plus Games (`id: game#<uuid>`
   under the GM), a member pointer per player (`id: gm#<uuid>`, which also holds that member's `heroId`) and a Game lookup (`ownerId: _game`)
-  ([ADR 0006](docs/adr/0006-games.md)), a per-GM Game-name reservation (`id: name#<normalized>`) and the sparse
-  `PublicGames` index ([ADR 0008](docs/adr/0008-public-games-and-unique-names.md)).
+  ([ADR 0006](docs/adr/0006-games.md)), a per-GM Game-name reservation (`id: name#<normalized>`) and the shared
+  sparse `gsi1` index ([ADR 0008](docs/adr/0008-public-games-and-unique-names.md)).
+  **`gsi1` is the table's one general-purpose index**, keyed `gsi1pk` / `gsi1sk`. A kind that needs listing
+  across partitions writes its own namespaced value there (`game#public` today) instead of getting its own
+  index: a table allows 20 GSIs and each charges write capacity on every indexed write. Items that write no
+  `gsi1pk` are absent from it and cost nothing. Widening its projection costs every indexed write, so don't.
   **Every Game read goes through the caller's member pointer**, so keep it that way and
   never return Cognito ids. `GET /games/public` is the one Game read with no membership check, so build its rows
   field by field and never spread an index row: a GSI row carries `ownerId`, the GM's Cognito `sub`. For the same

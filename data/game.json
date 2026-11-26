@@ -2,7 +2,7 @@
   "$comment": "Games (VTTER-72, docs/adr/0006-games.md; browse and unique names VTTER-76, docs/adr/0008-public-games-and-unique-names.md). A Game is the table people play an adventure from. Allowed values and limits for the API and app.",
   "visibilities": ["private", "public"],
   "adventureSources": ["builtin", "own"],
-  "$listedComment": "Constant partition key of the sparse PublicGames index. Written only for a public Game whose GM opted into listing, so private Games can never appear.",
+  "$listedComment": "Suffix of the gsi1pk value for a listed public Game (`game#` + this). The shared sparse index gsi1 holds it only for a public Game whose GM opted into listing, so private Games can never appear.",
   "listedKey": "public",
   "limits": {
     "nameMax": 80,

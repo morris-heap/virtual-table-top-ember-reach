@@ -48,23 +48,33 @@ name. There are no unreserved legacy names and therefore no window where a new G
 one is already using. Heroes, profiles, player IDs and adventures were left untouched: a Game only ever
 referenced a hero, so no sheet was affected.
 
-### 2. A sparse GSI lists public Games
+### 2. One shared sparse GSI, with generic keys, lists public Games
 
 | | |
 |---|---|
-| Index name | `PublicGames` |
-| Partition key | `listed` (string) |
-| Sort key | `updatedAt` (string) |
+| Index name | `gsi1` |
+| Partition key | `gsi1pk` (string) |
+| Sort key | `gsi1sk` (string) |
 | Projection | the browse-row fields only |
 
-- **Sparse and opt-in.** `listed` is written **only** for a Game that is public *and* whose GM chose to list it.
-  Anything else — every private Game, and a public Game shared by link only — simply has no `listed`
+- **The keys are generic, not named for this use.** `gsi1pk` / `gsi1sk` are opaque strings, and each item
+  kind decides what it writes there. Public Games write `gsi1pk = 'game#public'` and `gsi1sk = <updatedAt>`.
+  A later access pattern — browsing shared adventures, finding a player by player ID — adds its own prefix
+  to the **same** index instead of a second one. A table is capped at 20 GSIs and every index charges write
+  capacity on each indexed write, so one shared index is the cheaper shape as item kinds multiply. Naming the
+  keys `listed` / `updatedAt` would have made this index serve exactly one purpose for ever, and renaming an
+  index key after release replaces the index.
+- **Sparse and opt-in.** `gsi1pk` is written **only** for a Game that is public *and* whose GM chose to list it.
+  Anything else — every private Game, and a public Game shared by link only — simply has no `gsi1pk`
   attribute and so is absent from the index. "Private Games never appear" is then a property of the data,
-  not a filter the API has to remember to apply.
-- **`listed` is a constant** (`"public"`), so all listed Games share one partition and sort by `updatedAt`,
-  giving "most recently active first" and cursor pagination for free. At this scale one partition is right;
-  if listing ever grows enough to make it hot, the key can become a bucket (for example `public#<shard>`)
-  without changing the API.
+  not a filter the API has to remember to apply. The same holds for every other kind: an item that writes no
+  `gsi1pk` costs nothing.
+- **`gsi1pk` is a constant per kind** (`'game#public'` here), so all listed Games share one partition and sort
+  by `gsi1sk`, giving "most recently active first" and cursor pagination for free. At this scale one partition
+  is right; if listing ever grows enough to make it hot, the key can become a bucket (for example
+  `game#public#<shard>`) without changing the API.
+- **`listed` stays a boolean on the API**, not a stored attribute: the store derives it from whether `gsi1pk`
+  is present, so the wire contract is unchanged and there is one source of truth.
 - **The projection carries only what a browse row shows** (name, adventure ref, member count, GM's player ID
   and display name, `updatedAt`). A Cognito `sub` is never projected, so the index cannot leak one.
 
@@ -110,7 +120,12 @@ shows advice and the Join button stays enabled — the warning never blocks (no 
   the right default regardless: it never publishes a table someone made public only to share a link with a
   few friends.
 - **The index needs `dynamodb:Query` on the index ARN**, which is a separate grant from the table's own. It is
-  added in `infra/lib/api-stack.ts` alongside the existing actions.
+  added in `infra/lib/api-stack.ts` alongside the existing actions. The grant is on `gsi1`, so a later kind
+  that uses the same index needs no new permission.
+- **`gsi1` is now shared infrastructure.** Any future kind that writes `gsi1pk` lands in the same index, so a
+  new writer must namespace its partition values (`<kind>#...`) and must not widen the projection casually:
+  every projected attribute is copied on every indexed write. Adding a second index should need a reason that
+  this one cannot serve.
 - Name uniqueness is per GM, so the app cannot offer "join by name". Joining stays by link or from the browse
   list, both of which carry the UUID.
 
@@ -121,7 +136,12 @@ shows advice and the Join button stays enabled — the warning never blocks (no 
 - **Partition the index by adventure id:** supports "public Games running this adventure", but browsing
   everything then needs a query per adventure. The constant partition can be extended with this later as a
   filter rather than the primary key.
-- **A `public` boolean on the index instead of a sparse `listed`:** every Game would land in the index and the
+- **Per-purpose index keys (`listed` / `updatedAt`):** more readable for this one query, and it is what the
+  first draft of this branch built. Rejected because the next access pattern would then need its own index:
+  with many more item kinds planned (maps, terrain, friends, name reservations), per-purpose indexes reach the
+  20-index cap and multiply write cost. Changed before merge, while the index did not yet exist in any
+  deployed environment.
+- **A `public` boolean on the index instead of a sparse key:** every Game would land in the index and the
   API would filter private ones out on read. One forgotten filter leaks private Games, and the index pays for
   rows nobody can see. A sparse attribute makes the guarantee structural.
 - **Enforce uniqueness by querying the GM's Games before writing:** no extra item, but a read-then-write races,
