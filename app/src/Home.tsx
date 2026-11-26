@@ -37,7 +37,11 @@ export default function Home({ auth, name }: { auth: Auth; name: string }) {
       </header>
 
       <section className="panel" aria-labelledby="games-title">
-        <div className="panel-head"><h2 id="games-title">Games</h2></div>
+        <div className="panel-head">
+          <h2 id="games-title">Games</h2>
+          {/* Public Games anyone can join (VTTER-76). Open to players and GMs alike. */}
+          <Link to="/games" className="account-btn">Browse games</Link>
+        </div>
         {games.state.status !== 'ready'
           ? <LoadState state={games.state} reload={games.reload} what="your Games" />
           : games.state.data.length === 0
@@ -45,6 +49,7 @@ export default function Home({ auth, name }: { auth: Auth; name: string }) {
               <p className="muted">
                 No Games yet. Pick “Play solo” on a built-in <Link to="/adventures">adventure</Link> to start one alone
                 {isGm ? ', or “Create game” to run one for friends.' : <>. To run one for friends, turn on Game Master in <Link to="/profile">Settings</Link>.</>}
+                {' '}You can also <Link to="/games">browse public Games</Link> to join someone else's table.
               </p>
             )
             : (

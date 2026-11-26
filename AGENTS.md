@@ -24,7 +24,7 @@ relevant ones before answering design questions or making edits:
 | [rules/gm-guide.md](rules/gm-guide.md) | Foe stat blocks, encounter budgets, starter adventure |
 | [sheets/character-sheet.md](sheets/character-sheet.md) | Character sheet template (must match the rules) |
 | [data/](data/) | Machine-readable game numbers used by the app and API (`core.json`, `character.json`, `creation.json`, `adventure.json`, `game.json`), and the built-in adventures in `data/adventures/`. Must match the rules files |
-| [docs/adr/](docs/adr/) | Architecture decisions: [0001](docs/adr/0001-companion-app-stack.md) app stack, [0003](docs/adr/0003-backend-dynamodb-lambda.md) backend (replaced [0002](docs/adr/0002-backend-postgres.md)), [0004](docs/adr/0004-auth-cognito.md) sign-in, [0005](docs/adr/0005-profile-and-adventures.md) profile, player ID and private adventures, [0006](docs/adr/0006-games.md) Games, [0007](docs/adr/0007-3d-dice-tray.md) 3D dice tray |
+| [docs/adr/](docs/adr/) | Architecture decisions: [0001](docs/adr/0001-companion-app-stack.md) app stack, [0003](docs/adr/0003-backend-dynamodb-lambda.md) backend (replaced [0002](docs/adr/0002-backend-postgres.md)), [0004](docs/adr/0004-auth-cognito.md) sign-in, [0005](docs/adr/0005-profile-and-adventures.md) profile, player ID and private adventures, [0006](docs/adr/0006-games.md) Games, [0007](docs/adr/0007-3d-dice-tray.md) 3D dice tray, [0008](docs/adr/0008-public-games-and-unique-names.md) browsing public Games and unique Game names |
 | [docs/mockups/](docs/mockups/) | Character sheet UI mockups (view and guided-creation edit mode) for VTTER-47 |
 
 ## How we establish rules (workflow)
@@ -90,7 +90,8 @@ in `app/`, then `npx wrangler deploy`); `.github/workflows/app.yml` checks pull 
   it is the Cognito redirect. Calls to the API go through `app/src/api/client.ts` and never send a user id.
   Built-in adventures are `data/adventures/*.json`, listed in `app/src/adventures/builtIn.ts` **and** in `api/src/game.ts`
   (`BUILT_IN_IDS`), so add both when you add one. Games (VTTER-72, `/games/:id`) are created from an adventure on Home,
-  and each member brings one of their own heroes (VTTER-77). The
+  and each member brings one of their own heroes (VTTER-77). `/games` is the public browse list (VTTER-76): a Game
+  appears there only when its GM made it public **and** ticked listing, which are two separate opt-ins. The
   friends list is VTTER-73. **Scope is locked** (2026-11-25, VTTER-92): the app automates Emberreach's own rules
   deeply and is **not** a general VTT platform. Don't add dynamic lighting or per-token vision, 3D terrain, a user
   scripting language, a system builder for other RPGs, a content marketplace or built-in video/voice. Joining a
@@ -128,8 +129,18 @@ through GitHub OIDC (role `emberreach-github-deploy`, environment `aws`).
   never JSON strings. The same partition also holds the profile (`id: profile`), adventures (`id: adv#<uuid>`) and the
   player ID lookup (`ownerId: _player`) ([ADR 0005](docs/adr/0005-profile-and-adventures.md)), plus Games (`id: game#<uuid>`
   under the GM), a member pointer per player (`id: gm#<uuid>`, which also holds that member's `heroId`) and a Game lookup (`ownerId: _game`)
-  ([ADR 0006](docs/adr/0006-games.md)). **Every Game read goes through the caller's member pointer**, so keep it that way and
-  never return Cognito ids. Every non-hero item has a
+  ([ADR 0006](docs/adr/0006-games.md)), a per-GM Game-name reservation (`id: name#<normalized>`) and the shared
+  sparse `gsi1` index ([ADR 0008](docs/adr/0008-public-games-and-unique-names.md)).
+  **`gsi1` is the table's one general-purpose index**, keyed `gsi1pk` / `gsi1sk`. A kind that needs listing
+  across partitions writes its own namespaced value there (`game#public` today) instead of getting its own
+  index: a table allows 20 GSIs and each charges write capacity on every indexed write. Items that write no
+  `gsi1pk` are absent from it and cost nothing. Widening its projection costs every indexed write, so don't.
+  **Every Game read goes through the caller's member pointer**, so keep it that way and
+  never return Cognito ids. `GET /games/public` is the one Game read with no membership check, so build its rows
+  field by field and never spread an index row: a GSI row carries `ownerId`, the GM's Cognito `sub`. For the same
+  reason its page cursor holds **only** `updatedAt`; a GSI `LastEvaluatedKey` would publish that `sub`.
+  Game names are unique **per GM**, not globally (a campaign can run for years), and a clash is a 409.
+  Every non-hero item has a
   `kind` attribute, which the hero list filters on, so give any new item kind one. Adventures are private to their owner:
   the API accepts only the visibilities in `data/adventure.json` `liveVisibilities`. The player ID is public, and the Cognito
   `sub` never leaves the API. Allowed values come from `/data/character.json` and `/data/core.json`. Single-hero reads are

@@ -27,7 +27,8 @@ async function load(id: string): Promise<Found> {
 }
 
 function draftOf(g: Game, patch: Partial<GameDraft> = {}): GameDraft {
-  return { name: g.name, adventure: g.adventure, visibility: g.visibility, solo: g.solo, ...patch }
+  // Every field goes back, `listed` included: leaving one out would quietly unlist the Game on any save.
+  return { name: g.name, adventure: g.adventure, visibility: g.visibility, solo: g.solo, listed: g.listed, ...patch }
 }
 
 function AdventureBlock({ game }: { game: Game }) {
@@ -258,12 +259,25 @@ function GameScreen({ game, myPlayerId, onChange, onGone }: {
             <span>Public: anyone with the link can join</span>
           </label>
           {game.visibility === 'public' && (
-            <div className="id-row">
-              <code className="player-id">{link}</code>
-              <button type="button" className="account-btn" onClick={() => void copyLink()}>{copied ? 'Copied' : 'Copy'}</button>
-            </div>
+            <>
+              <div className="id-row">
+                <code className="player-id">{link}</code>
+                <button type="button" className="account-btn" onClick={() => void copyLink()}>{copied ? 'Copied' : 'Copy'}</button>
+              </div>
+              {/* Listing is a second, separate opt-in (VTTER-76): a public Game stays link-only until the GM asks for it. */}
+              <label className="check">
+                <input
+                  type="checkbox" checked={game.listed} disabled={busy}
+                  onChange={e => void save({ listed: e.target.checked })}
+                />
+                <span>List it on <Link to="/games">Browse games</Link> so anyone can find it</span>
+              </label>
+            </>
           )}
-          <p className="muted">Private Games can only be joined by invitation. A list of public Games to browse is planned.</p>
+          <p className="muted">
+            Private Games can only be joined by invitation. A public Game can be joined with its link;
+            listing it as well puts it on the public browse list.
+          </p>
         </section>
       )}
 

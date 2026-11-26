@@ -1,11 +1,14 @@
 import { MemoryPortraits } from './portraits-helper.ts'
 import { describe, expect, it } from 'vitest'
 import type { AdventureDraft, AdventureRecord } from '../src/adventure.ts'
-import { parseGame, type GameDraft, type GameRecord } from '../src/game.ts'
-import { handle, type AdventureStore, type CharacterStore, type GameStore, type ProfileStore } from '../src/handler.ts'
+import gameData from '../../data/game.json'
+import { nameKey, parseGame, type GameDraft, type GameRecord } from '../src/game.ts'
+import { handle, NameTaken, type AdventureStore, type CharacterStore, type GameStore, type ProfileStore } from '../src/handler.ts'
 import type { ProfilePatch, ProfileRecord } from '../src/profile.ts'
 
 const ORIGIN = 'https://emberreach.morris-heap.com'
+// Limits come from /data, never hard-coded in a test either.
+const gameLimits = gameData.limits
 const GM = 'aaaa'
 const ANA = 'bbbb'
 const BEN = 'cccc'
@@ -66,13 +69,32 @@ class MemoryGames implements GameStore {
   }
   async countOwned(gm: string) { return [...this.games.values()].filter(g => g.ownerId === gm).length }
   async countJoined(user: string) { return (await this.listFor(user)).length }
+  /** Bumped per save so listPublic has a stable newest-first order, like `updatedAt` in DynamoDB. */
+  private clock = 0
   async save(gm: string, id: string, d: GameDraft) {
     const old = this.games.get(`${gm}/${id}`)
-    const g = { ...d, id, ownerId: gm, memberIds: old?.memberIds ?? [gm], createdAt: 'x', updatedAt: 'x' }
+    // Names are unique within one GM (ADR 0008), so mirror the store's conditional write.
+    const clash = [...this.games.values()].find(g => g.ownerId === gm && g.id !== id && nameKey(g.name) === nameKey(d.name))
+    if (clash) throw new NameTaken(d.name)
+    const g = {
+      ...d, id, ownerId: gm, memberIds: old?.memberIds ?? [gm],
+      createdAt: old?.createdAt ?? 'x', updatedAt: `t${String(++this.clock).padStart(3, '0')}`,
+    }
     this.games.set(`${gm}/${id}`, g)
     this.pointers.set(`${gm}/${id}`, gm)
     this.lookup.set(id, gm)
     return g
+  }
+  /** The sparse index, in memory: only listed public Games are in it at all. */
+  async listPublic(cursor?: string, limit = 24) {
+    const all = [...this.games.values()]
+      .filter(g => g.listed && g.visibility === 'public')
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    const after = cursor ? Buffer.from(cursor, 'base64url').toString('utf8') : undefined
+    const rows = after ? all.filter(g => g.updatedAt < after) : all
+    const games = rows.slice(0, limit)
+    const last = games.length === limit ? games[games.length - 1] : undefined
+    return { games, cursor: last ? Buffer.from(last.updatedAt).toString('base64url') : null }
   }
   async delete(gm: string, id: string) {
     const g = this.games.get(`${gm}/${id}`)
@@ -156,7 +178,7 @@ const table = { name: 'Friday night', adventure: { source: 'builtin', id: 'soot-
 
 describe('parseGame', () => {
   it('accepts a built-in adventure and defaults to private, not solo', () => {
-    expect(parseGame(table)).toEqual({ name: 'Friday night', adventure: { source: 'builtin', id: 'soot-kings-hearth' }, visibility: 'private', solo: false })
+    expect(parseGame(table)).toEqual({ name: 'Friday night', adventure: { source: 'builtin', id: 'soot-kings-hearth' }, visibility: 'private', solo: false, listed: false })
   })
   it('rejects an unknown built-in, a bad own id, a public solo and a solo on an own adventure', () => {
     expect(() => parseGame({ ...table, adventure: { source: 'builtin', id: 'nope' } })).toThrow(/not a built-in/)
@@ -392,5 +414,149 @@ describe('a hero in a Game', () => {
     await call('PUT', `/games/${G2}`, ANA, solo)
     const picked = await (await call('PUT', `/games/${G2}/hero`, ANA, { heroId: HERO })).json()
     expect(picked.members.find((m: { playerId: string }) => m.playerId === ids.ana).hero.name).toBe('Vashti')
+  })
+})
+
+describe('browsing public Games (VTTER-76)', () => {
+  const listed = { name: 'Open table', adventure: { source: 'builtin', id: 'soot-kings-hearth' }, visibility: 'public', listed: true }
+  const G3 = '33333333-3333-4333-8333-333333333333'
+
+  it('lists only Games that are public AND listed, and never a private one', async () => {
+    const { call, games } = await world()
+    await call('PUT', `/games/${G1}`, GM, listed)
+    await call('PUT', `/games/${G2}`, GM, { ...listed, name: 'Hidden table', listed: false })
+    await call('PUT', `/games/${G3}`, GM, { ...listed, name: 'Private table', visibility: 'private' })
+
+    const body = await (await call('GET', '/games/public', ANA)).json()
+    expect(body.games.map((g: { name: string }) => g.name)).toEqual(['Open table'])
+    // A private Game is absent from the index, not merely filtered out on read.
+    expect(await games.listPublic().then(p => p.games.map(g => g.name))).toEqual(['Open table'])
+  })
+
+  it('never leaks a Cognito id, and shows the GM by player ID and display name', async () => {
+    const { call, profiles, ids } = await world()
+    // MemoryProfiles defaults displayName to the Cognito id, so set a real one: otherwise the
+    // "no sub in the body" check below would trip on the fixture rather than on a real leak.
+    await profiles.update(GM, { displayName: 'Rook' })
+    await call('PUT', `/games/${G1}`, GM, listed)
+    const body = await (await call('GET', '/games/public', ANA)).json()
+    const [row] = body.games
+    expect(row.gm).toEqual({ playerId: ids.gm, displayName: 'Rook' })
+    // The GM's Cognito sub must not appear anywhere in the response, under any key.
+    expect(JSON.stringify(body)).not.toContain(GM)
+    expect(row).not.toHaveProperty('ownerId')
+    expect(row).not.toHaveProperty('memberIds')
+    expect(Object.keys(row).sort()).toEqual(
+      ['adventure', 'full', 'gm', 'heroCount', 'id', 'joined', 'memberCount', 'name', 'updatedAt'],
+    )
+  })
+
+  it('reports member and hero counts, fullness, and whether the caller already joined', async () => {
+    const { call, heroes, ids } = await world()
+    await call('PUT', `/games/${G1}`, GM, listed)
+    await call('PUT', `/games/${G1}/members/${ids.ana}`, ANA)
+    const HERO = '55555555-5555-4555-8555-555555555555'
+    heroes.add(ANA, HERO, 'Vashti')
+    await call('PUT', `/games/${G1}/hero`, ANA, { heroId: HERO })
+
+    const asAna = (await (await call('GET', '/games/public', ANA)).json()).games[0]
+    expect(asAna).toMatchObject({ memberCount: 2, heroCount: 1, joined: true, full: false })
+    // Ben is not in it, so he sees joined: false and the UI offers Join.
+    const asBen = (await (await call('GET', '/games/public', BEN)).json()).games[0]
+    expect(asBen.joined).toBe(false)
+
+  })
+
+  it('flags a Game as full at the data/game.json member limit', async () => {
+    const { call, games } = await world()
+    await call('PUT', `/games/${G1}`, GM, listed)
+    expect((await (await call('GET', '/games/public', BEN)).json()).games[0].full).toBe(false)
+    // `full` is derived from data/game.json `maxMembers`, never hard-coded, so fill it to that.
+    const game = games.games.get(`${GM}/${G1}`)!
+    game.memberIds = Array.from({ length: gameLimits.maxMembers }, (_, i) => `filler-${i}`)
+    const row = (await (await call('GET', '/games/public', BEN)).json()).games[0]
+    expect(row).toMatchObject({ full: true, memberCount: gameLimits.maxMembers, joined: false })
+  })
+
+  it('pages newest first and the cursor carries no owner id', async () => {
+    const { call } = await world()
+    for (const [i, id] of [G1, G2, G3].entries()) await call('PUT', `/games/${id}`, GM, { ...listed, name: `Table ${i}` })
+
+    const first = await (await call('GET', '/games/public?limit=2', ANA)).json()
+    expect(first.games.map((g: { name: string }) => g.name)).toEqual(['Table 2', 'Table 1'])
+    expect(first.cursor).toBeTruthy()
+    // The cursor is the index sort key only: a GSI LastEvaluatedKey would have carried ownerId.
+    expect(Buffer.from(first.cursor, 'base64url').toString('utf8')).not.toContain(GM)
+
+    const second = await (await call('GET', `/games/public?limit=2&cursor=${encodeURIComponent(first.cursor)}`, ANA)).json()
+    expect(second.games.map((g: { name: string }) => g.name)).toEqual(['Table 0'])
+    // A short page is the end of the list, so no cursor is offered.
+    expect(second.cursor).toBeNull()
+  })
+
+  it('needs a token, rejects a write, and survives a junk cursor or limit', async () => {
+    const { call } = await world()
+    await call('PUT', `/games/${G1}`, GM, listed)
+    expect((await call('GET', '/games/public', null)).status).toBe(401)
+    expect((await call('POST', '/games/public', ANA)).status).toBe(405)
+    // A hand-made cursor or limit must not 500: it falls back to the top of the list.
+    expect((await call('GET', '/games/public?cursor=!!!notbase64!!!', ANA)).status).toBe(200)
+    expect((await call('GET', '/games/public?limit=abc', ANA)).status).toBe(200)
+  })
+
+  it('joins a listed Game from the browse list without an invitation', async () => {
+    const { call, ids } = await world()
+    await call('PUT', `/games/${G1}`, GM, listed)
+    expect((await call('PUT', `/games/${G1}/members/${ids.ben}`, BEN)).status).toBe(200)
+    expect((await (await call('GET', '/games/public', BEN)).json()).games[0].joined).toBe(true)
+  })
+
+  it('does not let a browser join an unlisted or private Game they have no link to', async () => {
+    const { call, ids } = await world()
+    // Unlisted but public: joinable by link (that is what public means), just not advertised.
+    await call('PUT', `/games/${G2}`, GM, { ...listed, name: 'Hidden table', listed: false })
+    expect((await (await call('GET', '/games/public', BEN)).json()).games).toEqual([])
+    expect((await call('PUT', `/games/${G2}/members/${ids.ben}`, BEN)).status).toBe(200)
+    // Private stays closed to anyone the GM has not invited.
+    await call('PUT', `/games/${G3}`, GM, { ...listed, name: 'Private table', visibility: 'private' })
+    expect((await call('PUT', `/games/${G3}/members/${ids.ben}`, BEN)).status).toBe(404)
+  })
+})
+
+describe('unique Game names per GM (VTTER-76)', () => {
+  const t = { name: 'Friday Night', adventure: { source: 'builtin', id: 'soot-kings-hearth' }, visibility: 'private' }
+
+  it('rejects a second Game with the same name from one GM, case- and space-insensitively', async () => {
+    const { call } = await world()
+    expect((await call('PUT', `/games/${G1}`, GM, t)).status).toBe(200)
+    const clash = await call('PUT', `/games/${G2}`, GM, { ...t, name: 'friday  night' })
+    expect(clash.status).toBe(409)
+    expect((await clash.json()).error).toMatch(/already have a Game called/)
+  })
+
+  it('lets a different GM use the same name, and lets a Game keep its own name on re-save', async () => {
+    const { call, profiles } = await world()
+    await profiles.update(ANA, { gameMaster: true })
+    await call('PUT', `/games/${G1}`, GM, t)
+    // Unique per GM, not globally: two tables may both be "Friday Night" (a Game can run for years).
+    expect((await call('PUT', `/games/${G2}`, ANA, t)).status).toBe(200)
+    // Re-saving the same Game keeps its own reservation rather than colliding with itself.
+    expect((await call('PUT', `/games/${G1}`, GM, { ...t, visibility: 'public' })).status).toBe(200)
+  })
+
+  it('frees the name once the Game is deleted', async () => {
+    const { call } = await world()
+    await call('PUT', `/games/${G1}`, GM, t)
+    await call('DELETE', `/games/${G1}`, GM)
+    expect((await call('PUT', `/games/${G2}`, GM, t)).status).toBe(200)
+  })
+
+  it('keeps punctuation significant and rejects a whitespace-only name', async () => {
+    const { call } = await world()
+    await call('PUT', `/games/${G1}`, GM, { ...t, name: 'Ash & Ember' })
+    // Punctuation is kept, so these are different names.
+    expect((await call('PUT', `/games/${G2}`, GM, { ...t, name: 'Ash and Ember' })).status).toBe(200)
+    expect(nameKey('  Friday   Night  ')).toBe('friday night')
+    expect((await call('PUT', '/games/33333333-3333-4333-8333-333333333333', GM, { ...t, name: '   ' })).status).toBe(400)
   })
 })

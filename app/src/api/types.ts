@@ -61,6 +61,11 @@ export interface GameDraft {
   visibility: 'private' | 'public'
   /** One player on a built-in adventure: no GM, no invites. */
   solo: boolean
+  /**
+   * Show this Game in the public browse list (VTTER-76). Only meaningful while `visibility` is
+   * public: a private Game is never listed, whatever this says.
+   */
+  listed: boolean
 }
 
 export type GameRole = 'gm' | 'player'
@@ -83,6 +88,30 @@ export interface GameMember {
   hero: GameHero | null
   /** True for the signed-in member, who is the only one who can change this hero. */
   mine: boolean
+}
+
+/**
+ * One row of the public browse list (VTTER-76). Deliberately not a `GameSummary`: a browser is not a
+ * member, so there is no `role`, and the GM appears only as a player ID and display name.
+ */
+export interface PublicGame {
+  id: string
+  name: string
+  adventure: AdventureRef
+  gm: { playerId: string; displayName: string }
+  memberCount: number
+  /** Heroes brought, which is what the party-size advice counts (VTTER-77). */
+  heroCount: number
+  full: boolean
+  /** True when the signed-in player is already in: the UI offers Open instead of Join. */
+  joined: boolean
+  updatedAt: string
+}
+
+export interface PublicGamePage {
+  games: PublicGame[]
+  /** Pass back as `cursor` for the next page. Null at the end of the list. */
+  cursor: string | null
 }
 
 export interface Game extends GameDraft {

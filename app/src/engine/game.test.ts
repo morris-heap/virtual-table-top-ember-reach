@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GameMember } from '../api/types.ts'
-import { cleanPlayerId, gameLink, heroCount, memberName, newGame, partyWarning, playerCount, RECOMMENDED_PARTY } from './game.ts'
+import { cleanPlayerId, GAME_LIMITS, gameLink, heroCount, heroCountWarning, joinBlocker, memberName, newGame, partyWarning, playerCount, RECOMMENDED_PARTY } from './game.ts'
 
 const hero = (name: string) => ({ id: name, name, level: 1, ancestry: 'Emberkin', calling: 'Hexer' })
 /** A player with a hero, unless `withHero` says otherwise. */
@@ -25,7 +25,7 @@ describe('cleanPlayerId', () => {
 
 describe('newGame', () => {
   it('starts private, trims and falls back to a name', () => {
-    expect(newGame('  Friday  ', ref, false)).toEqual({ name: 'Friday', adventure: ref, visibility: 'private', solo: false })
+    expect(newGame('  Friday  ', ref, false)).toEqual({ name: 'Friday', adventure: ref, visibility: 'private', solo: false, listed: false })
     expect(newGame('   ', ref, true).name).toBe('New Game')
     expect(newGame('x'.repeat(200), ref, false).name).toHaveLength(80)
   })
@@ -58,5 +58,27 @@ describe('labels', () => {
     expect(memberName(gm)).toBe('Kit')
     expect(memberName(player(1))).toBe('EMBER-1AAAA')
     expect(memberName({ playerId: '', displayName: '', role: 'player', hero: null, mine: false })).toBe('A player')
+  })
+})
+
+describe('browsing public Games (VTTER-76)', () => {
+  it('starts a new Game unlisted, so listing is always the GM\'s own choice', () => {
+    expect(newGame('Friday', ref, false).listed).toBe(false)
+    expect(newGame('Friday', ref, true).listed).toBe(false)
+  })
+
+  it('blocks joining only a full table, never a crowded one', () => {
+    expect(joinBlocker({ full: false, joined: false })).toBeNull()
+    expect(joinBlocker({ full: true, joined: false })).toMatch(new RegExp(String(GAME_LIMITS.maxMembers)))
+    // Already in: there is no Join button to block, so no reason either.
+    expect(joinBlocker({ full: true, joined: true })).toBeNull()
+  })
+
+  it('warns past the recommended party without blocking', () => {
+    expect(heroCountWarning(RECOMMENDED_PARTY)).toBeNull()
+    const warning = heroCountWarning(RECOMMENDED_PARTY + 1)
+    expect(warning).toMatch(new RegExp(String(RECOMMENDED_PARTY + 1)))
+    // Advice, not a block: a crowded table is still joinable.
+    expect(joinBlocker({ full: false, joined: false })).toBeNull()
   })
 })

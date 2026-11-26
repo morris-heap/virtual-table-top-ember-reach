@@ -53,6 +53,11 @@ export interface GameStore {
   heroesOf(gameId: string, memberIds: string[]): Promise<Record<string, string>>
   /** Set the caller's hero for a Game, or clear it with null. The caller must already be a member. */
   setHero(userId: string, gameId: string, heroId: string | null): Promise<void>
+  /**
+   * One page of public Games their GM opted to list, newest activity first (VTTER-76). Reads a sparse
+   * index, so a private or unlisted Game is absent from it rather than filtered out here.
+   */
+  listPublic(cursor?: string, limit?: number): Promise<{ games: GameRecord[]; cursor: string | null }>
 }
 
 /** Adventures are keyed (owner, id), so one owner can never read or change another's. */
@@ -85,6 +90,13 @@ const BEARER = /^Bearer\s+(\S+)$/i
 
 /** Thrown by the store when the database is briefly unavailable (throttled or a transient AWS error). */
 export class DatabaseUnavailable extends Error {}
+
+/**
+ * A GM already has a Game with this name (ADR 0008). Declared here, not in the store, so the store
+ * depends on the handler and not the other way round — the same way DatabaseUnavailable does.
+ * Caught centrally below, so every route that saves a Game answers 409 without repeating itself.
+ */
+export class NameTaken extends Error {}
 
 class HttpError extends Error {
   status: number
@@ -242,13 +254,50 @@ function gameSummary(game: GameRecord, userId: string) {
   }
 }
 
-/** `/games`, `/games/:id` and `/games/:id/members/:playerId`. Every read goes through membership. */
+/**
+ * One row of the public browse list (VTTER-76). Built field by field on purpose: an index row carries
+ * the base table keys, and `ownerId` there is the GM's Cognito `sub`, which must never leave the API.
+ * So never spread a row into the response — name every field that goes out.
+ * `joined` lets the UI show "Open" instead of "Join" without a second request per row.
+ */
+async function browseRow(game: GameRecord, userId: string, deps: Deps) {
+  const gm = await deps.profiles.peek(game.ownerId)
+  return {
+    id: game.id,
+    name: game.name,
+    adventure: game.adventure,
+    // The GM as other players may see them: a public player ID and a display name, never a Cognito id.
+    gm: { playerId: gm?.playerId ?? '', displayName: gm?.displayName ?? '' },
+    memberCount: game.memberIds.length,
+    heroCount: Object.keys(await deps.games.heroesOf(game.id, game.memberIds)).length,
+    full: game.memberIds.length >= gameData.limits.maxMembers,
+    joined: game.memberIds.includes(userId),
+    updatedAt: game.updatedAt,
+  }
+}
+
+/** `/games`, `/games/public`, `/games/:id` and `/games/:id/members/:playerId`. Every read goes through membership. */
 async function gamesRoute(req: Request, parts: string[], owner: string, deps: Deps, cors: Record<string, string>): Promise<Response> {
   const { games } = deps
   if (parts.length === 1) {
     if (req.method !== 'GET') throw new HttpError(405, 'Method not allowed')
     return json({ games: (await games.listFor(owner)).map(g => gameSummary(g, owner)) }, 200, cors)
   }
+  // /games/public — the browse list (VTTER-76). Must come before the UUID check: "public" is not an id.
+  // Signed in, like every other route, but it needs no membership: that is the point of a public Game.
+  if (parts[1] === 'public' && parts.length === 2) {
+    if (req.method !== 'GET') throw new HttpError(405, 'Method not allowed')
+    const url = new URL(req.url)
+    const raw = url.searchParams.get('limit')
+    // A bad limit falls back to the default rather than failing the browse.
+    const limit = raw && /^\d{1,3}$/.test(raw) ? Number(raw) : undefined
+    const page = await games.listPublic(url.searchParams.get('cursor') ?? undefined, limit)
+    return json({
+      games: await Promise.all(page.games.map(g => browseRow(g, owner, deps))),
+      cursor: page.cursor,
+    }, 200, cors)
+  }
+
   const id = parts[1].toLowerCase()
   if (!UUID.test(id)) throw new HttpError(400, 'Game id must be a UUID')
 
@@ -419,6 +468,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   } catch (err) {
     if (err instanceof HttpError) return json({ error: err.message }, err.status, { ...cors, ...err.headers })
     if (err instanceof ValidationError) return json({ error: err.message }, 400, cors)
+    if (err instanceof NameTaken) {
+      return json({ error: `You already have a Game called "${err.message}". Pick another name.` }, 409, cors)
+    }
     if (err instanceof DatabaseUnavailable) {
       return json({ error: 'Database temporarily unavailable. Try again shortly.' }, 503, { ...cors, 'Retry-After': '5' })
     }

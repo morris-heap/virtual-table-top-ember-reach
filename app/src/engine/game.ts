@@ -16,7 +16,24 @@ export function cleanPlayerId(input: string): string | null {
 }
 
 export function newGame(name: string, adventure: AdventureRef, solo: boolean): GameDraft {
-  return { name: name.trim().slice(0, GAME_LIMITS.nameMax) || 'New Game', adventure, visibility: 'private', solo }
+  // Private and unlisted to start with: listing a Game is always the GM's own choice (VTTER-76).
+  return { name: name.trim().slice(0, GAME_LIMITS.nameMax) || 'New Game', adventure, visibility: 'private', solo, listed: false }
+}
+
+/**
+ * Why a listed Game cannot be joined right now, or null when it can be (VTTER-76).
+ * Being past the recommended party size is not a reason: that is advice, never a block.
+ */
+export function joinBlocker(game: { full: boolean; joined: boolean }): string | null {
+  if (game.joined) return null
+  return game.full ? `This table is full (${GAME_LIMITS.maxMembers} people).` : null
+}
+
+/** The same advice as partyWarning, for a browse row where only the hero count is known. */
+export function heroCountWarning(heroes: number): string | null {
+  return heroes > RECOMMENDED_PARTY
+    ? `${heroes} heroes already, past the recommended ${RECOMMENDED_PARTY}.`
+    : null
 }
 
 /** The link a GM shares so people can join a public Game. */

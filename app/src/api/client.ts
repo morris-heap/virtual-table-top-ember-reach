@@ -3,7 +3,7 @@
 import { apiUrl, authConfig } from '../auth/config.ts'
 import { currentUser, getAccessToken } from '../auth/session.ts'
 import { ApiError, request } from './request.ts'
-import type { Adventure, AdventureDraft, AdventureSummary, Game, GameDraft, GameSummary, Profile } from './types.ts'
+import type { Adventure, AdventureDraft, AdventureSummary, Game, GameDraft, GameSummary, Profile, PublicGamePage } from './types.ts'
 
 export { ApiError }
 
@@ -32,6 +32,12 @@ export const adventuresApi = {
 
 export const gamesApi = {
   list: async () => (await call<{ games: GameSummary[] }>('GET', '/games')).games,
+  /**
+   * One page of public Games to browse (VTTER-76). Signed in, like every call, but needs no
+   * membership. Pass the previous page's `cursor` for the next one.
+   */
+  listPublic: (cursor?: string | null) =>
+    call<PublicGamePage>('GET', `/games/public${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`),
   get: (id: string) => call<Game>('GET', `/games/${id}`),
   save: (id: string, draft: GameDraft) => call<Game>('PUT', `/games/${id}`, draft),
   remove: (id: string) => call<void>('DELETE', `/games/${id}`),

@@ -6,14 +6,39 @@
 // Only Get, Query, Update and Delete are used, so the Lambda role needs no new action.
 import { DeleteCommand, GetCommand, QueryCommand, UpdateCommand, type DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import gameData from '../../data/game.json'
-import type { GameDraft, GameRecord } from './game.ts'
-import type { GameStore } from './handler.ts'
+import { nameKey, type GameDraft, type GameRecord } from './game.ts'
+import { NameTaken, type GameStore } from './handler.ts'
 import { guard, isConditionFailure, setExpression } from './store.ts'
 
 export const GAME_PREFIX = 'game#'
 export const MEMBER_PREFIX = 'gm#'
 export const GAME_LOOKUP_OWNER = '_game'
+/** (gmId, name#<normalized>) reserves a Game name within one GM's Games (ADR 0008). */
+export const NAME_PREFIX = 'name#'
+/**
+ * The table's one general-purpose index (ADR 0008), keyed by the generic `gsi1pk` / `gsi1sk` so later
+ * item kinds share it instead of each adding an index. Must match GSI1 in infra/lib/data-stack.ts.
+ */
+export const GSI1 = 'gsi1'
+/** `gsi1pk` of a public Game a GM opted to list. Namespaced, so another kind can use the same index. */
+export const LISTED_GAME_PK = `${GAME_PREFIX}${gameData.listedKey}`
 const { limits } = gameData
+
+/**
+ * Pagination cursor. A GSI's LastEvaluatedKey carries the **base table** keys, and `ownerId` there is the
+ * GM's Cognito `sub`, which must never leave the API (ADR 0006). So the cursor keeps only the index sort
+ * key `gsi1sk` (the Game's updatedAt), and the next page resumes from it: enough to page, and leaks nothing.
+ */
+function encodeCursor(key: Record<string, unknown>): string | null {
+  const after = key.updatedAt
+  return typeof after === 'string' ? Buffer.from(after).toString('base64url') : null
+}
+
+function decodeCursor(cursor: string): string | undefined {
+  const after = Buffer.from(cursor, 'base64url').toString('utf8')
+  // A hand-made cursor must not crash the query; an unusable one just starts from the top.
+  return after && after.length <= 40 ? after : undefined
+}
 
 export class DynamoGameStore implements GameStore {
   constructor(private db: DynamoDBDocumentClient, private table: string) {}
@@ -88,22 +113,73 @@ export class DynamoGameStore implements GameStore {
     return this.count(userId, MEMBER_PREFIX)
   }
 
+  /** Reserve a name for this GM. Throws NameTaken if one of their other Games already holds it. */
+  private async claimName(gmId: string, id: string, name: string) {
+    try {
+      await guard(() => this.db.send(new UpdateCommand({
+        TableName: this.table,
+        Key: { ownerId: gmId, id: NAME_PREFIX + nameKey(name) },
+        UpdateExpression: 'SET #kind = :k, #g = :g',
+        // Free, or already this Game's own reservation (so re-saving an unchanged name is fine).
+        ConditionExpression: 'attribute_not_exists(#id) OR #g = :g',
+        ExpressionAttributeNames: { '#kind': 'kind', '#g': 'gameId', '#id': 'id' },
+        ExpressionAttributeValues: { ':k': 'game-name', ':g': id },
+      })))
+    } catch (err) {
+      if (isConditionFailure(err)) throw new NameTaken(name)
+      throw err
+    }
+  }
+
+  private async releaseName(gmId: string, name: string, id: string) {
+    await guard(() => this.db.send(new DeleteCommand({
+      TableName: this.table,
+      Key: { ownerId: gmId, id: NAME_PREFIX + nameKey(name) },
+      // Never drop a reservation another Game has taken over.
+      ConditionExpression: 'attribute_not_exists(#id) OR #g = :g',
+      ExpressionAttributeNames: { '#g': 'gameId', '#id': 'id' },
+      ExpressionAttributeValues: { ':g': id },
+    }))).catch((err: unknown) => { if (!isConditionFailure(err)) throw err })
+  }
+
   async save(gmId: string, id: string, draft: GameDraft) {
+    // Claim the name first: a crash after this leaves a harmless spare reservation, where the reverse
+    // order could hand the name to someone else mid-rename (ADR 0008).
+    const previous = await this.readGame(gmId, id)
+    await this.claimName(gmId, id, draft.name)
+
     const now = new Date().toISOString()
-    const { names, values, sets } = setExpression({ ...draft, kind: 'game', updatedAt: now })
+    // `listed` is handled separately below: on the item it becomes the index keys, not a stored boolean.
+    const { listed, ...stored } = draft
+    const { names, values, sets } = setExpression({ ...stored, kind: 'game', updatedAt: now })
     names['#createdAt'] = 'createdAt'
     names['#members'] = 'memberIds'
     values[':now'] = now
     values[':gm'] = new Set([gmId])
     sets.push('#createdAt = if_not_exists(#createdAt, :now)')
+    // The sparse index keys: written only while listed, so an unlisted Game is absent from the index
+    // rather than filtered out of it. `gsi1sk` carries updatedAt, so a browse page is newest-first.
+    names['#gsi1pk'] = 'gsi1pk'
+    names['#gsi1sk'] = 'gsi1sk'
+    const removes: string[] = []
+    if (listed) {
+      values[':gsi1pk'] = LISTED_GAME_PK
+      sets.push('#gsi1pk = :gsi1pk', '#gsi1sk = :now')
+    } else {
+      removes.push('#gsi1pk', '#gsi1sk')
+    }
     const res = await guard(() => this.db.send(new UpdateCommand({
       TableName: this.table,
       Key: { ownerId: gmId, id: GAME_PREFIX + id },
-      UpdateExpression: `SET ${sets.join(', ')} ADD #members :gm`,
+      UpdateExpression: `SET ${sets.join(', ')} ADD #members :gm${removes.length ? ` REMOVE ${removes.join(', ')}` : ''}`,
       ExpressionAttributeNames: names,
       ExpressionAttributeValues: values,
       ReturnValues: 'ALL_NEW',
     })))
+    // Renamed: let the old name go, now that the Game itself carries the new one.
+    if (previous && nameKey(previous.name) !== nameKey(draft.name)) {
+      await this.releaseName(gmId, previous.name, id)
+    }
     await this.writePointer(gmId, id, gmId)
     await guard(() => this.db.send(new UpdateCommand({
       TableName: this.table,
@@ -120,12 +196,38 @@ export class DynamoGameStore implements GameStore {
       TableName: this.table, Key: { ownerId: gmId, id: GAME_PREFIX + id }, ReturnValues: 'ALL_OLD',
     })))
     if (!res.Attributes) return false
+    const gone = toGame(res.Attributes)
     // The Game is gone, so no one can read it. Now tidy the members' pointers and the lookup.
-    for (const memberId of toGame(res.Attributes).memberIds) {
+    for (const memberId of gone.memberIds) {
       await guard(() => this.db.send(new DeleteCommand({ TableName: this.table, Key: { ownerId: memberId, id: MEMBER_PREFIX + id } })))
     }
     await guard(() => this.db.send(new DeleteCommand({ TableName: this.table, Key: { ownerId: GAME_LOOKUP_OWNER, id } })))
+    // Free the name so the GM can reuse it.
+    await this.releaseName(gmId, gone.name, id)
     return true
+  }
+
+  /**
+   * One page of listed public Games, newest activity first (VTTER-76). Reads the sparse index, so an
+   * unlisted or private Game is not merely filtered out: it is not in the index at all.
+   */
+  async listPublic(cursor?: string, limit = limits.browsePageMax) {
+    const after = cursor ? decodeCursor(cursor) : undefined
+    const size = Math.min(Math.max(limit, 1), limits.browsePageMax)
+    const page = await guard(() => this.db.send(new QueryCommand({
+      TableName: this.table,
+      IndexName: GSI1,
+      // Descending, so "the next page" is everything that sorts before the last row we showed.
+      KeyConditionExpression: after ? '#pk = :pk AND #sk < :after' : '#pk = :pk',
+      ExpressionAttributeNames: { '#pk': 'gsi1pk', ...(after ? { '#sk': 'gsi1sk' } : {}) },
+      ExpressionAttributeValues: { ':pk': LISTED_GAME_PK, ...(after ? { ':after': after } : {}) },
+      ScanIndexForward: false, // newest updatedAt first
+      Limit: size,
+    })))
+    const games = (page.Items ?? []).map(it => toGame(it as Record<string, unknown>))
+    // Only offer a cursor when the page was full: a short page is the end of the list.
+    const last = games.length === size ? games[games.length - 1] : undefined
+    return { games, cursor: last ? encodeCursor({ updatedAt: last.updatedAt }) : null }
   }
 
   async gmOf(gameId: string) {
@@ -207,6 +309,12 @@ export class DynamoGameStore implements GameStore {
 
 /** Strip the storage prefix and `kind`, and turn the DynamoDB string set into an array. */
 function toGame(item: Record<string, unknown>): GameRecord {
-  const { kind: _kind, memberIds, id, ...rest } = item as Record<string, unknown> & { id: string; memberIds?: Iterable<string> }
-  return { ...(rest as Omit<GameRecord, 'id' | 'memberIds'>), id: id.slice(GAME_PREFIX.length), memberIds: [...(memberIds ?? [])] }
+  // `gsi1pk`/`gsi1sk` are storage keys, never part of the API record: `listed` is derived from them.
+  const { kind: _kind, gsi1pk, gsi1sk: _gsi1sk, memberIds, id, ...rest } = item as Record<string, unknown> & { id: string; memberIds?: Iterable<string> }
+  return {
+    ...(rest as Omit<GameRecord, 'id' | 'memberIds' | 'listed'>),
+    id: id.slice(GAME_PREFIX.length),
+    listed: gsi1pk === LISTED_GAME_PK,
+    memberIds: [...(memberIds ?? [])],
+  }
 }
