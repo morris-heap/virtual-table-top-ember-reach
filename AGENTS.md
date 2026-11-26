@@ -91,7 +91,10 @@ in `app/`, then `npx wrangler deploy`); `.github/workflows/app.yml` checks pull 
   Built-in adventures are `data/adventures/*.json`, listed in `app/src/adventures/builtIn.ts` **and** in `api/src/game.ts`
   (`BUILT_IN_IDS`), so add both when you add one. Games (VTTER-72, `/games/:id`) are created from an adventure on Home,
   and each member brings one of their own heroes (VTTER-77). The
-  friends list is VTTER-73. **Party size has no hard cap**: `data/core.json` `party.recommendedMax` (5) is advice, so
+  friends list is VTTER-73. **Scope is locked** (2026-11-25, VTTER-92): the app automates Emberreach's own rules
+  deeply and is **not** a general VTT platform. Don't add dynamic lighting or per-token vision, 3D terrain, a user
+  scripting language, a system builder for other RPGs, a content marketplace or built-in video/voice. Joining a
+  GM's Game is always free to the player. **Party size has no hard cap**: `data/core.json` `party.recommendedMax` (5) is advice, so
   warn, never block. The warning counts **heroes**, not members, because each hero adds a turn to the Heroes' Phase.
 - Commands (run in `app/`): `npm install`, `npm run dev`, `npm test`, `npm run lint`, `npm run build`.
   **Run test, lint and build before you commit app changes.**
