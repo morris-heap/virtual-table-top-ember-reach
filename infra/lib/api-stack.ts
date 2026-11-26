@@ -8,7 +8,7 @@ import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs'
 import { StringParameter } from 'aws-cdk-lib/aws-ssm'
 import type { Construct } from 'constructs'
 import { AUTH_PARAMS } from './auth-stack.ts'
-import { PUBLIC_GAMES_INDEX } from './data-stack.ts'
+import { GSI1 } from './data-stack.ts'
 import { bundle } from './bundle.ts'
 
 export interface ApiStackProps extends StackProps {
@@ -52,7 +52,7 @@ export class ApiStack extends Stack {
     // because an index is read-only (VTTER-76, ADR 0008).
     fn.addToRolePolicy(new PolicyStatement({
       actions: ['dynamodb:Query'],
-      resources: [`${table.tableArn}/index/${PUBLIC_GAMES_INDEX}`],
+      resources: [`${table.tableArn}/index/${GSI1}`],
     }))
 
     // Exactly what api/src/portrait-store.ts calls. ListBucket makes a missing portrait a 404 instead of a 403.

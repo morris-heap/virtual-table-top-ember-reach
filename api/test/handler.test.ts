@@ -46,7 +46,7 @@ const unusedStores = {
     getForMember: async () => null, listFor: async () => [], countOwned: async () => 0, countJoined: async () => 0,
     save: async () => { throw new Error('unused') }, delete: async () => false, gmOf: async () => null, getByGm: async () => null,
     addMember: async () => null, removeMember: async () => {},
-    heroesOf: async () => ({}), setHero: async () => {},
+    heroesOf: async () => ({}), setHero: async () => {}, listPublic: async () => ({ games: [], cursor: null }),
   },
   adventures: {
     list: async () => [], get: async () => null, delete: async () => false,

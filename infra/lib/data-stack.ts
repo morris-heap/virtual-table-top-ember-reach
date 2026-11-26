@@ -6,8 +6,14 @@ import type { Construct } from 'constructs'
 export const TABLE_NAME = 'emberreach-characters'
 /** Account id in the name keeps it globally unique. Private: reached only through signed URLs from the API. */
 export const PORTRAIT_BUCKET_NAME = 'emberreach-portraits-913427211898'
-/** Must match PUBLIC_INDEX in api/src/game-store.ts. */
-export const PUBLIC_GAMES_INDEX = 'PublicGames'
+/**
+ * The table's one general-purpose index. Keys are deliberately generic (`gsi1pk` / `gsi1sk`) rather than
+ * named for a single use: every item kind that needs cross-partition listing writes its own values here,
+ * so later access patterns reuse this index instead of each adding one. A GSI costs write capacity on
+ * every indexed write and the table is capped at 20 of them, so one shared index is the cheap shape.
+ * Must match GSI1 in api/src/game-store.ts.
+ */
+export const GSI1 = 'gsi1'
 
 export interface DataStackProps extends StackProps {
   /** Browser origins that may PUT and GET portraits through signed URLs. */
@@ -26,20 +32,23 @@ export class DataStack extends Stack {
       deletionProtection: true,
       pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
       removalPolicy: RemovalPolicy.RETAIN,
-      // Lists the public Games a GM opted to show (VTTER-76, ADR 0008). Sparse: `listed` exists only on
-      // those Games, so private ones are absent from the index rather than filtered out on read.
+      // One shared, sparse index (VTTER-76, ADR 0008). Only items that write `gsi1pk` appear in it, so
+      // heroes, profiles and member pointers cost nothing. Today its only writer is a public Game a GM
+      // opted to list (`gsi1pk = 'game#public'`, `gsi1sk = <updatedAt>`); other kinds add their own
+      // prefixes later without a second index.
       // Adding a GSI is an additive update and does not replace the table — confirm with `cdk diff`.
       globalSecondaryIndexes: [{
-        indexName: PUBLIC_GAMES_INDEX,
-        partitionKey: { name: 'listed', type: AttributeType.STRING },
-        sortKey: { name: 'updatedAt', type: AttributeType.STRING },
+        indexName: GSI1,
+        partitionKey: { name: 'gsi1pk', type: AttributeType.STRING },
+        sortKey: { name: 'gsi1sk', type: AttributeType.STRING },
         // Only what a browse row renders. The base table keys (`ownerId`, `id`) come along automatically
         // in every projection, and `ownerId` is the GM's Cognito `sub` — so the route must map these rows
         // to a safe view and never return one as-is (see the browse route in api/src/handler.ts).
         // `memberIds` is here because a row shows a member count, which the API derives from it.
         // The GM's display name and player ID are not: they live on the profile, looked up per row.
+        // `updatedAt` is projected explicitly: it is no longer the index sort key, but a browse row shows it.
         projectionType: ProjectionType.INCLUDE,
-        nonKeyAttributes: ['name', 'adventure', 'visibility', 'solo', 'memberIds', 'createdAt'],
+        nonKeyAttributes: ['name', 'adventure', 'visibility', 'solo', 'memberIds', 'createdAt', 'updatedAt'],
       }],
     })
 

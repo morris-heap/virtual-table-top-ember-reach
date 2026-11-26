@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import AdventureEditor from './AdventureEditor.tsx'
 import Adventures from './Adventures.tsx'
 import AdventureView from './AdventureView.tsx'
+import BrowseGames from './BrowseGames.tsx'
 import GamePage from './GamePage.tsx'
 import HeroPage from './HeroPage.tsx'
 import Heroes from './Heroes.tsx'
@@ -52,6 +53,7 @@ function SignedIn({ auth, name }: { auth: Auth; name: string }) {
     case 'adventures': return <Adventures auth={auth} />
     case 'adventure': return <AdventureEditor auth={auth} id={route.id} />
     case 'builtIn': return <AdventureView auth={auth} slug={route.slug} />
+    case 'games': return <BrowseGames auth={auth} />
     case 'game': return <GamePage auth={auth} id={route.id} />
     case 'notFound': return <GoHome />
   }
