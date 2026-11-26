@@ -1,17 +1,17 @@
 ---
-name: cw
-description: Close out a VTTER work item. Runs the AGENTS.md checks for the packages it touched, commits, rebases on origin/main, pushes, opens the PR, moves the Jira item to In Review, and removes the worktree. After the PR is merged, a second run tidies up and moves the item to Done. Use when the user types "cw" or "/cw" (optionally with a VTTER key), or says "close out VTTER-n", "ship it", or "wrap this up".
+name: close-work
+description: Close out a VTTER work item. Runs the CLAUDE.md checks for the packages it touched, commits, rebases on origin/main, pushes, opens the PR, moves the Jira item to In Review, and removes the worktree. After the PR is merged, a second run tidies up and moves the item to Done. Use when the user types "close-work", "/close-work", "cw" or "/cw" (optionally with a VTTER key), or says "close out VTTER-n", "ship it", or "wrap this up".
 argument-hint: "[VTTER-<n>]"
 ---
 
-# /cw: close out a VTTER work item
+# /close-work: close out a VTTER work item
 
-This is the counterpart to `/wt`. It's the final check that the work is complete. After that, it
+This is the counterpart to `/start-work`. It's the final check that the work is complete. After that, it
 ships the work (commit, push, PR, Jira) and tidies the repo.
 
 Pushing, opening a PR, commenting in Jira, and deleting a worktree all reach outside this machine or
 can't be undone. So **gather everything first, show one plan, and act only after the user approves
-it.** Running `/cw` counts as asking for a commit and a PR, but not as approval of the plan.
+it.** Running `/close-work` counts as asking for a commit and a PR, but not as approval of the plan.
 **Never merge the PR.** Merging to `main` deploys the app to Cloudflare and the API to AWS, so the user
 merges it.
 
@@ -56,8 +56,8 @@ Nothing in this step writes anything.
   Never commit `.env`, `.claude/settings.local.json`, or anything holding a token or key.
   `git -C "$WT" check-ignore -v .env` must print a `.gitignore` line.
 
-**Checks (AGENTS.md).** Run these for every package the branch touches, from its folder in `$WT`.
-Use parallel Bash calls, and make sure the path starts with an **uppercase** drive letter (see the Vitest note in AGENTS.md).
+**Checks (CLAUDE.md).** Run these for every package the branch touches, from its folder in `$WT`.
+Use parallel Bash calls, and make sure the path starts with an **uppercase** drive letter (see the Vitest note in CLAUDE.md).
 
 | Changed | Run |
 |---|---|
@@ -70,7 +70,7 @@ and stop. For `infra/lib/data-stack.ts` or `auth-stack.ts`, read the diff output
 says **replace** on the table or the user pool.
 
 **Rules ripple check.** When `rules/`, `sheets/`, `data/`, or `docs/decisions.md` changed, check these
-(AGENTS.md › How we establish rules):
+(CLAUDE.md › How we establish rules):
 
 - A new or changed rule has a dated entry at the top of `docs/decisions.md`, in the same branch.
 - The numbers agree across `rules/core-rules.md`, `rules/gm-guide.md`, `sheets/character-sheet.md`, `README.md`, and `data/*.json`.
@@ -106,7 +106,7 @@ AC       3/3 met  (or which aren't)
 Commit   "VTTER-<n>: <imperative subject>"  — files: …
 Leave out  <files and why>, or none
 PR       new: "VTTER-<n>: <subject>" → main   (or: update #12)
-Worktree remove after push  (the branch stays on GitHub; /wt VTTER-<n> resumes it)
+Worktree remove after push  (the branch stays on GitHub; /start-work VTTER-<n> resumes it)
 ```
 
 Then wait for approval. If anything failed (a check, the ripple check, an unmet criterion), say so at the top,

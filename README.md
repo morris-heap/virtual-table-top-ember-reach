@@ -29,7 +29,7 @@ who can carry light into the dark and bring treasure back.
 
 | Path | Contents |
 |---|---|
-| [AGENTS.md](AGENTS.md) | Instructions for AI agents (Claude reads it via [CLAUDE.md](CLAUDE.md)) |
+| [CLAUDE.md](CLAUDE.md) | Instructions for AI agents (other agents are pointed here by [AGENTS.md](AGENTS.md)) |
 | [docs/decisions.md](docs/decisions.md) | Log of locked design decisions |
 | [rules/core-rules.md](rules/core-rules.md) | Core rules: the roll, characters, combat, magic, advancement |
 | [rules/gm-guide.md](rules/gm-guide.md) | Running the game: foes, encounter building, a starter adventure |
@@ -60,8 +60,9 @@ who can carry light into the dark and bring treasure back.
 
 ## Working with AI agents
 
-Agent instructions live in one file, [AGENTS.md](AGENTS.md). `CLAUDE.md` imports it
-along with the decisions log. When we agree on a rule, it goes into
+Agent instructions live in one file, [CLAUDE.md](CLAUDE.md), which imports the
+decisions log. [AGENTS.md](AGENTS.md) is a stub pointing at it, so agents that look
+for that conventional path still find the rules. When we agree on a rule, it goes into
 [docs/decisions.md](docs/decisions.md) and the matching rules file in the same commit.
 Agents are told to read those files before making changes.
 

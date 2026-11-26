@@ -20,7 +20,7 @@ A static web app (Vite + React + TypeScript), deployed to Cloudflare by Workers 
 - `src/engine/`: pure game logic (no React), unit-tested. Takes an injectable RNG.
 - `src/App.tsx`: UI.
 - `../data/*.json`: **game numbers come from here**, not hard-coded. Keep them in sync with
-  `rules/` (see AGENTS.md).
+  `rules/` (see CLAUDE.md).
 
 ## Current features (iteration 1)
 

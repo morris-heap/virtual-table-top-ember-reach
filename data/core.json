@@ -1,5 +1,5 @@
 {
-  "$comment": "Core resolution data. Source of truth: rules/core-rules.md §2 and §6.7. Change both together (see AGENTS.md).",
+  "$comment": "Core resolution data. Source of truth: rules/core-rules.md §2 and §6.7. Change both together (see CLAUDE.md).",
   "version": "0.2",
   "difficulties": [
     { "name": "Easy", "dc": 8 },

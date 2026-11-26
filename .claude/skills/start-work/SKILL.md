@@ -1,17 +1,29 @@
 ---
-name: wt
-description: Start work in a fresh git worktree on a VTTER-<n>-slug branch from origin/main. Takes a VTTER key, a Jira URL, or a description of the work; with no key, asks for one or a description and creates the Jira work item first. Use when the user types "wt" or "/wt", or asks to start work on a ticket in a worktree.
+name: start-work
+description: Start work in a fresh git worktree on a VTTER-<n>-slug branch from origin/main. Takes a VTTER key, a Jira URL, or a description of the work; with no key, asks for one or a description and creates the Jira work item first. Use when the user types "start-work", "/start-work", "wt" or "/wt", or asks to start work on a ticket in a worktree.
 argument-hint: "[VTTER-<n> | description of the work]"
 model: haiku
 ---
 
-# /wt: create a worktree for a VTTER work item
+# /start-work: create a worktree for a VTTER work item
 
 The goal is an isolated checkout on a correctly named branch, tied to a Jira work item, that can
 build and test straight away. Other Claude sessions often run in the main checkout at the same
 time, so never switch branches or stash there. Do everything through the worktree.
 
 Jira: site `morris-heap.atlassian.net` (use it as `cloudId`), project **VTTER**.
+
+**Exact parameter names.** These are easy to get wrong, and each wrong guess costs a failed call:
+
+| Tool | Correct | Not |
+|---|---|---|
+| `createJiraIssue` | `issueType: "Task"` | ~~`issueTypeName`~~ |
+| `createJiraIssue` | `parent: "VTTER-37"` | ~~`parentKey`~~ |
+| `transitionJiraIssue` | `transitionName: "In Progress"` (a string) | ~~`transition: {name: ...}`~~ |
+| all of them | `cloudId` top-level, beside `name`/`inputs` | ~~inside `inputs`~~ |
+
+A transition's **name is not its target status**: "Done" won't match a transition called
+"Review->Done". When a name fails, call `listJiraIssueTransitions` and use the `transitionId`.
 Issue types: Task, Story, Epic, Subtask.
 
 ## 1. Resolve the work item
@@ -39,7 +51,7 @@ Using the description, call `createJiraIssue`:
   As of 2026-11, these are VTTER-46 UI / UX (app and sheet work) and VTTER-51 Backend (api, infra, sign-in).
   If no epic fits, leave it unset. Don't guess.
 
-Report the new key and link in one line. Don't ask for confirmation before creating it: running `/wt`
+Report the new key and link in one line. Don't ask for confirmation before creating it: running `/start-work`
 without a key is the request to create one.
 
 ### Move it to In Progress
@@ -59,13 +71,20 @@ Run this as **one** Bash call. It works from the main checkout or from any exist
 ```bash
 MAIN=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") &&
 BRANCH="VTTER-<n>-<slug>" && WT="$MAIN/.claude/worktrees/$BRANCH" &&
-git -C "$MAIN" fetch -q origin main &&
+{ git -C "$MAIN" fetch -q origin main:main 2>/dev/null || git -C "$MAIN" fetch -q origin main; } &&
 git -C "$MAIN" worktree add -q -b "$BRANCH" "$WT" origin/main &&
 { [ -f "$MAIN/.env" ] && cp "$MAIN/.env" "$WT/.env"; true; } &&
 git -C "$WT" status -sb && git -C "$WT" log -1 --oneline && echo "$WT"
 ```
 
 - Always branch from `origin/main`. The main checkout is usually parked on another ticket's branch.
+- **The fetch advances local `main` too.** `fetch origin main:main` fast-forwards the local branch
+  without checking it out, so `git log main` stays honest and a later manual branch off `main` doesn't
+  start from stale code. It is a fast-forward only: git refuses rather than discarding anything, and
+  the `||` falls back to a plain `fetch origin main` in the two cases that refusal is normal — `main`
+  is checked out in some worktree, or it has diverged from the remote. Either way `origin/main` ends
+  up fresh, which is what the branch is made from, so the worktree is correct regardless. Keep the
+  fallback: without it, `/start-work` fails outright whenever the main checkout happens to sit on `main`.
 - If the branch already exists (`fatal: a branch named ... already exists`), check `git worktree list`.
   If it's already checked out in a worktree, enter that one. Otherwise run
   `git -C "$MAIN" worktree add "$WT" "$BRANCH"` (with no `-b`) to resume it.
@@ -81,7 +100,7 @@ If `git rev-parse` gives back a lowercase drive letter, uppercase it before you 
 
 A worktree only holds tracked files, so `node_modules` is missing. Run `npm ci` only in the packages
 (`app/`, `api/`, `infra/`) that the described work clearly touches, in parallel Bash calls. If that isn't clear yet,
-install nothing: install a package when you first need to test it (`/cw` also runs `npm ci` when `node_modules` is missing).
+install nothing: install a package when you first need to test it (`/close-work` also runs `npm ci` when `node_modules` is missing).
 The app and API need no secrets. AWS access is the `ember-reach` CLI profile in `~/.aws`, which works from any folder.
 
 ## 4. Report
@@ -91,6 +110,6 @@ were installed. Then start the work if the user described it, or wait for them i
 
 ## Finishing up
 
-Use `/cw` to finish. Before the merge it runs the checks, commits, pushes, opens the PR, moves the item
+Use `/close-work` to finish. Before the merge it runs the checks, commits, pushes, opens the PR, moves the item
 to In Review, and removes the worktree. After the merge it deletes the branch and moves the item to Done.
 Commit only when the user asks. Untracked work in a worktree exists nowhere else.

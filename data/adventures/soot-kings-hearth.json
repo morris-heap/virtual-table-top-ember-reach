@@ -1,5 +1,5 @@
 {
-  "$comment": "Built-in adventure. Source of truth: rules/gm-guide.md §5. Change both together (see AGENTS.md).",
+  "$comment": "Built-in adventure. Source of truth: rules/gm-guide.md §5. Change both together (see CLAUDE.md).",
   "id": "soot-kings-hearth",
   "title": "The Soot King's Hearth",
   "summary": "The ember that warms the village of Brindlecross has gone cold, and soot-black rats pour out of the old Forge vent. Descend, win over or defeat the goblins, and re-kindle the hearth.",

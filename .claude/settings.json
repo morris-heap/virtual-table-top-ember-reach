@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "tool == \"Edit\" || tool == \"Write\"",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/suggest-compact.js\""
+          }
+        ],
+        "description": "Suggest a manual /compact at phase boundaries instead of letting auto-compact fire mid-task"
+      },
+      {
+        "matcher": "tool == \"Bash\"",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guardrails.js\""
+          }
+        ],
+        "description": "Block the Vitest lowercase-drive-letter trap, committing a secrets file, and deploying a stateful stack without a diff"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "tool == \"Edit\" || tool == \"Write\" || tool == \"MultiEdit\"",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guardrails.js\""
+          }
+        ],
+        "description": "Warn when a CDK construct id, a gsi1 key or ConsistentRead looks changed"
+      }
+    ]
+  }
+}
