@@ -1,5 +1,5 @@
 // A throwaway Cognito user for one end-to-end run, created and deleted through
-// the `ember-reach` AWS CLI profile (AGENTS.md: no AWS keys in .env or code).
+// the `ember-reach` AWS CLI profile (CLAUDE.md: no AWS keys in .env or code).
 //
 // AdminCreateUser + AdminSetUserPassword is used rather than the hosted UI's own
 // sign-up form because the form emails a confirmation code we cannot read. The
@@ -51,7 +51,7 @@ export function createUser(): Throwaway {
  *
  * Deleting the user alone is not enough: signing in mints a profile item and a
  * `_player` lookup row, and those survive the user, leaving an orphaned player
- * ID that holds its slot in the ID space for ever. AGENTS.md says to clean up
+ * ID that holds its slot in the ID space for ever. CLAUDE.md says to clean up
  * test data, so both go.
  *
  * Safe to call twice, and never fails the test it is cleaning up after.

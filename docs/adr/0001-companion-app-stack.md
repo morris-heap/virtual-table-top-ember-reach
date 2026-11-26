@@ -24,7 +24,7 @@ fast to iterate on with Claude and Codex, and can't drift from the rulebook.
 
 - No live multiplayer yet. A shared table would need a realtime backend (for example Supabase or Firebase),
   added later without moving off Pages.
-- Rule changes that touch numbers must update `/data` in the same change (see AGENTS.md).
+- Rule changes that touch numbers must update `/data` in the same change (see CLAUDE.md).
 
 ## Hosting (amended 2026-11-21, VTTER-60)
 

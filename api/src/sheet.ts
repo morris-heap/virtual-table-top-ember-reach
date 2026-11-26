@@ -1,5 +1,5 @@
 // The character sheet the API sends and receives (sheets/character-sheet.md), and its validation.
-// Allowed values come from /data, never hard-coded (AGENTS.md).
+// Allowed values come from /data, never hard-coded (CLAUDE.md).
 import character from '../../data/character.json'
 import core from '../../data/core.json'
 

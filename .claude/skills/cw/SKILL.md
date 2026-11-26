@@ -1,6 +1,6 @@
 ---
 name: cw
-description: Close out a VTTER work item. Runs the AGENTS.md checks for the packages it touched, commits, rebases on origin/main, pushes, opens the PR, moves the Jira item to In Review, and removes the worktree. After the PR is merged, a second run tidies up and moves the item to Done. Use when the user types "cw" or "/cw" (optionally with a VTTER key), or says "close out VTTER-n", "ship it", or "wrap this up".
+description: Close out a VTTER work item. Runs the CLAUDE.md checks for the packages it touched, commits, rebases on origin/main, pushes, opens the PR, moves the Jira item to In Review, and removes the worktree. After the PR is merged, a second run tidies up and moves the item to Done. Use when the user types "cw" or "/cw" (optionally with a VTTER key), or says "close out VTTER-n", "ship it", or "wrap this up".
 argument-hint: "[VTTER-<n>]"
 ---
 
@@ -56,8 +56,8 @@ Nothing in this step writes anything.
   Never commit `.env`, `.claude/settings.local.json`, or anything holding a token or key.
   `git -C "$WT" check-ignore -v .env` must print a `.gitignore` line.
 
-**Checks (AGENTS.md).** Run these for every package the branch touches, from its folder in `$WT`.
-Use parallel Bash calls, and make sure the path starts with an **uppercase** drive letter (see the Vitest note in AGENTS.md).
+**Checks (CLAUDE.md).** Run these for every package the branch touches, from its folder in `$WT`.
+Use parallel Bash calls, and make sure the path starts with an **uppercase** drive letter (see the Vitest note in CLAUDE.md).
 
 | Changed | Run |
 |---|---|
@@ -70,7 +70,7 @@ and stop. For `infra/lib/data-stack.ts` or `auth-stack.ts`, read the diff output
 says **replace** on the table or the user pool.
 
 **Rules ripple check.** When `rules/`, `sheets/`, `data/`, or `docs/decisions.md` changed, check these
-(AGENTS.md › How we establish rules):
+(CLAUDE.md › How we establish rules):
 
 - A new or changed rule has a dated entry at the top of `docs/decisions.md`, in the same branch.
 - The numbers agree across `rules/core-rules.md`, `rules/gm-guide.md`, `sheets/character-sheet.md`, `README.md`, and `data/*.json`.
