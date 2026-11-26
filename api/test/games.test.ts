@@ -451,6 +451,62 @@ describe('browsing public Games (VTTER-76)', () => {
     )
   })
 
+  it('never leaks a Cognito id on any browse row, including later pages', async () => {
+    // The field-by-field build in browseRow is the only thing keeping `ownerId` out of these rows,
+    // and `ownerId` on a gsi1 row is the GM's Cognito sub. One spread would leak every GM at once,
+    // so assert it over a multi-row, paginated response rather than a single row.
+    const { call, profiles } = await world()
+    await profiles.update(GM, { displayName: 'Rook' })
+    await profiles.update(ANA, { displayName: 'Vale' })
+    await call('PUT', `/games/${G1}`, GM, listed)
+    await call('PUT', `/games/${G2}`, GM, { ...listed, name: 'Second table' })
+    // A second GM, so the check covers more than one sub.
+    await profiles.update(ANA, { gameMaster: true })
+    await call('PUT', `/games/${G3}`, ANA, { ...listed, name: 'Third table' })
+
+    const seen: Record<string, unknown>[] = []
+    let cursor: string | null = null
+    do {
+      const query: string = cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''
+      const body = await (await call('GET', `/games/public?limit=1${query}`, BEN)).json()
+      seen.push(...(body.games as Record<string, unknown>[]))
+      cursor = body.cursor as string | null
+    } while (cursor)
+
+    expect(seen).toHaveLength(3)
+    const text = JSON.stringify(seen)
+    for (const sub of [GM, ANA, BEN]) expect(text).not.toContain(sub)
+    for (const row of seen) {
+      expect(row).not.toHaveProperty('ownerId')
+      expect(row).not.toHaveProperty('memberIds')
+    }
+  })
+
+  it('keeps the storage-only index keys out of every Game response', async () => {
+    // gsi1pk/gsi1sk are how a Game reaches the browse index. They are storage keys: toGame strips them
+    // and derives `listed`, so no route should ever echo them back.
+    const { call, ids, profiles } = await world()
+    // MemoryProfiles defaults displayName to the Cognito id, so give everyone a real one: otherwise
+    // the "no sub in the body" check trips on the fixture rather than on a leak.
+    await profiles.update(GM, { displayName: 'Rook' })
+    await profiles.update(ANA, { displayName: 'Vale' })
+    await call('PUT', `/games/${G1}`, GM, listed)
+    await call('PUT', `/games/${G1}/members/${ids.ana}`, ANA)
+
+    const bodies = await Promise.all([
+      call('GET', '/games/public', ANA),
+      call('GET', `/games/${G1}`, ANA),
+      call('GET', '/games', ANA),
+    ].map(async p => await (await p).text()))
+
+    for (const body of bodies) {
+      expect(body).not.toContain('gsi1pk')
+      expect(body).not.toContain('gsi1sk')
+      // The GM's sub must not ride along on any of these either.
+      expect(body).not.toContain(GM)
+    }
+  })
+
   it('reports member and hero counts, fullness, and whether the caller already joined', async () => {
     const { call, heroes, ids } = await world()
     await call('PUT', `/games/${G1}`, GM, listed)
