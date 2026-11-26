@@ -59,13 +59,20 @@ Run this as **one** Bash call. It works from the main checkout or from any exist
 ```bash
 MAIN=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") &&
 BRANCH="VTTER-<n>-<slug>" && WT="$MAIN/.claude/worktrees/$BRANCH" &&
-git -C "$MAIN" fetch -q origin main &&
+{ git -C "$MAIN" fetch -q origin main:main 2>/dev/null || git -C "$MAIN" fetch -q origin main; } &&
 git -C "$MAIN" worktree add -q -b "$BRANCH" "$WT" origin/main &&
 { [ -f "$MAIN/.env" ] && cp "$MAIN/.env" "$WT/.env"; true; } &&
 git -C "$WT" status -sb && git -C "$WT" log -1 --oneline && echo "$WT"
 ```
 
 - Always branch from `origin/main`. The main checkout is usually parked on another ticket's branch.
+- **The fetch advances local `main` too.** `fetch origin main:main` fast-forwards the local branch
+  without checking it out, so `git log main` stays honest and a later manual branch off `main` doesn't
+  start from stale code. It is a fast-forward only: git refuses rather than discarding anything, and
+  the `||` falls back to a plain `fetch origin main` in the two cases that refusal is normal — `main`
+  is checked out in some worktree, or it has diverged from the remote. Either way `origin/main` ends
+  up fresh, which is what the branch is made from, so the worktree is correct regardless. Keep the
+  fallback: without it, `/start-work` fails outright whenever the main checkout happens to sit on `main`.
 - If the branch already exists (`fatal: a branch named ... already exists`), check `git worktree list`.
   If it's already checked out in a worktree, enter that one. Otherwise run
   `git -C "$MAIN" worktree add "$WT" "$BRANCH"` (with no `-b`) to resume it.
