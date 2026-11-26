@@ -1,11 +1,11 @@
 ---
-name: wt
-description: Start work in a fresh git worktree on a VTTER-<n>-slug branch from origin/main. Takes a VTTER key, a Jira URL, or a description of the work; with no key, asks for one or a description and creates the Jira work item first. Use when the user types "wt" or "/wt", or asks to start work on a ticket in a worktree.
+name: start-work
+description: Start work in a fresh git worktree on a VTTER-<n>-slug branch from origin/main. Takes a VTTER key, a Jira URL, or a description of the work; with no key, asks for one or a description and creates the Jira work item first. Use when the user types "start-work", "/start-work", "wt" or "/wt", or asks to start work on a ticket in a worktree.
 argument-hint: "[VTTER-<n> | description of the work]"
 model: haiku
 ---
 
-# /wt: create a worktree for a VTTER work item
+# /start-work: create a worktree for a VTTER work item
 
 The goal is an isolated checkout on a correctly named branch, tied to a Jira work item, that can
 build and test straight away. Other Claude sessions often run in the main checkout at the same
@@ -39,7 +39,7 @@ Using the description, call `createJiraIssue`:
   As of 2026-11, these are VTTER-46 UI / UX (app and sheet work) and VTTER-51 Backend (api, infra, sign-in).
   If no epic fits, leave it unset. Don't guess.
 
-Report the new key and link in one line. Don't ask for confirmation before creating it: running `/wt`
+Report the new key and link in one line. Don't ask for confirmation before creating it: running `/start-work`
 without a key is the request to create one.
 
 ### Move it to In Progress
@@ -81,7 +81,7 @@ If `git rev-parse` gives back a lowercase drive letter, uppercase it before you 
 
 A worktree only holds tracked files, so `node_modules` is missing. Run `npm ci` only in the packages
 (`app/`, `api/`, `infra/`) that the described work clearly touches, in parallel Bash calls. If that isn't clear yet,
-install nothing: install a package when you first need to test it (`/cw` also runs `npm ci` when `node_modules` is missing).
+install nothing: install a package when you first need to test it (`/close-work` also runs `npm ci` when `node_modules` is missing).
 The app and API need no secrets. AWS access is the `ember-reach` CLI profile in `~/.aws`, which works from any folder.
 
 ## 4. Report
@@ -91,6 +91,6 @@ were installed. Then start the work if the user described it, or wait for them i
 
 ## Finishing up
 
-Use `/cw` to finish. Before the merge it runs the checks, commits, pushes, opens the PR, moves the item
+Use `/close-work` to finish. Before the merge it runs the checks, commits, pushes, opens the PR, moves the item
 to In Review, and removes the worktree. After the merge it deletes the branch and moves the item to Done.
 Commit only when the user asks. Untracked work in a worktree exists nowhere else.

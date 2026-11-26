@@ -1,17 +1,17 @@
 ---
-name: cw
-description: Close out a VTTER work item. Runs the CLAUDE.md checks for the packages it touched, commits, rebases on origin/main, pushes, opens the PR, moves the Jira item to In Review, and removes the worktree. After the PR is merged, a second run tidies up and moves the item to Done. Use when the user types "cw" or "/cw" (optionally with a VTTER key), or says "close out VTTER-n", "ship it", or "wrap this up".
+name: close-work
+description: Close out a VTTER work item. Runs the CLAUDE.md checks for the packages it touched, commits, rebases on origin/main, pushes, opens the PR, moves the Jira item to In Review, and removes the worktree. After the PR is merged, a second run tidies up and moves the item to Done. Use when the user types "close-work", "/close-work", "cw" or "/cw" (optionally with a VTTER key), or says "close out VTTER-n", "ship it", or "wrap this up".
 argument-hint: "[VTTER-<n>]"
 ---
 
-# /cw: close out a VTTER work item
+# /close-work: close out a VTTER work item
 
-This is the counterpart to `/wt`. It's the final check that the work is complete. After that, it
+This is the counterpart to `/start-work`. It's the final check that the work is complete. After that, it
 ships the work (commit, push, PR, Jira) and tidies the repo.
 
 Pushing, opening a PR, commenting in Jira, and deleting a worktree all reach outside this machine or
 can't be undone. So **gather everything first, show one plan, and act only after the user approves
-it.** Running `/cw` counts as asking for a commit and a PR, but not as approval of the plan.
+it.** Running `/close-work` counts as asking for a commit and a PR, but not as approval of the plan.
 **Never merge the PR.** Merging to `main` deploys the app to Cloudflare and the API to AWS, so the user
 merges it.
 
@@ -106,7 +106,7 @@ AC       3/3 met  (or which aren't)
 Commit   "VTTER-<n>: <imperative subject>"  — files: …
 Leave out  <files and why>, or none
 PR       new: "VTTER-<n>: <subject>" → main   (or: update #12)
-Worktree remove after push  (the branch stays on GitHub; /wt VTTER-<n> resumes it)
+Worktree remove after push  (the branch stays on GitHub; /start-work VTTER-<n> resumes it)
 ```
 
 Then wait for approval. If anything failed (a check, the ripple check, an unmet criterion), say so at the top,
