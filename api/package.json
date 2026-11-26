@@ -7,7 +7,8 @@
     "dev": "tsx src/dev.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "claim": "tsx scripts/claim-heroes.ts"
+    "claim": "tsx scripts/claim-heroes.ts",
+    "copy-table": "tsx scripts/copy-table.ts"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1175.0",

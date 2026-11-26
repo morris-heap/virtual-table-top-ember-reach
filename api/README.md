@@ -1,7 +1,7 @@
 # Emberreach API
 
 An AWS Lambda function (TypeScript, Node.js 22) behind an API Gateway HTTP API. It saves character sheets in the
-DynamoDB table `emberreach-characters` (us-east-2). The infrastructure lives in [../infra](../infra), and
+DynamoDB table `vtter-game` (us-east-2). The infrastructure lives in [../infra](../infra), and
 [.github/workflows/api.yml](../.github/workflows/api.yml) deploys it on every push to `main` that touches `api/`,
 `infra/` or `data/`. Background: [ADR 0003](../docs/adr/0003-backend-dynamodb-lambda.md).
 
@@ -21,6 +21,7 @@ Live: https://7ybva8z4v3.execute-api.us-east-2.amazonaws.com (check it at `/heal
 | `npm test` / `npm run typecheck` | Unit tests (Vitest) and type check. Run both before committing |
 | `npm run dev` | Local server on the real table |
 | `npm run claim -- <old-uuid> <cognito-sub> [--apply]` | Moves heroes saved under an old `X-Owner-Id` UUID to a signed-in user (dry run without `--apply`) |
+| `npm run copy-table -- [--apply]` | One-off: copies every item between tables, for the VTTER-94 rename (dry run without `--apply`). Safe to re-run; never deletes from the source |
 
 ## Routes
 

@@ -3,7 +3,12 @@ import { AttributeType, Billing, ProjectionType, TableV2 } from 'aws-cdk-lib/aws
 import { BlockPublicAccess, Bucket, BucketEncryption, HttpMethods, ObjectOwnership } from 'aws-cdk-lib/aws-s3'
 import type { Construct } from 'constructs'
 
-export const TABLE_NAME = 'emberreach-characters'
+/**
+ * The table holds every item kind (heroes, profiles, adventures, Games, member pointers, name
+ * reservations, lookups), not only characters, so it is named for the product (VTTER-94, 2026-11-25).
+ * It was `emberreach-characters` until then; the rename replaced the table while it held only test data.
+ */
+export const TABLE_NAME = 'vtter-game'
 /** Account id in the name keeps it globally unique. Private: reached only through signed URLs from the API. */
 export const PORTRAIT_BUCKET_NAME = 'emberreach-portraits-913427211898'
 /**
@@ -20,7 +25,11 @@ export interface DataStackProps extends StackProps {
   allowedOrigins: string[]
 }
 
-/** One item per hero: partition key ownerId, sort key id. Sheet lists are native lists/maps on the item. */
+/**
+ * One item per hero: partition key ownerId, sort key id. Sheet lists are native lists/maps on the item.
+ * The construct id stays `Characters` even though the table is now `vtter-game`: renaming a construct id
+ * replaces the table, and the id is invisible outside CloudFormation. Don't "tidy" it. Always `cdk diff`.
+ */
 export class DataStack extends Stack {
   constructor(scope: Construct, id: string, props: DataStackProps) {
     super(scope, id, props)

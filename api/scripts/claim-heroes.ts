@@ -21,7 +21,7 @@ const apply = flag === '--apply'
 
 process.env.AWS_PROFILE ??= 'ember-reach'
 process.env.AWS_REGION ??= 'us-east-2'
-const table = process.env.TABLE_NAME ?? 'emberreach-characters'
+const table = process.env.TABLE_NAME ?? 'vtter-game'
 const store = new DynamoCharacterStore(
   DynamoDBDocumentClient.from(new DynamoDBClient({}), { marshallOptions: { removeUndefinedValues: true } }),
   table,

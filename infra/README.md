@@ -5,7 +5,7 @@ Background: [ADR 0003](../docs/adr/0003-backend-dynamodb-lambda.md) (API) and [A
 
 | Stack | Contains | Deployed by |
 |---|---|---|
-| `EmberreachData` | DynamoDB table `emberreach-characters` (deletion protection, PITR, retained) | CI on `main` (rarely changes) |
+| `EmberreachData` | DynamoDB table `vtter-game` (deletion protection, PITR, retained) | CI on `main` (rarely changes) |
 | `EmberreachAuth` | Cognito user pool `emberreach-users` (retained), managed login domain `emberreach-login` with the Emberreach branding (`lib/branding/`), public app client `emberreach-web`, optional Google, Microsoft and GitHub sign-in (with the GitHub OIDC wrapper), SSM parameters with the pool and client ids | CI on `main` |
 | `EmberreachApi` | Lambda `emberreach-api`, HTTP API (throttled 10 req/s, burst 20), log group (30 days) | CI on `main` |
 | `EmberreachGithubDeploy` | GitHub OIDC provider and the role `emberreach-github-deploy` | By hand, once |

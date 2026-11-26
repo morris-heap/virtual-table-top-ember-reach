@@ -13,7 +13,8 @@ Region **us-east-2**, Free plan with credits) and want the whole backend in one 
 
 ## Decision
 
-- **Database:** **DynamoDB**, on-demand, table `emberreach-characters`. **One item per hero**: partition key
+- **Database:** **DynamoDB**, on-demand, table `emberreach-characters` (renamed to `vtter-game` on
+  2026-11-25, VTTER-94: the table holds every kind, not only characters). **One item per hero**: partition key
   `ownerId`, sort key `id`. Top-level sheet fields are attributes. Skills, wounds, attacks, talents and spells are
   native DynamoDB maps and lists on the item (never JSON strings). Derived numbers (max Grit/Ember, Dodge, Will,
   Speed) still aren't stored. Deletion protection and point-in-time recovery are on, and the table is retained if

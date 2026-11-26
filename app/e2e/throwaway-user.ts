@@ -26,7 +26,7 @@ export function userPoolId(): string {
 export interface Throwaway { email: string; password: string; poolId: string; sub?: string }
 
 /** The DynamoDB table holding profiles and the player-ID lookup. */
-const TABLE = 'emberreach-characters'
+const TABLE = 'vtter-game'
 
 /** Creates a confirmed, ready-to-sign-in user. Always pair with `deleteUser`. */
 export function createUser(): Throwaway {

@@ -17,7 +17,7 @@ process.env.AWS_PROFILE ??= 'ember-reach'
 process.env.AWS_REGION ??= 'us-east-2'
 
 const db = DynamoDBDocumentClient.from(new DynamoDBClient({}), { marshallOptions: { removeUndefinedValues: true } })
-const table = process.env.TABLE_NAME ?? 'emberreach-characters'
+const table = process.env.TABLE_NAME ?? 'vtter-game'
 const store = new DynamoCharacterStore(db, table)
 const profiles = new DynamoProfileStore(db, table)
 const adventures = new DynamoAdventureStore(db, table)
@@ -49,5 +49,5 @@ createServer(async (req, res) => {
   res.writeHead(out.status, Object.fromEntries(out.headers.entries()))
   res.end(Buffer.from(await out.arrayBuffer()))
 }).listen(PORT, '127.0.0.1', () => {
-  console.log(`Emberreach API on http://127.0.0.1:${PORT} (profile ${process.env.AWS_PROFILE}, table ${process.env.TABLE_NAME ?? 'emberreach-characters'})`)
+  console.log(`Emberreach API on http://127.0.0.1:${PORT} (profile ${process.env.AWS_PROFILE}, table ${process.env.TABLE_NAME ?? 'vtter-game'})`)
 })
