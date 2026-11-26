@@ -156,7 +156,7 @@ const table = { name: 'Friday night', adventure: { source: 'builtin', id: 'soot-
 
 describe('parseGame', () => {
   it('accepts a built-in adventure and defaults to private, not solo', () => {
-    expect(parseGame(table)).toEqual({ name: 'Friday night', adventure: { source: 'builtin', id: 'soot-kings-hearth' }, visibility: 'private', solo: false })
+    expect(parseGame(table)).toEqual({ name: 'Friday night', adventure: { source: 'builtin', id: 'soot-kings-hearth' }, visibility: 'private', solo: false, listed: false })
   })
   it('rejects an unknown built-in, a bad own id, a public solo and a solo on an own adventure', () => {
     expect(() => parseGame({ ...table, adventure: { source: 'builtin', id: 'nope' } })).toThrow(/not a built-in/)

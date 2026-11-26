@@ -8,6 +8,7 @@ import { LogGroup, RetentionDays } from 'aws-cdk-lib/aws-logs'
 import { StringParameter } from 'aws-cdk-lib/aws-ssm'
 import type { Construct } from 'constructs'
 import { AUTH_PARAMS } from './auth-stack.ts'
+import { PUBLIC_GAMES_INDEX } from './data-stack.ts'
 import { bundle } from './bundle.ts'
 
 export interface ApiStackProps extends StackProps {
@@ -47,6 +48,22 @@ export class ApiStack extends Stack {
     })
     // Exactly what api/src/store.ts calls.
     table.grant(fn, 'dynamodb:GetItem', 'dynamodb:Query', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem')
+    // Querying a GSI needs its own ARN: the table grant above does not cover index/*. Query only,
+    // because an index is read-only (VTTER-76, ADR 0008).
+    fn.addToRolePolicy(new PolicyStatement({
+      actions: ['dynamodb:Query'],
+      resources: [`${table.tableArn}/index/${PUBLIC_GAMES_INDEX}`],
+    }))
+
+    // Exactly what api/src/portrait-store.ts calls. ListBucket makes a missing portrait a 404 instead of a 403.
+    fn.addToRolePolicy(new PolicyStatement({
+      actions: ['s3:PutObject', 's3:GetObject', 's3:DeleteObject'],
+      resources: [`arn:${this.partition}:s3:::${props.portraitBucketName}/*`],
+    }))
+    fn.addToRolePolicy(new PolicyStatement({
+      actions: ['s3:ListBucket'],
+      resources: [`arn:${this.partition}:s3:::${props.portraitBucketName}`],
+    }))
 
     // Exactly what api/src/portrait-store.ts calls. ListBucket makes a missing portrait a 404 instead of a 403.
     fn.addToRolePolicy(new PolicyStatement({

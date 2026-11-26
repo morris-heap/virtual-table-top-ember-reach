@@ -21,6 +21,20 @@ export interface GameDraft {
   visibility: 'private' | 'public'
   /** One player on a built-in adventure, no GM and no invites. */
   solo: boolean
+  /**
+   * The GM asked for this Game to show in the public browse list (VTTER-76). Only meaningful when
+   * `visibility` is public: a private Game is never listed, whatever this says.
+   */
+  listed: boolean
+}
+
+/**
+ * The key a Game's name is reserved under, unique within one GM (ADR 0008). Case and run-of-whitespace
+ * differences collide, so "Friday Night" and "friday  night" are the same name. Punctuation is kept, so
+ * "Ash & Ember" and "Ash and Ember" are different. The GM's own spelling is what gets stored and shown.
+ */
+export function nameKey(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, ' ')
 }
 
 /** What the store keeps. `ownerId` is the GM. `memberIds` are Cognito ids and never leave the API. */
@@ -48,5 +62,11 @@ export function parseGame(body: unknown): GameDraft {
   if (solo && source !== 'builtin') fail('A solo Game needs a built-in adventure')
   if (solo && visibility !== 'private') fail('A solo Game is always private')
 
-  return { name: text(b.name, 'name', { min: 1, max: limits.nameMax }), adventure: { source, id }, visibility, solo }
+  if (b.listed !== undefined && typeof b.listed !== 'boolean') fail('listed must be true or false')
+  // Only a public Game can be listed, so a private one can never reach the browse index.
+  const listed = b.listed === true && visibility === 'public'
+
+  const name = text(b.name, 'name', { min: 1, max: limits.nameMax })
+  if (!nameKey(name)) fail('name must have some text in it')
+  return { name, adventure: { source, id }, visibility, solo, listed }
 }

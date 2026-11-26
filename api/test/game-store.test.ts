@@ -12,7 +12,7 @@ const GM = 'gm-1'
 const ANA = 'ana-1'
 const G = '11111111-1111-4111-8111-111111111111'
 const conditionFailed = () => Object.assign(new Error('condition'), { name: 'ConditionalCheckFailedException' })
-const draft = { name: 'Friday', adventure: { source: 'builtin' as const, id: 'soot-kings-hearth' }, visibility: 'private' as const, solo: false }
+const draft = { name: 'Friday', adventure: { source: 'builtin' as const, id: 'soot-kings-hearth' }, visibility: 'private' as const, solo: false, listed: false }
 const stored = (members: string[]) => ({
   ...draft, kind: 'game', ownerId: GM, id: `game#${G}`, memberIds: new Set(members), createdAt: 'c', updatedAt: 'u',
 })
@@ -21,12 +21,19 @@ beforeEach(() => ddb.reset())
 
 describe('DynamoGameStore', () => {
   it('saves under game#, always adds the GM, and writes the member pointer and the lookup', async () => {
+    // save() reads the Game first to see whether the name changed (ADR 0008). No previous item here:
+    // this is a brand-new Game, so nothing to release.
+    ddb.on(GetCommand).resolves({})
     ddb.on(UpdateCommand).resolves({ Attributes: stored([GM]) })
     const saved = await games.save(GM, G, draft)
     expect(saved).toMatchObject({ id: G, memberIds: [GM], name: 'Friday' })
     expect(saved).not.toHaveProperty('kind')
 
-    const [game, pointer, lookup] = ddb.commandCalls(UpdateCommand).map(c => c.args[0].input)
+    // The name claim writes first (ADR 0008), so it leads the UpdateCommand calls.
+    const [claim, game, pointer, lookup] = ddb.commandCalls(UpdateCommand).map(c => c.args[0].input)
+    expect(claim.Key).toEqual({ ownerId: GM, id: 'name#friday' })
+    // Only takes the name if it is free, or already this Game's.
+    expect(claim.ConditionExpression).toBeTruthy()
     expect(game.Key).toEqual({ ownerId: GM, id: `game#${G}` })
     expect(game.UpdateExpression).toContain('ADD #members :gm')
     expect(game.UpdateExpression).toContain('#createdAt = if_not_exists(#createdAt, :now)')
@@ -99,6 +106,8 @@ describe('DynamoGameStore', () => {
       { ownerId: GM, id: `gm#${G}` },
       { ownerId: ANA, id: `gm#${G}` },
       { ownerId: '_game', id: G },
+      // The name reservation goes last, so a crash mid-delete never frees a name whose Game still exists.
+      { ownerId: GM, id: 'name#friday' },
     ])
   })
 
