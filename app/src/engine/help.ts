@@ -8,7 +8,7 @@ import {
   type CharacterSheet,
 } from './sheet.ts'
 
-export const RULES_URL = 'https://github.com/morris-heap/game-table-top/blob/main/rules/core-rules.md'
+export const RULES_URL = 'https://github.com/morris-heap/virtual-table-top-ember-reach/blob/main/rules/core-rules.md'
 
 export interface Help {
   title: string
