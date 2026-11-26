@@ -26,11 +26,13 @@ sharing exists yet, so this change only has to avoid painting us into a corner.
   `begins_with(id, 'adv#')`. No new table, no new IAM action, and no construct-id changes.
 - **Routes** (all need sign-in, owner from the verified token): `GET|PUT /profile`, `GET /adventures`,
   `GET|PUT|DELETE /adventures/:uuid`. A user can only reach their own items, because the owner is part of the key.
-- **Player ID.** A short public id such as `EMBER-7K2Q9` (no `0 O 1 I L`), created on the first `GET /profile` and
+- **Player ID.** A short public id such as `EMBER-7K2Q9F` (no `0 O 1 I L`), created on the first `GET /profile` and
   never changed. It is not the Cognito `sub`, which stays private. Uniqueness comes from a lookup item that is claimed
   with a conditional `UpdateItem` (`attribute_not_exists`), retried with a new id on collision. If two first requests
   race, the loser deletes its claim and returns the winner's profile. Friends (VTTER-73) and Games (VTTER-72) will find
-  people through this id.
+  people through this id. New IDs are **6 characters** (31^6 = 887 million); the 5-character IDs handed out before
+  stay valid for ever, because a player ID never changes, so both lengths are accepted on input
+  (2026-11-25, see [decisions](../decisions.md)).
 - **Everyone writes adventures, private by default.** There is no Game Master gate on authoring. The Game Master
   flag on the profile unlocks GM features: sharing an adventure and, with Games, creating a Game from one.
   The flag is stored in the profile item, not in Cognito, so it is a preference and not a permission. Anything that

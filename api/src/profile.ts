@@ -7,7 +7,7 @@ export interface Profile {
   /** Empty until the user sets one; the app falls back to their sign-in name. */
   displayName: string
   gameMaster: boolean
-  /** Public, shareable, never changes. For example EMBER-7K2Q9. */
+  /** Public, shareable, never changes. For example EMBER-7K2Q9F. New IDs are 6 characters; older ones are 5. */
   playerId: string
 }
 
@@ -23,11 +23,14 @@ export interface ProfilePatch {
 
 // No 0/O, 1/I/L, so an ID read aloud or typed from a screenshot isn't misread.
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
-const PLAYER_ID = /^EMBER-[A-HJKMNP-Z2-9]{5}$/
+// New IDs are 6 characters (31^6 = 887 million). The 5-character IDs handed out before stay valid for ever:
+// a player ID never changes, so both lengths are accepted.
+const ID_LENGTH = 6
+const PLAYER_ID = /^EMBER-[A-HJKMNP-Z2-9]{5,6}$/
 
 export function newPlayerId(pick: (max: number) => number = randomInt): string {
   let s = ''
-  for (let i = 0; i < 5; i++) s += ALPHABET[pick(ALPHABET.length)]
+  for (let i = 0; i < ID_LENGTH; i++) s += ALPHABET[pick(ALPHABET.length)]
   return `EMBER-${s}`
 }
 

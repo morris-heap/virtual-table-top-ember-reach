@@ -143,17 +143,22 @@ describe('profile', () => {
 })
 
 describe('player IDs', () => {
-  it('look like EMBER-XXXXX from an unambiguous alphabet', () => {
+  it('look like EMBER-XXXXXX from an unambiguous alphabet', () => {
     for (let i = 0; i < 200; i++) {
       const id = newPlayerId()
       expect(isPlayerId(id)).toBe(true)
       expect(id.slice('EMBER-'.length)).not.toMatch(/[01OIL]/) // no look-alikes after the prefix
     }
-    expect(newPlayerId(() => 0)).toBe('EMBER-AAAAA')
+    expect(newPlayerId(() => 0)).toBe('EMBER-AAAAAA')
+  })
+  it('still accept the 5-character IDs handed out before', () => {
+    expect(isPlayerId('EMBER-7K2Q9')).toBe(true)
+    expect(isPlayerId('EMBER-7K2Q9F')).toBe(true)
   })
   it('rejects look-alike characters', () => {
     expect(isPlayerId('EMBER-0O1IL')).toBe(false)
     expect(isPlayerId('EMBER-ABCD')).toBe(false)
+    expect(isPlayerId('EMBER-ABCDEFG')).toBe(false) // 7 is too long
   })
   it('parseProfilePatch needs at least one field', () => {
     expect(() => parseProfilePatch({})).toThrow()

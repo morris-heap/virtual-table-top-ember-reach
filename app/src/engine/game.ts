@@ -6,7 +6,8 @@ import type { AdventureRef, GameDraft, GameMember } from '../api/types.ts'
 export const GAME_LIMITS = gameData.limits
 export const RECOMMENDED_PARTY = core.party.recommendedMax
 
-const PLAYER_ID = /^EMBER-[A-HJKMNP-Z2-9]{5}$/
+// 6 characters for new IDs, 5 for the ones handed out before. Must match api/src/profile.ts.
+const PLAYER_ID = /^EMBER-[A-HJKMNP-Z2-9]{5,6}$/
 
 /** Accepts what people paste: any case, stray spaces. Returns the clean ID, or null. */
 export function cleanPlayerId(input: string): string | null {

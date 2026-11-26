@@ -12,9 +12,13 @@ const ref = { source: 'builtin' as const, id: 'soot-kings-hearth' }
 
 describe('cleanPlayerId', () => {
   it('accepts pasted IDs in any case, with spaces', () => {
-    expect(cleanPlayerId('  ember-7k2q9 ')).toBe('EMBER-7K2Q9')
+    expect(cleanPlayerId('  ember-7k2q9f ')).toBe('EMBER-7K2Q9F')
   })
-  it.each(['', 'EMBER-7K2Q', 'EMBER-7K2Q90', 'EMBER-0O1I1', 'ABCDE-7K2Q9'])('rejects %j', v => {
+  it('accepts both the new 6-character IDs and the older 5-character ones', () => {
+    expect(cleanPlayerId('EMBER-7K2Q9F')).toBe('EMBER-7K2Q9F')
+    expect(cleanPlayerId('EMBER-7K2Q9')).toBe('EMBER-7K2Q9')
+  })
+  it.each(['', 'EMBER-7K2Q', 'EMBER-7K2Q9FG', 'EMBER-0O1I1', 'ABCDE-7K2Q9'])('rejects %j', v => {
     expect(cleanPlayerId(v)).toBeNull()
   })
 })

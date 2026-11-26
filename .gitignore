@@ -22,5 +22,8 @@ __pycache__/
 .venv/
 .env
 
+# Wrangler local state and build cache (api/, app/)
+.wrangler/
+
 # Agent worktrees (/wt skill)
 .claude/worktrees/
