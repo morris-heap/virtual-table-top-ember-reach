@@ -20,13 +20,17 @@ beforeEach(() => ddb.reset())
 describe('DynamoCharacterStore', () => {
   it('saves the whole sheet as one item keyed by owner and id, keeping createdAt', async () => {
     const sheet = parseSheet({ name: 'Kestrel', skills: { Arcana: 2 }, wounds: ['Grace'] })
-    ddb.on(UpdateCommand).resolves({ Attributes: { ...sheet, ownerId: A, id: HERO } })
+    ddb.on(UpdateCommand).resolves({ Attributes: { ...sheet, kind: 'hero', ownerId: A, id: `hero#${HERO}` } })
     const saved = await store.save(A, HERO, sheet)
+    // Stored under `hero#<uuid>` with a `kind`, but what comes back out is the bare UUID and no `kind`:
+    // the prefix is storage, and the app, member pointers and portrait keys all use the bare id.
     expect(saved).toMatchObject({ name: 'Kestrel', ownerId: A, id: HERO })
+    expect(saved).not.toHaveProperty('kind')
 
     const input = ddb.commandCalls(UpdateCommand)[0].args[0].input
     expect(input.TableName).toBe('heroes')
-    expect(input.Key).toEqual({ ownerId: A, id: HERO })
+    expect(input.Key).toEqual({ ownerId: A, id: `hero#${HERO}` })
+    expect(input.ExpressionAttributeValues?.[':kind']).toBe('hero')
     expect(input.ReturnValues).toBe('ALL_NEW')
     expect(input.UpdateExpression).toContain('#createdAt = if_not_exists(#createdAt, :now)')
     // Lists and maps go in as native values, not JSON strings.
@@ -40,33 +44,38 @@ describe('DynamoCharacterStore', () => {
   it('reads with a consistent read and returns null when missing', async () => {
     ddb.on(GetCommand).resolves({})
     expect(await store.get(A, HERO)).toBeNull()
-    expect(ddb.commandCalls(GetCommand)[0].args[0].input).toMatchObject({ Key: { ownerId: A, id: HERO }, ConsistentRead: true })
+    expect(ddb.commandCalls(GetCommand)[0].args[0].input).toMatchObject({ Key: { ownerId: A, id: `hero#${HERO}` }, ConsistentRead: true })
   })
 
   it('lists every page for the owner, newest first, as summaries', async () => {
     ddb.on(QueryCommand)
-      .resolvesOnce({ Items: [{ id: '1', name: 'Old', updatedAt: '2026-01-01T00:00:00Z' }], LastEvaluatedKey: { ownerId: A, id: '1' } })
-      .resolvesOnce({ Items: [{ id: '2', name: 'New', updatedAt: '2026-06-01T00:00:00Z' }] })
+      .resolvesOnce({ Items: [{ id: 'hero#1', name: 'Old', updatedAt: '2026-01-01T00:00:00Z' }], LastEvaluatedKey: { ownerId: A, id: 'hero#1' } })
+      .resolvesOnce({ Items: [{ id: 'hero#2', name: 'New', updatedAt: '2026-06-01T00:00:00Z' }] })
     const list = await store.list(A)
     expect(list.map(c => c.name)).toEqual(['New', 'Old'])
+    // Summaries carry the bare id, so a list row links straight to /heroes/<uuid>.
+    expect(list.map(c => c.id)).toEqual(['2', '1'])
     const calls = ddb.commandCalls(QueryCommand)
     expect(calls).toHaveLength(2)
-    expect(calls[0].args[0].input.ExpressionAttributeValues).toEqual({ ':o': A })
-    expect(calls[1].args[0].input.ExclusiveStartKey).toEqual({ ownerId: A, id: '1' })
+    expect(calls[0].args[0].input.ExpressionAttributeValues).toEqual({ ':o': A, ':p': 'hero#' })
+    expect(calls[1].args[0].input.ExclusiveStartKey).toEqual({ ownerId: A, id: 'hero#1' })
   })
 
-  it('lists heroes only: the profile and adventures in the same partition carry a `kind` and are filtered out', async () => {
+  it('lists heroes with a range read on the prefix, never a filter over the whole partition', async () => {
+    // The profile, adventures, Games and member pointers share this partition. Before VTTER-98 the list
+    // read them all and filtered on the absence of `kind`, paying for every item it discarded.
     ddb.on(QueryCommand).resolves({ Items: [] })
     await store.list(A)
     const input = ddb.commandCalls(QueryCommand)[0].args[0].input
-    expect(input.FilterExpression).toBe('attribute_not_exists(#kind)')
-    expect(input.ExpressionAttributeNames?.['#kind']).toBe('kind')
+    expect(input.KeyConditionExpression).toBe('ownerId = :o AND begins_with(id, :p)')
+    expect(input.FilterExpression).toBeUndefined()
   })
 
   it('reports whether a delete removed anything', async () => {
-    ddb.on(DeleteCommand).resolvesOnce({ Attributes: { id: HERO } }).resolvesOnce({})
+    ddb.on(DeleteCommand).resolvesOnce({ Attributes: { id: `hero#${HERO}` } }).resolvesOnce({})
     expect(await store.delete(A, HERO)).toBe(true)
     expect(await store.delete(A, HERO)).toBe(false)
+    expect(ddb.commandCalls(DeleteCommand)[0].args[0].input.Key).toEqual({ ownerId: A, id: `hero#${HERO}` })
   })
 
   it('turns throttling into DatabaseUnavailable and rethrows other errors', async () => {
