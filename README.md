@@ -29,7 +29,7 @@ who can carry light into the dark and bring treasure back.
 
 | Path | Contents |
 |---|---|
-| [AGENTS.md](AGENTS.md) | Instructions for AI agents (Codex reads this, and Claude reads it via [CLAUDE.md](CLAUDE.md)) |
+| [AGENTS.md](AGENTS.md) | Instructions for AI agents (Claude reads it via [CLAUDE.md](CLAUDE.md)) |
 | [docs/decisions.md](docs/decisions.md) | Log of locked design decisions |
 | [rules/core-rules.md](rules/core-rules.md) | Core rules: the roll, characters, combat, magic, advancement |
 | [rules/gm-guide.md](rules/gm-guide.md) | Running the game: foes, encounter building, a starter adventure |
@@ -56,10 +56,10 @@ who can carry light into the dark and bring treasure back.
 
 ## Working with AI agents
 
-Claude Code and Codex share one instruction file, [AGENTS.md](AGENTS.md). `CLAUDE.md` imports it
-along with the decisions log, so the two agents can't drift apart. When we agree on a rule, it goes into
+Agent instructions live in one file, [AGENTS.md](AGENTS.md). `CLAUDE.md` imports it
+along with the decisions log. When we agree on a rule, it goes into
 [docs/decisions.md](docs/decisions.md) and the matching rules file in the same commit.
-Both agents are told to read those files before making changes.
+Agents are told to read those files before making changes.
 
 ## Open design questions
 
