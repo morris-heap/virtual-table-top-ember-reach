@@ -159,7 +159,7 @@ function GameScreen({ game, myPlayerId, onChange, onGone }: {
   function onInvite(e: FormEvent) {
     e.preventDefault()
     const id = cleanPlayerId(invite)
-    if (!id) return setError('That is not a player ID. They look like EMBER-7K2Q9.')
+    if (!id) return setError('That is not a player ID. They look like EMBER-7K2Q9F.')
     void run(async () => {
       onChange(await gamesApi.addMember(game.id, id))
       setInvite('')
@@ -242,7 +242,7 @@ function GameScreen({ game, myPlayerId, onChange, onGone }: {
           <form className="form" onSubmit={onInvite}>
             <label className="field">
               <span>Invite a player</span>
-              <input value={invite} placeholder="EMBER-7K2Q9" autoComplete="off" onChange={e => setInvite(e.target.value)} />
+              <input value={invite} placeholder="EMBER-7K2Q9F" autoComplete="off" onChange={e => setInvite(e.target.value)} />
               <small className="muted">Ask them for the player ID on their Profile page. They are added right away.</small>
             </label>
             <div className="form-actions">

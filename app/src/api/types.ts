@@ -16,7 +16,7 @@ export interface Profile {
   /** Empty until the user sets one: show their sign-in name instead. */
   displayName: string
   gameMaster: boolean
-  /** Public, shareable, never changes. For example EMBER-7K2Q9. */
+  /** Public, shareable, never changes. For example EMBER-7K2Q9F. New IDs are 6 characters; older ones are 5. */
   playerId: string
 }
 
