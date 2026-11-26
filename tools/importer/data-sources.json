@@ -1,0 +1,235 @@
+{
+  "$comment": "Which game data the importer may use. Rules for this file are in README.md next to it. A source that is not listed here is excluded.",
+  "statuses": ["approved", "hold", "excluded"],
+  "sources": [
+    {
+      "id": "emberreach",
+      "name": "Emberreach game data",
+      "status": "approved",
+      "rollStyle": "d20 plus modifiers",
+      "license": "Our own work",
+      "url": "../../data",
+      "checkedOn": "2026-11-26",
+      "evidence": "This repository",
+      "attribution": "Not required",
+      "conditions": [],
+      "aiTraining": "own-work"
+    },
+    {
+      "id": "dnd-srd-5.2.1",
+      "name": "Dungeons & Dragons System Reference Document 5.2.1",
+      "status": "approved",
+      "rollStyle": "d20 plus modifiers",
+      "license": "CC-BY-4.0",
+      "url": "https://www.dndbeyond.com/srd",
+      "checkedOn": "2026-11-26",
+      "evidence": "Publisher web page. The PDF's own license notice has not been read",
+      "attribution": null,
+      "conditions": [
+        "Copy the attribution statement from the PDF before the first import",
+        "SRD text only, not other books",
+        "The license does not grant trademark use"
+      ],
+      "aiTraining": "not-addressed-in-reviewed-text"
+    },
+    {
+      "id": "dungeon-world",
+      "name": "Dungeon World",
+      "status": "approved",
+      "rollStyle": "2d6 result bands",
+      "license": "CC-BY-3.0, with some D&D SRD 5.1 material under CC-BY-4.0",
+      "url": "https://github.com/Sagelt/Dungeon-World/blob/master/LICENSE",
+      "checkedOn": "2026-11-26",
+      "evidence": "Repository license file. The full Creative Commons legal code was not read",
+      "attribution": null,
+      "conditions": ["Credit both the CC-BY-3.0 text and the SRD 5.1 material"],
+      "aiTraining": "not-addressed-in-reviewed-text"
+    },
+    {
+      "id": "blades-in-the-dark-srd",
+      "name": "Blades in the Dark System Reference Document",
+      "status": "approved",
+      "rollStyle": "d6 pool, highest die",
+      "license": "CC-BY-3.0",
+      "url": "https://bladesinthedark.com/licensing",
+      "checkedOn": "2026-11-26",
+      "evidence": "Publisher licensing page",
+      "attribution": null,
+      "conditions": [
+        "SRD text only: no setting, art or maps",
+        "Do not use the game's name in a product title",
+        "Do not imply endorsement",
+        "Use the attribution text from the licensing page"
+      ],
+      "aiTraining": "not-addressed-in-reviewed-text"
+    },
+    {
+      "id": "fate-srd",
+      "name": "Fate System Reference Document",
+      "status": "approved",
+      "rollStyle": "Fudge dice",
+      "license": "CC-BY-3.0",
+      "url": "https://fate-srd.com/official-licensing-fate",
+      "checkedOn": "2026-11-26",
+      "evidence": "Licensing page",
+      "attribution": null,
+      "conditions": [
+        "Use the Creative Commons route and its credit text",
+        "Fate and Powered by Fate are trademarks; the logo has its own terms"
+      ],
+      "aiTraining": "not-addressed-in-reviewed-text"
+    },
+    {
+      "id": "openquest-srd",
+      "name": "OpenQuest Systems Resource Document",
+      "status": "approved",
+      "rollStyle": "d100 roll under",
+      "license": "CC-BY-4.0",
+      "url": "https://openquestrpg.com/srd/licensing/",
+      "checkedOn": "2026-11-26",
+      "evidence": "Publisher licensing page",
+      "attribution": null,
+      "conditions": [
+        "SRD text only, not the main rulebook",
+        "Do not use the OpenQuest name or logo in our work"
+      ],
+      "aiTraining": "not-addressed-in-reviewed-text"
+    },
+    {
+      "id": "basic-roleplaying",
+      "name": "Basic Roleplaying: Universal Game Engine",
+      "status": "hold",
+      "rollStyle": "d100 roll under",
+      "license": "ORC",
+      "url": "https://www.chaosium.com/orclicense/",
+      "checkedOn": "2026-11-26",
+      "evidence": "Publisher page, and the linked license PDF, which is labeled interim",
+      "reason": "Confirm the final license text. Adapted rules material must be offered under ORC; settings, names and art are reserved"
+    },
+    {
+      "id": "cepheus-engine-srd",
+      "name": "Cepheus Engine System Reference Document",
+      "status": "hold",
+      "rollStyle": "2d6 against a target",
+      "license": "Open Game License, version not confirmed",
+      "url": "https://orffenspace.com/cepheus-srd/",
+      "checkedOn": "2026-11-26",
+      "evidence": "Publisher page",
+      "reason": "License terms not read"
+    },
+    {
+      "id": "5e-database",
+      "name": "5e-bits 5e database",
+      "status": "hold",
+      "rollStyle": "d20 plus modifiers",
+      "license": "Code MIT; content stated as OGL 1.0a",
+      "url": "https://github.com/5e-bits/5e-database",
+      "checkedOn": "2026-11-26",
+      "evidence": "README and code license file",
+      "reason": "OGL terms not read. Repository is archived in favor of 5e-bits/5e-srd-api"
+    },
+    {
+      "id": "foundry-pf2e",
+      "name": "Foundry VTT Pathfinder 2e system data",
+      "status": "hold",
+      "rollStyle": "d20 plus modifiers",
+      "license": "Code Apache-2.0; content mixed, mechanics stated as OGL 1.0a",
+      "url": "https://github.com/foundryvtt/pf2e",
+      "checkedOn": "2026-11-26",
+      "evidence": "README and code license file",
+      "reason": "The publisher's permission for its material is specific to Foundry. OGL and Foundry terms not read"
+    },
+    {
+      "id": "datasworn",
+      "name": "Datasworn (Ironsworn family)",
+      "status": "hold",
+      "rollStyle": "d6 plus modifiers against two d10s",
+      "license": "Code MIT; content CC-BY-4.0 or CC-BY-NC-4.0",
+      "url": "https://github.com/rsek/datasworn",
+      "checkedOn": "2026-11-26",
+      "evidence": "README",
+      "reason": "Needs a per-record filter that accepts only CC-BY-4.0"
+    },
+    {
+      "id": "open5e",
+      "name": "Open5e",
+      "status": "hold",
+      "rollStyle": "d20 plus modifiers",
+      "license": "Code modified MIT; data varies by document; artwork CC-BY-NC-4.0",
+      "url": "https://github.com/open5e/open5e-api",
+      "checkedOn": "2026-11-26",
+      "evidence": "Repository page and code license file",
+      "reason": "Review each document's license"
+    },
+    {
+      "id": "daggerheart",
+      "name": "Daggerheart System Reference Document",
+      "status": "excluded",
+      "license": "Darrington Press Community Gaming License 2.0",
+      "url": "https://darringtonpress.com/license/",
+      "checkedOn": "2026-11-26",
+      "evidence": "License 2.0 PDF",
+      "reason": "Virtual tabletops must be approved and noncommercial; video games and unlisted formats are excluded"
+    },
+    {
+      "id": "year-zero-engine",
+      "name": "Year Zero Engine",
+      "status": "excluded",
+      "license": "Not verified",
+      "url": "https://freeleaguepublishing.com/community-content/free-tabletop-license/",
+      "checkedOn": "2026-11-26",
+      "evidence": "None: the site refused the request",
+      "reason": "License not verified"
+    },
+    {
+      "id": "gumshoe-srd",
+      "name": "GUMSHOE System Reference Document",
+      "status": "excluded",
+      "license": "Not verified",
+      "url": "https://pelgranepress.com/",
+      "checkedOn": "2026-11-26",
+      "evidence": "None: the license page tried was missing",
+      "reason": "License not verified"
+    },
+    {
+      "id": "psrd-data",
+      "name": "PSRD-Data",
+      "status": "excluded",
+      "license": "Not found",
+      "url": "https://github.com/devonjones/PSRD-Data",
+      "checkedOn": "2026-11-26",
+      "evidence": "Repository page",
+      "reason": "No license found"
+    },
+    {
+      "id": "card2code",
+      "name": "card2code",
+      "status": "excluded",
+      "license": "Code Apache-2.0; card data not verified",
+      "url": "https://github.com/google-deepmind/card2code",
+      "checkedOn": "2026-11-26",
+      "evidence": "README and code license file",
+      "reason": "Data licenses not read"
+    },
+    {
+      "id": "monster-of-the-week",
+      "name": "Monster of the Week",
+      "status": "excluded",
+      "license": "Not verified",
+      "url": "https://genericgames.co.nz/motw",
+      "checkedOn": "2026-11-26",
+      "evidence": "None: the site refused the connection",
+      "reason": "Terms not verified"
+    },
+    {
+      "id": "legacy-tool-data",
+      "name": "Data files from the earlier D&D, ShadowRun and Deadlands desktop tools",
+      "status": "excluded",
+      "license": "None established",
+      "url": null,
+      "checkedOn": "2026-11-26",
+      "evidence": "Local review of the files, which include commercial book content",
+      "reason": "No permission established. Do not copy into this repository"
+    }
+  ]
+}
