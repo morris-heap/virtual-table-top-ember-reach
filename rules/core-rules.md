@@ -1,4 +1,4 @@
-# Emberreach — Core Rules (v0.2)
+# Emberreach — Core Rules (v0.3)
 
 > First pass. All numbers are placeholders until playtesting.
 
@@ -242,6 +242,46 @@ and a **talent list**. You pick **2 talents at level 1**, then 1 more each level
   - *A Friend Everywhere*: in any town, you know someone useful.
   - *Vanish*: once per scene, after an attack, become hidden if any cover is nearby.
 
+### 4.7 Kilnheart: the mineral alchemist
+
+*Swallows the Reach's minerals and fires them in the gut.*
+
+- **Grit** 9 + 4/level · **Ember** 2 + Might · **Armor** light · **Skills** Melee 2, Craft 1
+- **Signature: Crucible.** Once on your turn, without using your Action, pay 1 Ember and swallow a mineral you know. Its power lasts until the scene ends. You hold one at a time, so a new one replaces it. You know 3 minerals at level 1.
+- **Talents**
+  - *Twin Draught*: hold two minerals at once.
+  - *Wide Palate*: learn 2 more minerals.
+  - *Quick Swallow*: use Crucible as a Reaction.
+  - *Shared Dose* (2 Ember): an ally in reach gains one of your minerals until the scene ends.
+  - *Last Spark*: end a held mineral to add +2d6 damage to a hit.
+  - *Tempered Gut*: immune to poison. Boon on Tests against disease.
+
+#### Common minerals
+
+Each **Vein** has a **Hot** mineral that drives you forward and a **Cold** one that steadies you.
+
+| Vein | Hot | Cold |
+|---|---|---|
+| **Blood** (fighting) | **Sulfur:** your weapon hits deal +1d4 fire damage | **Slate:** +2 Dodge |
+| **Stride** (movement) | **Cinnabar:** each Move covers 1 extra zone | **Rootstone:** you can't be knocked Prone, pushed or Grabbed |
+| **Mind** (senses and will) | **Wakeglass:** Boon on Notice and Wits Tests | **Hushstone:** +2 Will, and you can't be Frightened |
+| **Marrow** (endurance) | **Marrowsalt:** instantly recover 1d8 + Might Grit | **Stillsalt:** ignore the Banes from your Wounds |
+
+- **Opposites:** you can't hold both minerals from one Vein, even with *Twin Draught*. Swallowing one ends the other.
+- **Marrowsalt** acts at once. You never hold it, so it doesn't replace a held mineral, and it doesn't end
+  *Stillsalt*.
+- **Burning Out** (§5.2) works for Crucible: take **1 Wound** for each missing point of Ember.
+
+#### Deep minerals
+
+You can't learn these. The GM awards them as treasure, and each dose is used up. Only a Kilnheart can
+swallow one. It doesn't use your Action, costs no Ember and doesn't replace your held mineral.
+
+| Mineral | Power |
+|---|---|
+| **Heartcoal** | Take one extra Action this turn |
+| **Gloamspar** | Remove 1 Wound |
+
 ---
 
 ## 5. Magic
@@ -454,6 +494,7 @@ Each kit also includes a backpack, bedroll, rope, torches, 3 **Supply** (§8.1),
 - **Blade:** two light weapons *or* one versatile weapon, light armor
 - **Hexer:** a focus (wand or orb), dagger, a spellbook, ink
 - **Mender:** a mace or staff, shield, medium armor, a holy symbol, bandages (3 uses: +1d6 Grit)
+- **Kilnheart:** versatile weapon, light armor, a mineral pouch, a mortar and pestle
 - **Pathfinder:** bow and 20 arrows, light weapon, light armor, a snare kit
 - **Silvertongue:** light weapon, light armor, a disguise kit, lockpicks, 1 vial of poison (+1d6, one hit)
 
@@ -500,10 +541,10 @@ the NPC one step. A strong success shifts two. Failure may shift it the wrong wa
 |---|---|
 | Every level | +1 talent (or +1 spell for casters), +Grit growth, +1 skill rank |
 | 3, 6, 9 | +1 to one attribute (max +5) |
-| 4 | **Calling Mastery:** a stronger version of your signature feature *(to be written for v0.3)* |
+| 4 | **Calling Mastery:** a stronger version of your signature feature *(to be written for v0.4)* |
 | 5 | +1 to all attack and spell Tests (Proficiency) |
 | 7 | Skills can go to rank 4 |
-| 10 | **Legend:** an epic capstone ability *(to be written for v0.3)* |
+| 10 | **Legend:** an epic capstone ability *(to be written for v0.4)* |
 
 ---
 

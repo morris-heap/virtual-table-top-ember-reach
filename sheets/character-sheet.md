@@ -63,6 +63,18 @@
 | | | | |
 | | | | |
 
+## Minerals (Kilnheart)
+
+| Mineral | Vein | Hot / Cold | Power |
+|---|---|:---:|---|
+| | | | |
+| | | | |
+| | | | |
+| | | | |
+| | | | |
+
+**Held now:** ______________  **Deep mineral doses:** ______________
+
 ## Gear
 
 **Armor:** ____________  **Shield:** [ ]  **Silver:** ______  **Supply die:** d8 / d6 / d4 / out

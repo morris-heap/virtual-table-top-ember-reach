@@ -4,7 +4,7 @@ import { ANCESTRIES, CALLINGS, emptyHero, heroProblems, newHeroSheet } from './h
 describe('new hero', () => {
   it('lists the ancestries and callings from the rules', () => {
     expect(ANCESTRIES).toEqual(['Human', 'Stoneborn', 'Wildkin', 'Emberkin', 'Hollowborn'])
-    expect(CALLINGS).toEqual(['Warden', 'Blade', 'Hexer', 'Mender', 'Pathfinder', 'Silvertongue'])
+    expect(CALLINGS).toEqual(['Warden', 'Blade', 'Hexer', 'Mender', 'Pathfinder', 'Silvertongue', 'Kilnheart'])
   })
 
   it('asks for a name, an Ancestry and a Calling', () => {
@@ -23,6 +23,6 @@ describe('new hero', () => {
 
   it('builds a level 1 sheet with the name trimmed', () => {
     expect(newHeroSheet({ name: '  Ash  ', ancestry: 'Emberkin', calling: 'Mender' }))
-      .toEqual({ rulesVersion: '0.2', name: 'Ash', level: 1, ancestry: 'Emberkin', calling: 'Mender' })
+      .toEqual({ rulesVersion: '0.3', name: 'Ash', level: 1, ancestry: 'Emberkin', calling: 'Mender' })
   })
 })

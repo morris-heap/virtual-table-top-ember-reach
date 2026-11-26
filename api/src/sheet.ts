@@ -31,6 +31,8 @@ export interface CharacterSheet {
   signature: string
   talents: string[]
   spells: Spell[]
+  /** Names of the minerals a Kilnheart knows (§4.7). */
+  minerals: string[]
   armor: string
   shield: boolean
   silver: number
@@ -150,6 +152,7 @@ export function parseSheet(body: unknown): CharacterSheet {
         effect: text(o.effect, `spells[${i}].effect`, { max: 300 }),
       }
     }),
+    minerals: list(b.minerals, 'minerals').map((m, i) => text(m, `minerals[${i}]`, { min: 1, max: 80 })),
     armor: oneOf(b.armor, 'armor', ARMOR, 'none'),
     shield: b.shield === undefined ? false : typeof b.shield === 'boolean' ? b.shield : fail('shield must be true or false'),
     silver: int(b.silver, 'silver', 0, 1_000_000, 0),

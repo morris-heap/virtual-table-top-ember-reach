@@ -4,7 +4,7 @@ A fantasy tabletop roleplaying game in the classic dungeon-crawl structure:
 a Game Master (the **Warden of Tales**, or just GM) runs the world, 3–5 players run heroes,
 and the group explores ruins, fights monsters, and levels up over a campaign.
 
-**Status:** v0.2 rules. Nothing has been playtested yet.
+**Status:** v0.3 rules. Nothing has been playtested yet.
 
 ## The pitch
 
@@ -46,7 +46,8 @@ who can carry light into the dark and bring treasure back.
 - **v0.1 (this pass):** core rules, 6 callings, 5 ancestries, 8 foes, a one-shot adventure.
 - **v0.2:** settle the v0.1 open questions (done), first playtest, then rebalance the numbers (Grit, damage, Difficulty bands).
 - **Before any public release:** run a formal trademark search on the name "Emberreach".
-- **v0.3:** levels 6–10 talents, more spells, magic items, a second adventure.
+- **v0.3:** the Kilnheart, a seventh Calling (done).
+- **v0.4:** levels 6–10 talents, more spells, magic items, a second adventure.
 - **Digital companion (in progress):** the Test roller and Momentum tracker are live. The API for saved
   characters and sign-in (Cognito, VTTER-53) are live. Signed-in players get a Home with their heroes and
   adventures, a profile with a player ID and a Game Master switch, and can write private adventures (VTTER-71).

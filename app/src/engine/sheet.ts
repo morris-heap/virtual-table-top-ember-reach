@@ -12,6 +12,8 @@ export type Attribute = (typeof core.attributes)[number]
 export interface Talent { name: string; cost?: string; text: string }
 export interface SpellInfo { name: string; ember: number; target: string; effect: string }
 interface Casting { attribute: string; list: string; startingSpells: number; perLevel: number; always?: string[] }
+interface Alchemy { startingMinerals: number; emberCost: number; extraMinerals: { talent: string; count: number } }
+export interface Mineral { name: string; vein: string; temper: string; power: string }
 export interface CallingInfo {
   grit: { base: number; perLevel: number }
   ember: { base: number; attribute: string }
@@ -20,6 +22,7 @@ export interface CallingInfo {
   signature: string
   signatureText: string
   casting?: Casting
+  alchemy?: Alchemy
   talents: Talent[]
   kit: string
   shield: boolean
@@ -47,6 +50,10 @@ export const spellList = (calling: string): readonly SpellInfo[] => {
   const list = callingInfo(calling)?.casting?.list
   return list ? (creation.spellLists as Record<string, SpellInfo[]>)[list] ?? [] : []
 }
+
+/** The common minerals a Kilnheart can learn (§4.7). Deep minerals are treasure, so they aren't here. */
+export const MINERALS: readonly Mineral[] = creation.minerals.common
+export const mineralList = (calling: string): readonly Mineral[] => (callingInfo(calling)?.alchemy ? MINERALS : [])
 
 /** "+2", "−1", "0": the sign shown on the sheet. */
 export const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : '0')
@@ -110,12 +117,15 @@ export function skillBudget(sheet: CharacterSheet) {
   return { used, total, left: total - used, source }
 }
 
-/** How many talents and spells this hero should have at this level. */
+/** How many talents, spells and minerals this hero should have at this level. */
 export function allowances(sheet: CharacterSheet) {
-  const casting = callingInfo(sheet.calling)?.casting
+  const { casting, alchemy } = callingInfo(sheet.calling) ?? {}
   return {
     talents: creation.talentsAtLevel1 + (sheet.level - 1) * creation.talentsPerLevel + (ancestryInfo(sheet.ancestry)?.extraTalents ?? 0),
     spells: casting ? casting.startingSpells + (sheet.level - 1) * casting.perLevel : 0,
+    minerals: alchemy
+      ? alchemy.startingMinerals + (sheet.talents.includes(alchemy.extraMinerals.talent) ? alchemy.extraMinerals.count : 0)
+      : 0,
   }
 }
 
@@ -171,7 +181,7 @@ export function withBackground(sheet: CharacterSheet, name: string): CharacterSh
 }
 
 /**
- * Picking a Calling: the signature feature follows it, talents and spells from the old Calling's lists are dropped
+ * Picking a Calling: the signature feature follows it, talents, spells and minerals from the old Calling's lists are dropped
  * (anything the player wrote themselves stays), and the new Calling's always-known spells are added.
  */
 export function withCalling(sheet: CharacterSheet, name: string): CharacterSheet {
@@ -184,6 +194,7 @@ export function withCalling(sheet: CharacterSheet, name: string): CharacterSheet
     const spell = spellList(name).find(s => s.name === always)
     if (spell && !spells.some(s => s.name === always)) spells.push({ ...spell })
   }
+  const oldMinerals = new Set(next?.alchemy ? [] : mineralList(sheet.calling).map(m => m.name))
   const ownSignature = sheet.signature && sheet.signature !== previous?.signature
   return {
     ...sheet,
@@ -191,5 +202,6 @@ export function withCalling(sheet: CharacterSheet, name: string): CharacterSheet
     signature: ownSignature ? sheet.signature : next?.signature ?? '',
     talents: sheet.talents.filter(t => !oldTalents.has(t)),
     spells,
+    minerals: sheet.minerals.filter(m => !oldMinerals.has(m)),
   }
 }

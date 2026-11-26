@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { parseSheet } from '../../../api/src/sheet.ts'
 import {
-  allowances, attributeArray, creationSteps, derive, signed, skillBudget, spellList,
+  allowances, attributeArray, creationSteps, derive, mineralList, signed, skillBudget, spellList,
   withBackground, withCalling, withFullVitals, withKit, woundBanes,
 } from './sheet.ts'
 
@@ -72,8 +72,8 @@ describe('skill ranks', () => {
 
 describe('talents and spells', () => {
   it('gives 2 talents at level 1 and 1 more per level, +1 for a Human', () => {
-    expect(allowances(kestrel())).toEqual({ talents: 2, spells: 3 })
-    expect(allowances({ ...kestrel(), level: 4, ancestry: 'Human' })).toEqual({ talents: 6, spells: 6 })
+    expect(allowances(kestrel())).toEqual({ talents: 2, spells: 3, minerals: 0 })
+    expect(allowances({ ...kestrel(), level: 4, ancestry: 'Human' })).toEqual({ talents: 6, spells: 6, minerals: 0 })
   })
   it('lists spells only for casters', () => {
     expect(spellList('Hexer').map(s => s.name)).toContain('Forge Lance')
@@ -83,6 +83,33 @@ describe('talents and spells', () => {
   })
   it('keeps the Forge Lance at 3 Ember (decisions 2026-11-21)', () => {
     expect(spellList('Hexer').find(s => s.name === 'Forge Lance')?.ember).toBe(3)
+  })
+})
+
+describe('the Kilnheart (§4.7)', () => {
+  const kiln = () => ({ ...kestrel(), calling: 'Kilnheart', attributes: { ...kestrel().attributes, might: 3 } })
+
+  it('has Grit 9 + Might + 4 per level and Ember 2 + Might', () => {
+    expect(derive(kiln())).toMatchObject({ maxGrit: 16, maxEmber: 5 })
+    expect(derive({ ...kiln(), level: 3 }).maxGrit).toBe(9 + 3 + 3 * 4)
+  })
+  it('knows 3 minerals, and 2 more with Wide Palate, whatever the level', () => {
+    expect(allowances(kiln()).minerals).toBe(3)
+    expect(allowances({ ...kiln(), level: 5 }).minerals).toBe(3)
+    expect(allowances({ ...kiln(), talents: ['Wide Palate'] }).minerals).toBe(5)
+  })
+  it('pairs one Hot and one Cold mineral in each of four Veins', () => {
+    const pairs = mineralList('Kilnheart').map(m => `${m.vein} ${m.temper}`).sort()
+    expect(pairs).toEqual(['Blood', 'Marrow', 'Mind', 'Stride'].flatMap(v => [`${v} Cold`, `${v} Hot`]))
+    expect(mineralList('Blade')).toEqual([])
+  })
+  it('drops listed minerals on leaving the Calling, and keeps written ones', () => {
+    const left = withCalling({ ...kiln(), minerals: ['Slate', 'My own'] }, 'Blade')
+    expect(left.minerals).toEqual(['My own'])
+  })
+  it('writes its kit', () => {
+    expect(withKit(kiln())).toMatchObject({ armor: 'light', shield: false })
+    expect(withKit(kiln()).gear).toContain('mineral pouch')
   })
 })
 

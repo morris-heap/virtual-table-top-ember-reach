@@ -8,7 +8,7 @@ import { derive, type CharacterSheet } from './sheet.ts'
 const TOPICS = [
   'name', 'player', 'level', 'ancestry', 'calling', 'background', 'oath', 'attributes', 'attribute:Might', 'attribute:Lore',
   'maxGrit', 'maxEmber', 'dodge', 'will', 'speed', 'skills', 'gear', 'armor', 'shield', 'silver', 'supplyDie',
-  'talents', 'spells', 'attacks', 'attackName', 'toHit', 'damage', 'properties', 'attackNotes', 'gearList', 'notes', 'wounds', 'contacts',
+  'talents', 'spells', 'minerals', 'attacks', 'attackName', 'toHit', 'damage', 'properties', 'attackNotes', 'gearList', 'notes', 'wounds', 'contacts',
 ]
 const hero = (ancestry: string, calling: string, level = 1): CharacterSheet => parseSheet({
   name: 'Test', ancestry, calling, level, attributes: { might: 1, grace: 2, wits: 0, lore: 3, spirit: 1, presence: -1 },

@@ -12,7 +12,7 @@ const HERO = '33333333-3333-4333-8333-333333333333'
 const sheet = parseSheet({
   name: 'Kestrel', player: 'P', level: 1, ancestry: 'Emberkin', calling: 'Hexer', background: '', oath: '',
   attributes: { might: -1, grace: 1, wits: 2, lore: 3, spirit: 2, presence: 0 },
-  grit: 6, ember: 4, deathFails: 0, wounds: [], skills: {}, attacks: [], signature: '', talents: [], spells: [],
+  grit: 6, ember: 4, deathFails: 0, wounds: [], skills: {}, attacks: [], signature: '', talents: [], spells: [], minerals: [],
   armor: 'none', shield: false, silver: 0, supplyDie: 'd8', gear: '', contacts: '', notes: '',
 })
 
