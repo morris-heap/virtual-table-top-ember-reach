@@ -150,7 +150,7 @@ through GitHub OIDC (role `emberreach-github-deploy`, environment `aws`).
 - Portraits are in a private S3 bucket (stack `EmberreachData`), reached only through signed URLs that `/characters/:id/portrait`
   hands to the hero's owner ([ADR 0003](docs/adr/0003-backend-dynamodb-lambda.md)). Never make the bucket public or return
   an object key.
-- The function's role gets only the DynamoDB and S3 actions `api/src/store.ts` and `api/src/portrait-store.ts` use. If you add a call, add its action in
+- The function's role gets only the DynamoDB and S3 actions `api/src/store.ts`, `api/src/game-store.ts` and `api/src/portrait-store.ts` use. **Read a list of keys with `BatchGetItem`, never a `GetItem` per row**, and cap the batch at 100 keys. If you add a call, add its action in
   `infra/lib/api-stack.ts`.
 - Don't rename CDK construct ids in `infra/lib/data-stack.ts`. That replaces the table. Always `cdk diff` first.
 - Sign-in is Cognito (stack `EmberreachAuth`, [ADR 0004](docs/adr/0004-auth-cognito.md)): OAuth 2.0 code + PKCE from the app,
