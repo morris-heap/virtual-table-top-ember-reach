@@ -14,18 +14,30 @@ sharing exists yet, so this change only has to avoid painting us into a corner.
 
 - **Same table, more item kinds.** Profiles and adventures live in the one table (`emberreach-characters`,
   renamed `vtter-game` on 2026-11-25 by VTTER-94), in the owner's partition,
-  next to the heroes. Heroes kept a bare UUID sort key and no `kind` here; VTTER-98 moved them to
-  `hero#<uuid>` with `kind: 'hero'`, so every kind now follows the same shape. The items below carry a `kind`:
+  next to the heroes. Heroes were originally a bare UUID sort key with no `kind`; VTTER-98 moved them to
+  `hero#<uuid>` with `kind: 'hero'`, so every kind now follows the same shape:
 
   | Item | `ownerId` | `id` | `kind` |
   |---|---|---|---|
-  | Hero | user's `sub` | `<uuid>` | *(none)* |
+  | Hero | user's `sub` | `hero#<uuid>` | `hero` |
   | Profile | user's `sub` | `profile` | `profile` |
   | Adventure | user's `sub` | `adv#<uuid>` | `adventure` |
   | Player ID lookup | `_player` | `<playerId>` | `player-lookup` |
 
-  The hero list is a `Query` with `FilterExpression: attribute_not_exists(kind)`. The adventure list is a `Query` with
-  `begins_with(id, 'adv#')`. No new table, no new IAM action, and no construct-id changes.
+  Both the hero and adventure lists are a `Query` with `begins_with(id, '<prefix>')` and no
+  `FilterExpression`. A DynamoDB filter runs *after* the read, so filtering would charge read capacity
+  for every other kind in the partition and then discard it. No new table, no new IAM action, and no
+  construct-id changes.
+- **The `<kind>#<id>` prefix is storage only.** It never leaves the API. Each read path strips the prefix
+  and the `kind` attribute on the way out — `toHero`, `toAdventure` and `toGame` in `api/src/store.ts` and
+  `api/src/game-store.ts` — so callers always see a bare id. That matters because the bare id is what the
+  app puts in a URL, what a member pointer stores as `heroId` ([ADR 0006](0006-games.md)), and what keys
+  the S3 portrait object.
+
+  In DynamoDB the sort key **is** the `id` attribute, so a prefixed key means the stored `id` is prefixed;
+  there is no second, unprefixed copy. **Read an item through its strip helper, never straight from a
+  `GetItem`/`Query` result**, or the prefixed form leaks into a response or a URL. A new item kind gets a
+  prefix, a `kind`, and a strip helper of its own.
 - **Routes** (all need sign-in, owner from the verified token): `GET|PUT /profile`, `GET /adventures`,
   `GET|PUT|DELETE /adventures/:uuid`. A user can only reach their own items, because the owner is part of the key.
 - **Player ID.** A short public id such as `EMBER-7K2Q9F` (no `0 O 1 I L`), created on the first `GET /profile` and
@@ -67,7 +79,8 @@ sharing exists yet, so this change only has to avoid painting us into a corner.
 
 ## Consequences
 
-- The hero list now filters on `kind`, so any new item kind in the owner's partition must carry one.
+- Every kind in the owner's partition is keyed `<kind>#<id>` and carries a `kind`, so a new kind needs
+  both, plus a strip helper so the prefix stays storage-only.
 - Reads by anyone but the owner (friends, Games, public) need their own design and ADRs: a lookup from player ID to
   owner, membership items, and probably a GSI. The `_player` lookup is the first step.
 - `UpdateItem` conditional writes cover everything here, so the function's IAM actions are unchanged.
