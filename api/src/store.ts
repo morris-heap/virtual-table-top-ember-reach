@@ -1,5 +1,5 @@
 // DynamoDB implementation of CharacterStore. One item per hero (docs/adr/0003-backend-dynamodb-lambda.md):
-// partition key ownerId, sort key id. Lists (skills, wounds, attacks, talents, spells) are native
+// partition key ownerId, sort key id. Lists (skills, wounds, attacks, talents, spells, minerals) are native
 // DynamoDB lists and maps on the item, not JSON strings. A save replaces the whole sheet in one write.
 import { DeleteCommand, GetCommand, QueryCommand, UpdateCommand, type DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import type { AdventureDraft, AdventureRecord, AdventureSummary } from './adventure.ts'

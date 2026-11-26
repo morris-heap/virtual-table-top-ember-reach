@@ -4,7 +4,7 @@ import { useId, type ReactNode } from 'react'
 import character from '../../../data/character.json'
 import {
   allowances, ancestryInfo, attributeArray, BACKGROUNDS, callingInfo, creationSteps, derive, signed, skillBudget,
-  SKILLS, spellList, withBackground, withCalling, withFullVitals, withKit, ATTRIBUTE_NAMES, type CharacterSheet,
+  mineralList, SKILLS, spellList, withBackground, withCalling, withFullVitals, withKit, ATTRIBUTE_NAMES, type CharacterSheet,
 } from '../engine/sheet.ts'
 import { Field } from './GenericField.tsx'
 import Help from './Help.tsx'
@@ -76,6 +76,8 @@ export default function SheetEdit({ sheet, change, error, portrait }: { sheet: C
   const spells = spellList(sheet.calling)
   const knownSpells = new Set(spells.map(s => s.name))
   const extraSpells = sheet.spells.filter(s => !knownSpells.has(s.name))
+  const minerals = mineralList(sheet.calling)
+  const extraMinerals = sheet.minerals.filter(name => !minerals.some(m => m.name === name))
   const background = BACKGROUNDS.find(b => b.name === sheet.background)
   const chips = [...array.left]
   const toggle = (list: string[], name: string, on: boolean) => on ? [...list, name] : list.filter(x => x !== name)
@@ -298,6 +300,18 @@ export default function SheetEdit({ sheet, change, error, portrait }: { sheet: C
                 change={next => set({ spells: [...sheet.spells.filter(s => knownSpells.has(s.name)), ...(next as CharacterSheet['spells'])] })} />
             )}
           </section>
+
+          {(calling?.alchemy || sheet.minerals.length > 0) && (
+            <section className="cs-panel" aria-label="Minerals">
+              <h2>Minerals <Help topic="minerals" sheet={sheet} label="Minerals" /></h2>
+              {calling?.alchemy && <p className="cs-budget">Known: <b className={sheet.minerals.length === allowed.minerals ? 'ok' : sheet.minerals.length > allowed.minerals ? 'bad' : undefined}>{sheet.minerals.length} of {allowed.minerals}</b> · {calling.alchemy.emberCost} Ember to swallow one</p>}
+              {minerals.map(m => (
+                <Pick key={m.name} name={m.name} cost={`${m.vein} · ${m.temper}`} text={m.power} checked={sheet.minerals.includes(m.name)}
+                  onChange={on => set({ minerals: toggle(sheet.minerals, m.name, on) })} />
+              ))}
+              {extraMinerals.map(name => <Pick key={name} name={name} checked onChange={on => set({ minerals: toggle(sheet.minerals, name, on) })} />)}
+            </section>
+          )}
 
           <section className="cs-panel" aria-label="Contacts and notes">
             <h2>Contacts &amp; notes <Help topic="contacts" sheet={sheet} label="Contacts and notes" /></h2>

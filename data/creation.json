@@ -1,6 +1,6 @@
 {
-  "$comment": "Hero creation data for the character sheet UI (VTTER-47). Source of truth: rules/core-rules.md §3 (making a hero, ancestries, backgrounds, derived numbers), §4 (callings), §5.3 (starting spells), §7.3 (kits). Change both together (see CLAUDE.md).",
-  "version": "0.2",
+  "$comment": "Hero creation data for the character sheet UI (VTTER-47). Source of truth: rules/core-rules.md §3 (making a hero, ancestries, backgrounds, derived numbers), §4 (callings, §4.7 minerals), §5.3 (starting spells), §7.3 (kits). Change both together (see CLAUDE.md).",
+  "version": "0.3",
   "attributeArray": [3, 2, 1, 1, 0, -1],
   "ancestryCapAtLevel1": 4,
   "freeSkillRanks": 2,
@@ -119,7 +119,39 @@
         { "name": "Vanish", "text": "Once per scene, after an attack, become hidden if any cover is nearby." }
       ],
       "kit": "Light weapon, light armor, a disguise kit, lockpicks, 1 vial of poison (+1d6, one hit)", "shield": false
+    },
+    "Kilnheart": {
+      "grit": { "base": 9, "perLevel": 4 }, "ember": { "base": 2, "attribute": "Might" }, "armor": "light",
+      "skills": { "Melee": 2, "Craft": 1 },
+      "signature": "Crucible",
+      "signatureText": "Once on your turn, without using your Action, pay 1 Ember and swallow a mineral you know. Its power lasts until the scene ends. You hold one at a time, so a new one replaces it. You know 3 minerals at level 1.",
+      "alchemy": { "startingMinerals": 3, "emberCost": 1, "extraMinerals": { "talent": "Wide Palate", "count": 2 } },
+      "talents": [
+        { "name": "Twin Draught", "text": "Hold two minerals at once." },
+        { "name": "Wide Palate", "text": "Learn 2 more minerals." },
+        { "name": "Quick Swallow", "text": "Use Crucible as a Reaction." },
+        { "name": "Shared Dose", "cost": "2 Ember", "text": "An ally in reach gains one of your minerals until the scene ends." },
+        { "name": "Last Spark", "text": "End a held mineral to add +2d6 damage to a hit." },
+        { "name": "Tempered Gut", "text": "Immune to poison. Boon on Tests against disease." }
+      ],
+      "kit": "Versatile weapon, light armor, a mineral pouch, a mortar and pestle", "shield": false
     }
+  },
+  "minerals": {
+    "common": [
+      { "name": "Sulfur", "vein": "Blood", "temper": "Hot", "power": "Your weapon hits deal +1d4 fire damage." },
+      { "name": "Slate", "vein": "Blood", "temper": "Cold", "power": "+2 Dodge." },
+      { "name": "Cinnabar", "vein": "Stride", "temper": "Hot", "power": "Each Move covers 1 extra zone." },
+      { "name": "Rootstone", "vein": "Stride", "temper": "Cold", "power": "You can't be knocked Prone, pushed or Grabbed." },
+      { "name": "Wakeglass", "vein": "Mind", "temper": "Hot", "power": "Boon on Notice and Wits Tests." },
+      { "name": "Hushstone", "vein": "Mind", "temper": "Cold", "power": "+2 Will, and you can't be Frightened." },
+      { "name": "Marrowsalt", "vein": "Marrow", "temper": "Hot", "power": "Instantly recover 1d8 + Might Grit." },
+      { "name": "Stillsalt", "vein": "Marrow", "temper": "Cold", "power": "Ignore the Banes from your Wounds." }
+    ],
+    "deep": [
+      { "name": "Heartcoal", "power": "Take one extra Action this turn." },
+      { "name": "Gloamspar", "power": "Remove 1 Wound." }
+    ]
   },
   "spellLists": {
     "Arcane": [

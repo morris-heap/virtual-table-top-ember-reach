@@ -1,7 +1,7 @@
 // The read-only character sheet (docs/mockups/character-sheet-ui.html).
 import { Fragment, type ReactNode } from 'react'
 import character from '../../../data/character.json'
-import { callingInfo, derive, signed, woundBanes, type CharacterSheet } from '../engine/sheet.ts'
+import { callingInfo, derive, MINERALS, signed, woundBanes, type CharacterSheet } from '../engine/sheet.ts'
 
 // Same layout as sheets/character-sheet.md: three Skill / Rank pairs per row, read down each column, weapon skills last.
 const columns = Math.ceil(character.skills.length / 3)
@@ -180,6 +180,22 @@ export default function SheetView({ sheet, portrait }: { sheet: CharacterSheet; 
               </div>
             )}
           </section>
+
+          {(calling?.alchemy || sheet.minerals.length > 0) && (
+            <section className="cs-panel" aria-label="Minerals">
+              <h2>Minerals</h2>
+              {sheet.minerals.length === 0 ? <p className="cs-muted">No minerals known.</p> : (
+                <ul className="cs-list">
+                  {sheet.minerals.map(name => {
+                    const mineral = MINERALS.find(m => m.name === name)
+                    return (
+                      <li key={name}><b>{name}.</b>{mineral && <span className="cs-tag">{mineral.vein} · {mineral.temper}</span>} {mineral?.power}</li>
+                    )
+                  })}
+                </ul>
+              )}
+            </section>
+          )}
 
           <section className="cs-panel" aria-label="Contacts and notes">
             <h2>Contacts &amp; notes</h2>

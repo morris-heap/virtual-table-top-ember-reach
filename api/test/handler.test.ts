@@ -147,7 +147,7 @@ describe('characters', () => {
     const s = new MemoryStore()
     const put = await call(s, 'PUT', `/characters/${HERO}`, { owner: A, body: kestrel })
     expect(put.status).toBe(200)
-    expect(await put.json()).toMatchObject({ id: HERO, ownerId: A, name: 'Kestrel Ashvane', rulesVersion: '0.2' })
+    expect(await put.json()).toMatchObject({ id: HERO, ownerId: A, name: 'Kestrel Ashvane', rulesVersion: '0.3' })
 
     const got = await body(call(s, 'GET', `/characters/${HERO}`, { owner: A }))
     expect(got.attributes.lore).toBe(3)
@@ -197,7 +197,7 @@ describe('characters', () => {
 describe('parseSheet (values from /data)', () => {
   it('fills defaults for a minimal sheet', () => {
     const s = parseSheet({ name: 'New hero' })
-    expect(s).toMatchObject({ level: 1, armor: 'none', supplyDie: 'd8', rulesVersion: '0.2', wounds: [], skills: {} })
+    expect(s).toMatchObject({ level: 1, armor: 'none', supplyDie: 'd8', rulesVersion: '0.3', wounds: [], skills: {}, minerals: [] })
     expect(s.attributes).toEqual({ might: 0, grace: 0, wits: 0, lore: 0, spirit: 0, presence: 0 })
   })
 
@@ -219,6 +219,8 @@ describe('parseSheet (values from /data)', () => {
   })
 
   it('allows rank 4 from level 7', () => {
+    expect(parseSheet({ ...kestrel, calling: 'Kilnheart', minerals: [' Slate '] }).minerals).toEqual(['Slate'])
+    expect(() => parseSheet({ ...kestrel, minerals: [''] })).toThrow()
     expect(parseSheet({ ...kestrel, level: 7, skills: { Arcana: 4 } }).skills.Arcana).toBe(4)
   })
 })

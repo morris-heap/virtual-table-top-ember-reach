@@ -24,6 +24,7 @@ const rule = (label: string, anchor: string) => ({ label, href: `${RULES_URL}#${
 const CALLING_ANCHOR: Record<string, string> = {
   Warden: '41-warden-the-shield-bearer', Blade: '42-blade-the-duelist', Hexer: '43-hexer-the-arcanist',
   Mender: '44-mender-the-flamekeeper', Pathfinder: '45-pathfinder-the-hunter-scout', Silvertongue: '46-silvertongue-the-rogue-bard',
+  Kilnheart: '47-kilnheart-the-mineral-alchemist',
 }
 const ATTRIBUTE_COVERS: Record<string, string> = {
   Might: 'Strength, endurance, heavy weapons, grappling.',
@@ -165,6 +166,19 @@ export function helpFor(topic: string, sheet: CharacterSheet): Help {
             `Cast with d20 + ${casting.attribute} + Spellcraft vs the spell's DC.`]
           : ['Only casters (Hexer, Mender) have spell lists. Add a spell by hand if the GM gave you one.'],
         rule: rule('Core rules §5 Magic', '5-magic'),
+      }
+    }
+    case 'minerals': {
+      const alchemy = calling?.alchemy
+      return {
+        title: 'Minerals', ...base,
+        paragraphs: alchemy
+          ? [`${sheet.calling}s know ${alchemy.startingMinerals} minerals at level 1. ${alchemy.extraMinerals.talent} teaches ${alchemy.extraMinerals.count} more.`,
+            `Swallowing one costs ${alchemy.emberCost} Ember. You can't hold both minerals from one Vein.`,
+            `Deep minerals (${creation.minerals.deep.map(m => m.name).join(', ')}) are treasure only a Kilnheart can swallow, without using an Action. Write your doses in your gear.`]
+          : ['Only a Kilnheart learns minerals.'],
+        math: alchemy ? `${allowances(sheet).minerals} minerals known` : undefined,
+        rule: rule('Core rules §4.7 Kilnheart', CALLING_ANCHOR.Kilnheart),
       }
     }
     case 'attacks': return {
