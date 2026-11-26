@@ -1,5 +1,5 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { DeleteCommand, DynamoDBDocumentClient, GetCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { BatchGetCommand, DeleteCommand, DynamoDBDocumentClient, GetCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { mockClient } from 'aws-sdk-client-mock'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { DynamoGameStore } from '../src/game-store.ts'
@@ -59,12 +59,44 @@ describe('DynamoGameStore', () => {
 
   it('lists a member\'s Games via their pointers, newest first, skipping stale ones', async () => {
     ddb.on(QueryCommand).resolves({ Items: [{ gameId: 'a', gmId: GM }, { gameId: 'b', gmId: GM }, { gameId: 'gone', gmId: GM }] })
-    ddb.on(GetCommand)
-      .resolvesOnce({ Item: { ...stored([GM]), id: 'game#a', updatedAt: '2026-01-01' } })
-      .resolvesOnce({ Item: { ...stored([GM]), id: 'game#b', updatedAt: '2026-06-01' } })
-      .resolvesOnce({})
+    // One BatchGetItem for all three pointers, not three GetItems. A pointer to a deleted Game is
+    // simply absent from the response, which is how a stale pointer drops out of the list.
+    ddb.on(BatchGetCommand).resolves({
+      Responses: {
+        heroes: [
+          { ...stored([GM]), id: 'game#a', updatedAt: '2026-01-01' },
+          { ...stored([GM]), id: 'game#b', updatedAt: '2026-06-01' },
+        ],
+      },
+    })
     expect((await games.listFor(ANA)).map(g => g.id)).toEqual(['b', 'a'])
     expect(ddb.commandCalls(QueryCommand)[0].args[0].input.ExpressionAttributeValues).toEqual({ ':o': ANA, ':p': 'gm#' })
+    const batch = ddb.commandCalls(BatchGetCommand)
+    expect(batch).toHaveLength(1)
+    expect(batch[0].args[0].input.RequestItems?.heroes).toMatchObject({
+      Keys: [
+        { ownerId: GM, id: 'game#a' },
+        { ownerId: GM, id: 'game#b' },
+        { ownerId: GM, id: 'game#gone' },
+      ],
+      // A Game you just created or renamed must be in your list straight away.
+      ConsistentRead: true,
+    })
+    expect(ddb.commandCalls(GetCommand)).toHaveLength(0)
+  })
+
+  it('retries the keys a batch leaves unprocessed rather than dropping those Games', async () => {
+    // DynamoDB may return fewer items than asked for and name the rest in UnprocessedKeys. Dropping
+    // one would read as "that Game is gone", so they are retried.
+    ddb.on(QueryCommand).resolves({ Items: [{ gameId: 'a', gmId: GM }, { gameId: 'b', gmId: GM }] })
+    ddb.on(BatchGetCommand)
+      .resolvesOnce({
+        Responses: { heroes: [{ ...stored([GM]), id: 'game#a', updatedAt: '2026-01-01' }] },
+        UnprocessedKeys: { heroes: { Keys: [{ ownerId: GM, id: 'game#b' }] } },
+      })
+      .resolvesOnce({ Responses: { heroes: [{ ...stored([GM]), id: 'game#b', updatedAt: '2026-06-01' }] } })
+    expect((await games.listFor(ANA)).map(g => g.id)).toEqual(['b', 'a'])
+    expect(ddb.commandCalls(BatchGetCommand)).toHaveLength(2)
   })
 
   it('counts with a COUNT query', async () => {
@@ -126,12 +158,25 @@ describe('DynamoGameStore', () => {
 
   // VTTER-77: the hero rides on the member's own pointer item.
   it('reads each member hero from their pointer, skipping members who brought none', async () => {
-    ddb.on(GetCommand)
-      .resolvesOnce({ Item: { heroId: 'hero-gm' } })
-      .resolvesOnce({ Item: {} })
+    // One request for the whole roster. ownerId is projected so each row maps back to its member:
+    // a batch response is unordered, so position cannot be relied on.
+    ddb.on(BatchGetCommand).resolves({
+      Responses: { heroes: [{ ownerId: ANA }, { ownerId: GM, heroId: 'hero-gm' }] },
+    })
     expect(await games.heroesOf(G, [GM, ANA])).toEqual({ [GM]: 'hero-gm' })
-    const keys = ddb.commandCalls(GetCommand).map(c => c.args[0].input.Key)
-    expect(keys).toEqual([{ ownerId: GM, id: `gm#${G}` }, { ownerId: ANA, id: `gm#${G}` }])
+    const input = ddb.commandCalls(BatchGetCommand)[0].args[0].input.RequestItems?.heroes
+    expect(input).toMatchObject({
+      Keys: [{ ownerId: GM, id: `gm#${G}` }, { ownerId: ANA, id: `gm#${G}` }],
+      // A hero you just brought to the table must show on the next read.
+      ConsistentRead: true,
+    })
+    expect(input?.ProjectionExpression).toBe('#o, #h')
+    expect(ddb.commandCalls(GetCommand)).toHaveLength(0)
+  })
+
+  it('reads no pointers at all for an empty roster', async () => {
+    expect(await games.heroesOf(G, [])).toEqual({})
+    expect(ddb.commandCalls(BatchGetCommand)).toHaveLength(0)
   })
 
   it("sets and clears the caller's own hero, and only if they are still a member", async () => {

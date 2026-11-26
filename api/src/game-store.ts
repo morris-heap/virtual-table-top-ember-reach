@@ -3,11 +3,12 @@
 //   (memberId, gm#<id>)    a pointer from each member (the GM too) to the Game, so a member can find and read it.
 //                          It also holds that member's `heroId`: the hero they brought (VTTER-77).
 //   ('_game',  <id>)       a pointer from the Game id to its GM, so a public Game can be joined from its link
-// Only Get, Query, Update and Delete are used, so the Lambda role needs no new action.
-import { DeleteCommand, GetCommand, QueryCommand, UpdateCommand, type DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
+// Get, BatchGet, Query, Update and Delete are used; the Lambda role grants exactly those
+// (infra/lib/api-stack.ts). Add an action there before calling anything new here.
+import { BatchGetCommand, DeleteCommand, GetCommand, QueryCommand, UpdateCommand, type DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import gameData from '../../data/game.json'
 import { nameKey, type GameDraft, type GameRecord } from './game.ts'
-import { NameTaken, type GameStore } from './handler.ts'
+import { DatabaseUnavailable, NameTaken, type GameStore } from './handler.ts'
 import { guard, isConditionFailure, setExpression } from './store.ts'
 
 export const GAME_PREFIX = 'game#'
@@ -40,8 +41,43 @@ function decodeCursor(cursor: string): string | undefined {
   return after && after.length <= 40 ? after : undefined
 }
 
+/** BatchGetItem takes at most 100 keys per request. Both callers here are capped well below that. */
+const BATCH_MAX = 100
+
 export class DynamoGameStore implements GameStore {
   constructor(private db: DynamoDBDocumentClient, private table: string) {}
+
+  /**
+   * Read many items by key in one request instead of one `GetItem` each. Strongly consistent, because
+   * both callers must see a write that just happened: a Game you just created or renamed, and a hero
+   * you just brought to the table.
+   *
+   * DynamoDB may return fewer items than asked for when a response grows large or a partition throttles,
+   * naming the rest in `UnprocessedKeys`; those are retried with a short backoff rather than dropped,
+   * since a dropped key here reads as "that Game is gone".
+   */
+  private async batchGet(keys: Record<string, unknown>[], projection?: { expression: string; names: Record<string, string> }) {
+    const out: Record<string, unknown>[] = []
+    for (let i = 0; i < keys.length; i += BATCH_MAX) {
+      let pending = keys.slice(i, i + BATCH_MAX)
+      for (let attempt = 0; pending.length && attempt < 5; attempt++) {
+        const res = await guard(() => this.db.send(new BatchGetCommand({
+          RequestItems: {
+            [this.table]: {
+              Keys: pending,
+              ConsistentRead: true,
+              ...(projection ? { ProjectionExpression: projection.expression, ExpressionAttributeNames: projection.names } : {}),
+            },
+          },
+        })))
+        out.push(...(res.Responses?.[this.table] ?? []))
+        pending = (res.UnprocessedKeys?.[this.table]?.Keys ?? []) as Record<string, unknown>[]
+        if (pending.length) await new Promise(r => setTimeout(r, 2 ** attempt * 50))
+      }
+      if (pending.length) throw new DatabaseUnavailable()
+    }
+    return out
+  }
 
   private async readGame(gmId: string, id: string): Promise<GameRecord | null> {
     const res = await guard(() => this.db.send(new GetCommand({
@@ -91,8 +127,11 @@ export class DynamoGameStore implements GameStore {
       for (const it of page.Items ?? []) rows.push({ id: it.gameId as string, gmId: it.gmId as string })
       start = page.LastEvaluatedKey
     } while (start && rows.length < limits.maxGamesPerPlayer)
-    const games = await Promise.all(rows.slice(0, limits.maxGamesPerPlayer).map(r => this.readGame(r.gmId, r.id)))
-    return games.filter((g): g is GameRecord => g !== null).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    // One BatchGetItem for every Game the player belongs to, rather than one GetItem each. The cap is
+    // maxGamesPerPlayer (50), comfortably inside the 100-key batch limit.
+    const wanted = rows.slice(0, limits.maxGamesPerPlayer)
+    const items = await this.batchGet(wanted.map(r => ({ ownerId: r.gmId, id: GAME_PREFIX + r.id })))
+    return items.map(toGame).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
   }
 
   private async count(ownerId: string, prefix: string) {
@@ -259,17 +298,21 @@ export class DynamoGameStore implements GameStore {
   }
 
   async heroesOf(gameId: string, memberIds: string[]) {
-    const pairs = await Promise.all(memberIds.map(async memberId => {
-      const res = await guard(() => this.db.send(new GetCommand({
-        TableName: this.table,
-        Key: { ownerId: memberId, id: MEMBER_PREFIX + gameId },
-        ProjectionExpression: '#h',
-        ExpressionAttributeNames: { '#h': 'heroId' },
-        ConsistentRead: true,
-      })))
-      return [memberId, res.Item?.heroId as string | undefined] as const
-    }))
-    return Object.fromEntries(pairs.filter((p): p is readonly [string, string] => !!p[1]))
+    if (!memberIds.length) return {}
+    // One request for the whole roster, not one per member. maxMembers (20) is well inside the batch
+    // limit. `ownerId` is projected so each row can be matched back to its member: a batch response
+    // comes back unordered, and an absent pointer is simply missing rather than a null in position.
+    const items = await this.batchGet(
+      memberIds.map(memberId => ({ ownerId: memberId, id: MEMBER_PREFIX + gameId })),
+      { expression: '#o, #h', names: { '#o': 'ownerId', '#h': 'heroId' } },
+    )
+    const heroes: Record<string, string> = {}
+    for (const it of items) {
+      const memberId = it.ownerId as string | undefined
+      const heroId = it.heroId as string | undefined
+      if (memberId && heroId) heroes[memberId] = heroId
+    }
+    return heroes
   }
 
   async setHero(userId: string, gameId: string, heroId: string | null) {

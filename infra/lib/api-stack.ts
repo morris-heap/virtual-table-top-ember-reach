@@ -46,8 +46,9 @@ export class ApiStack extends Stack {
         retention: RetentionDays.ONE_MONTH,
       }),
     })
-    // Exactly what api/src/store.ts calls.
-    table.grant(fn, 'dynamodb:GetItem', 'dynamodb:Query', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem')
+    // Exactly what api/src/store.ts and api/src/game-store.ts call. BatchGetItem reads a whole Game
+    // list or roster in one request (VTTER-99); it is a separate action from GetItem.
+    table.grant(fn, 'dynamodb:GetItem', 'dynamodb:BatchGetItem', 'dynamodb:Query', 'dynamodb:UpdateItem', 'dynamodb:DeleteItem')
     // Querying a GSI needs its own ARN: the table grant above does not cover index/*. Query only,
     // because an index is read-only (VTTER-76, ADR 0008).
     fn.addToRolePolicy(new PolicyStatement({
