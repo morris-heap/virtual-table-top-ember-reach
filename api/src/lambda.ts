@@ -20,7 +20,7 @@ export function makeHandler(deps: Deps) {
 
 // Created once per execution environment and reused across invocations.
 const db = DynamoDBDocumentClient.from(new DynamoDBClient({}), { marshallOptions: { removeUndefinedValues: true } })
-const table = process.env.TABLE_NAME ?? 'emberreach-characters'
+const table = process.env.TABLE_NAME ?? 'vtter-game'
 const deps: Deps = {
   store: new DynamoCharacterStore(db, table),
   profiles: new DynamoProfileStore(db, table),

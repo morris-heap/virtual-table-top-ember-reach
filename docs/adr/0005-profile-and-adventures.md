@@ -12,7 +12,8 @@ sharing exists yet, so this change only has to avoid painting us into a corner.
 
 ## Decision
 
-- **Same table, more item kinds.** Profiles and adventures live in `emberreach-characters`, in the owner's partition,
+- **Same table, more item kinds.** Profiles and adventures live in the one table (`emberreach-characters`,
+  renamed `vtter-game` on 2026-11-25 by VTTER-94), in the owner's partition,
   next to the heroes. Heroes keep their UUID sort key and have no `kind` attribute. The new items carry a `kind`:
 
   | Item | `ownerId` | `id` | `kind` |

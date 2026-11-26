@@ -115,7 +115,7 @@ in `app/`, then `npx wrangler deploy`); `.github/workflows/app.yml` checks pull 
 ## API (`/api`) and infrastructure (`/infra`)
 
 An AWS Lambda function (Node.js 22) behind an API Gateway HTTP API, storing heroes in the DynamoDB table
-`emberreach-characters`. Everything is in the ember-reach project, Region **us-east-2**. See
+`vtter-game`. Everything is in the ember-reach project, Region **us-east-2**. See
 [docs/adr/0003-backend-dynamodb-lambda.md](docs/adr/0003-backend-dynamodb-lambda.md).
 The CDK app in `infra/` defines it. `.github/workflows/api.yml` deploys `EmberreachData` and `EmberreachApi` on pushes to `main`
 through GitHub OIDC (role `emberreach-github-deploy`, environment `aws`).
