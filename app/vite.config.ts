@@ -9,5 +9,24 @@ export default defineConfig({
   build: { chunkSizeWarningLimit: 700 },
   // Rules data lives in ../data (shared with the rulebook)
   server: { fs: { allow: ['..'] } },
-  test: { include: ['src/**/*.test.ts'] },
+  test: {
+    // Two projects so only component tests pay for a DOM: the pure-logic tests
+    // keep running in Node, which is much faster. (Vitest 5 replaced
+    // environmentMatchGlobs with projects.)
+    projects: [
+      {
+        extends: true,
+        test: { name: 'unit', include: ['src/**/*.test.ts'], environment: 'node' },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'component',
+          include: ['src/**/*.test.tsx'],
+          environment: 'jsdom',
+          setupFiles: ['src/test-setup.ts'],
+        },
+      },
+    ],
+  },
 })

@@ -9,7 +9,9 @@ import { useLoad } from './useLoad.ts'
 
 type Saving = { status: 'idle' } | { status: 'saving' } | { status: 'saved' } | { status: 'error'; message: string }
 
-function ProfileForm({ profile, signInName, onSaved }: { profile: ProfileData; signInName: string; onSaved: (p: ProfileData) => void }) {
+// Exported for component tests: the form takes the profile as a prop, so a test
+// can render it without the network. The page itself still uses it directly.
+export function ProfileForm({ profile, signInName, onSaved }: { profile: ProfileData; signInName: string; onSaved: (p: ProfileData) => void }) {
   const [displayName, setDisplayName] = useState(profile.displayName)
   const [saving, setSaving] = useState<Saving>({ status: 'idle' })
   const [copied, setCopied] = useState(false)

@@ -103,6 +103,9 @@ in `app/`, then `npx wrangler deploy`); `.github/workflows/app.yml` checks pull 
   AWS profile. `e2e/throwaway-user.ts` deletes the Cognito user **and** its profile and `_player` rows afterwards;
   deleting only the user would leave an orphaned player ID holding its slot. Override the target with
   `E2E_BASE_URL`. Keep them serial (`workers: 1`): each one writes to the real table.
+- **Tests split by environment.** `npm test` runs two Vitest projects: `unit` (`src/**/*.test.ts`, Node) and
+  `component` (`src/**/*.test.tsx`, jsdom + Testing Library, set up in `src/test-setup.ts`). Put a component test
+  in a `.tsx` file or it runs without a DOM. Keep pure logic in `.test.ts` so it stays in the fast Node project.
 - Game logic goes in `app/src/engine/` as pure functions with an injectable RNG, and every rule gets unit tests.
 - **Game numbers come from `/data/*.json`, never hard-coded.** When a rule's numbers change,
   update `rules/*.md` **and** `/data` in the same change (this is part of the ripple check above).
