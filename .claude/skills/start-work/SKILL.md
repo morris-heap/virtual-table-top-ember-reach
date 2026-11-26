@@ -12,6 +12,18 @@ build and test straight away. Other Claude sessions often run in the main checko
 time, so never switch branches or stash there. Do everything through the worktree.
 
 Jira: site `morris-heap.atlassian.net` (use it as `cloudId`), project **VTTER**.
+
+**Exact parameter names.** These are easy to get wrong, and each wrong guess costs a failed call:
+
+| Tool | Correct | Not |
+|---|---|---|
+| `createJiraIssue` | `issueType: "Task"` | ~~`issueTypeName`~~ |
+| `createJiraIssue` | `parent: "VTTER-37"` | ~~`parentKey`~~ |
+| `transitionJiraIssue` | `transitionName: "In Progress"` (a string) | ~~`transition: {name: ...}`~~ |
+| all of them | `cloudId` top-level, beside `name`/`inputs` | ~~inside `inputs`~~ |
+
+A transition's **name is not its target status**: "Done" won't match a transition called
+"Review->Done". When a name fails, call `listJiraIssueTransitions` and use the `transitionId`.
 Issue types: Task, Story, Epic, Subtask.
 
 ## 1. Resolve the work item
