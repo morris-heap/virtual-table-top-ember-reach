@@ -40,7 +40,10 @@ export default function Adventures({ auth }: { auth: Auth }) {
           <p className="eyebrow">Play or write</p>
           <h1>Adventures</h1>
         </div>
-        <Link to={{ name: 'adventure', id: 'new' }} className="account-btn primary">New adventure</Link>
+        <div className="row-actions">
+          <Link to={{ name: 'maps' }} className="account-btn">Maps</Link>
+          <Link to={{ name: 'adventure', id: 'new' }} className="account-btn primary">New adventure</Link>
+        </div>
       </header>
 
       <section className="panel" aria-labelledby="builtin-title">

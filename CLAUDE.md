@@ -87,7 +87,7 @@ in `app/`, then `npx wrangler deploy`); `.github/workflows/app.yml` checks pull 
   delete it until Cloudflare fixes preview builds (VTTER-67). Both files need a `previews` block.
 
 - **Screens and routing:** signed-in players get Home (Games, plus their newest heroes and adventures), Heroes (`/heroes`,
-  `/heroes/new`, `/heroes/<id>`), Adventures (`/adventures`, the editor, built-ins), Games, Profile and the Test roller (which also holds the 3D **Dice tray** tab, VTTER-79, lazy-loaded from `app/src/dice/`).
+  `/heroes/new`, `/heroes/<id>`), Adventures (`/adventures`, the editor, built-ins), Maps (`/maps`, and the map editor at `/maps/<id>`, VTTER-74, lazy-loaded from `app/src/maps/` and reached from Adventures), Games, Profile and the Test roller (which also holds the 3D **Dice tray** tab, VTTER-79, lazy-loaded from `app/src/dice/`).
   The top bar links Home, Heroes and Adventures. Routes are a pure table in `app/src/router.ts` (hand-rolled, no router library), and `/` must stay Home because
   it is the Cognito redirect. Calls to the API go through `app/src/api/client.ts` and never send a user id.
   Built-in adventures are `data/adventures/*.json`, listed in `app/src/adventures/builtIn.ts` **and** in `api/src/game.ts`

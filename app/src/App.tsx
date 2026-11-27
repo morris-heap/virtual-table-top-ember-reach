@@ -1,6 +1,6 @@
 // Chooses the screen (VTTER-59): the landing page for signed-out visitors, Home and its screens for signed-in
 // players (VTTER-71), and the Test roller as a guest when a visitor picks "Try the Test roller" (kept for this tab only).
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import AdventureEditor from './AdventureEditor.tsx'
 import Adventures from './Adventures.tsx'
 import AdventureView from './AdventureView.tsx'
@@ -13,12 +13,16 @@ import HeroPage from './HeroPage.tsx'
 import Heroes from './Heroes.tsx'
 import Home from './Home.tsx'
 import Landing, { Logo } from './Landing.tsx'
+import Maps from './maps/Maps.tsx'
 import { navigate, useRoute } from './nav.ts'
 import Profile from './Profile.tsx'
 import Roller from './Roller.tsx'
 import { useAppPresence } from './usePresence.ts'
 import { useAuth, type Auth } from './auth/useAuth.ts'
 import Link from './Link.tsx'
+
+// The editor's canvas code is only needed on a map page, so it loads on demand like the dice tray.
+const MapEditor = lazy(() => import('./maps/MapEditor.tsx'))
 
 const GUEST = 'emberreach.guest'
 
@@ -58,6 +62,8 @@ function SignedIn({ auth, name }: { auth: Auth; name: string }) {
     case 'adventures': return <Adventures auth={auth} />
     case 'adventure': return <AdventureEditor auth={auth} id={route.id} />
     case 'builtIn': return <AdventureView auth={auth} slug={route.slug} />
+    case 'maps': return <Maps auth={auth} />
+    case 'map': return <Suspense fallback={<p className="muted">Loading the map editor…</p>}><MapEditor auth={auth} id={route.id} /></Suspense>
     case 'games': return <BrowseGames auth={auth} />
     case 'game': return <GamePage auth={auth} id={route.id} />
     case 'friends': return <Friends auth={auth} />

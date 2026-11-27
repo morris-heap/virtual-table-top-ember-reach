@@ -22,7 +22,7 @@ function sectionOf(route: Route): Section | null {
   switch (route.name) {
     case 'home': case 'game': return 'home'
     case 'heroes': case 'hero': return 'heroes'
-    case 'adventures': case 'adventure': case 'builtIn': return 'adventures'
+    case 'adventures': case 'adventure': case 'builtIn': case 'maps': case 'map': return 'adventures'
     case 'friends': case 'friendAdventure': case 'chat': return 'friends'
     default: return null
   }
@@ -43,9 +43,10 @@ function TopNav() {
   )
 }
 
-export default function Shell({ auth, wide = false, children }: { auth: Auth; wide?: boolean; children: ReactNode }) {
+/** `wide` for a two-column screen, `full` for the map editor, which needs the whole window. */
+export default function Shell({ auth, wide = false, full = false, children }: { auth: Auth; wide?: boolean; full?: boolean; children: ReactNode }) {
   return (
-    <main className={wide ? 'wide' : undefined}>
+    <main className={full ? 'full' : wide ? 'wide' : undefined}>
       <div className="topbar">
         <Link to="/" className="brand" aria-label="Emberreach home"><Logo size={26} /><span>Emberreach</span></Link>
         {auth.state.status === 'signedIn' && <TopNav />}

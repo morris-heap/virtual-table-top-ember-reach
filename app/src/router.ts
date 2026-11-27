@@ -15,6 +15,10 @@ export type Route =
   | { name: 'adventure'; id: string }
   /** A built-in adventure, read-only. */
   | { name: 'builtIn'; slug: string }
+  /** Your maps (VTTER-74). */
+  | { name: 'maps' }
+  /** One of your maps, in the editor. */
+  | { name: 'map'; id: string }
   /** Public Games anyone can browse and join (VTTER-76). */
   | { name: 'games' }
   /** A Game you are in, or one you were sent the link to (VTTER-72). */
@@ -40,6 +44,8 @@ export function parseRoute(pathname: string): Route {
   if (parts.length === 1 && first === 'roller') return { name: 'roller' }
   if (parts.length === 1 && first === 'heroes') return { name: 'heroes' }
   if (first === 'heroes' && parts.length === 2 && (second === 'new' || UUID.test(second))) return { name: 'hero', id: second.toLowerCase() }
+  if (parts.length === 1 && first === 'maps') return { name: 'maps' }
+  if (first === 'maps' && parts.length === 2 && UUID.test(second)) return { name: 'map', id: second.toLowerCase() }
   if (parts.length === 1 && first === 'games') return { name: 'games' }
   if (first === 'games' && parts.length === 2 && UUID.test(second)) return { name: 'game', id: second.toLowerCase() }
   if (parts.length === 1 && first === 'friends') return { name: 'friends' }
@@ -67,6 +73,8 @@ export function pathFor(route: Exclude<Route, { name: 'notFound' }>): string {
     case 'adventures': return '/adventures'
     case 'adventure': return `/adventures/${route.id}`
     case 'builtIn': return `/adventures/built-in/${route.slug}`
+    case 'maps': return '/maps'
+    case 'map': return `/maps/${route.id}`
     case 'games': return '/games'
     case 'game': return `/games/${route.id}`
     case 'friends': return '/friends'
