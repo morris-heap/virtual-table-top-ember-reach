@@ -461,6 +461,52 @@ export const hasTexture = (type: string) => type in TYPE_TEXTURE
  */
 export interface Bridge { cx: number; cy: number; ux: number; uy: number; half: number; width: number }
 
+/**
+ * How to draw a bridge's deck (VTTER-128): its centre, the angle of its **long** side, and its long and short lengths.
+ * Rails run along the long sides and planks across the short way, whichever way the bridge was painted: a bridge
+ * painted wider than it is long still has its rails on its long sides.
+ */
+export function bridgeDeck(b: Bridge): { cx: number; cy: number; angle: number; long: number; short: number } {
+  const along = b.half * 2
+  const angle = Math.atan2(b.uy, b.ux)
+  return along >= b.width
+    ? { cx: b.cx, cy: b.cy, angle, long: along, short: b.width }
+    : { cx: b.cx, cy: b.cy, angle: angle + Math.PI / 2, long: b.width, short: along }
+}
+
+/** A wall's stroke width, in hex radii. Doors and gates match it, so they fill the wall's line. */
+export const WALL_WIDTH = 0.26
+
+/** The radius of a Static Object's or Entity's token disc, in hex radii. */
+export const TOKEN_RADIUS = 0.62
+
+/**
+ * How wide anything you can walk through is drawn, at least: a token's width with a little room either side, so a
+ * door reads as something an Entity could pass. It is wider than one hex side, so it overlaps the wall ends.
+ */
+export const PASSAGE_WIDTH = 2 * TOKEN_RADIUS + 0.16
+
+/**
+ * How big an edge Portal is drawn (VTTER-128): a share of its gap (`span`), never less than `min` long, and a
+ * thickness, all in hex radii. Doors, secret doors, gates, portcullises, openings and holes are passages: they fill
+ * their gap at the wall's thickness and are at least PASSAGE_WIDTH wide. Windows and arrow slits are set into the
+ * wall, so they are thinner, and an arrow slit is narrow.
+ */
+export function portalSize(type: string): { span: number; thick: number; min: number } {
+  switch (type) {
+    case 'door': case 'secret-door': case 'gate': case 'portcullis': return { span: 1, thick: WALL_WIDTH, min: PASSAGE_WIDTH }
+    case 'window': return { span: 0.9, thick: 0.12, min: 0 }
+    case 'arrow-slit': return { span: 0.35, thick: 0.12, min: 0 }
+    default: return { span: 1, thick: 0.32, min: PASSAGE_WIDTH } // an opening or a hole: jambs at each end
+  }
+}
+
+/** How long an edge Portal is drawn across a gap `gap` long (see `portalSize`). */
+export const portalLength = (type: string, gap: number) => {
+  const { span, min } = portalSize(type)
+  return Math.max(gap * span, min)
+}
+
 export const BRIDGE_WIDTH = 0.9
 /** How far a bridge reaches past its end hex centres, so it lands on the banks. */
 const BRIDGE_OVERHANG = 0.8

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import mapData from '../../../data/map.json'
 import { DIRECTIONS, edgeHexes, edgesAround, edgeSegment, hexAt, hexCenter, hexCount, indexOf, neighbour, ownedEdge, type Grid } from './hex.ts'
 import {
-  artKey, artOf, BRIDGE_WIDTH, bridgeOf, chainSegments, frameOf, guideOf, relax, shapeParts, snapChain, snapSegment, type Guide, drawOrder, edgeChains, hasTexture, isWide, pointInRings, routeLines, scatterDecor, shapeOf,
+  artKey, artOf, BRIDGE_WIDTH, bridgeDeck, bridgeOf, PASSAGE_WIDTH, portalLength, portalSize, TOKEN_RADIUS, WALL_WIDTH, chainSegments, frameOf, guideOf, relax, shapeParts, snapChain, snapSegment, type Guide, drawOrder, edgeChains, hasTexture, isWide, pointInRings, routeLines, scatterDecor, shapeOf,
   smoothLine, textureOf, traceOutline, type Pt,
 } from './mapArt.ts'
 import { generateMap } from './mapGen.ts'
@@ -472,5 +472,53 @@ describe('bridge size (VTTER-126)', () => {
     const hexes = [2, 3, 4, 5, 6].flatMap(r => [at(5, r), at(6, r)])
     const br = bridgeOf(g, hexes, river)!
     expect(Math.abs(br.uy)).toBeLessThan(0.1) // runs left to right, across the river
+  })
+})
+
+describe('door and bridge proportions (VTTER-128)', () => {
+  it('fills the whole gap with a door, secret door, gate or portcullis, at the wall thickness', () => {
+    for (const type of ['door', 'secret-door', 'gate', 'portcullis']) {
+      expect(portalSize(type), type).toMatchObject({ span: 1, thick: WALL_WIDTH })
+      // A long gap is filled end to end.
+      expect(portalLength(type, 3)).toBe(3)
+    }
+  })
+
+  it('makes every passage wide enough for a token to pass through, even in a short gap', () => {
+    // A token is 2 × 0.62 = 1.24 across; one hex side is only 1, and a snapped side is shorter still.
+    expect(PASSAGE_WIDTH).toBeGreaterThan(2 * TOKEN_RADIUS)
+    for (const type of ['door', 'secret-door', 'gate', 'portcullis', 'opening', 'hole']) {
+      expect(portalLength(type, 0.8), type).toBe(PASSAGE_WIDTH)
+      expect(portalLength(type, 1), type).toBeGreaterThan(2 * TOKEN_RADIUS)
+    }
+  })
+
+  it('sets windows and arrow slits into the wall, thinner, with a narrow slit, and never widens them', () => {
+    expect(portalSize('window').thick).toBeLessThan(WALL_WIDTH)
+    expect(portalSize('arrow-slit').span).toBeLessThan(portalSize('window').span)
+    expect(portalLength('window', 0.8)).toBeCloseTo(0.72)
+    expect(portalLength('arrow-slit', 1)).toBeCloseTo(0.35)
+  })
+
+  it('puts the rails on the long sides of a bridge longer than it is wide', () => {
+    const d = bridgeDeck({ cx: 0, cy: 0, ux: 1, uy: 0, half: 2, width: 1 })
+    expect(d.long).toBe(4)
+    expect(d.short).toBe(1)
+    expect(d.angle).toBeCloseTo(0)
+  })
+
+  it('turns a bridge painted wider than it is long, so its rails are still on its long sides', () => {
+    // Crossing direction left to right, but the deck is 4 wide and only 2 long.
+    const d = bridgeDeck({ cx: 3, cy: 5, ux: 1, uy: 0, half: 1, width: 4 })
+    expect(d.long).toBe(4)
+    expect(d.short).toBe(2)
+    expect(Math.abs(Math.cos(d.angle))).toBeLessThan(1e-9) // the long side now runs up and down
+    expect([d.cx, d.cy]).toEqual([3, 5])
+  })
+
+  it('keeps the deck the same size either way round', () => {
+    const b = { cx: 0, cy: 0, ux: 0.6, uy: 0.8, half: 0.7, width: 3 }
+    const d = bridgeDeck(b)
+    expect(d.long * d.short).toBeCloseTo(b.half * 2 * b.width)
   })
 })

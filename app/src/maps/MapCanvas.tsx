@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { edgeAt, hexAt, hexCenter, hexCorners, indexOf, type Grid } from '../engine/hex.ts'
 import {
-  artKey, artOf, boundsOf, drawOrder, frameOf, guideOf, scatterDecor, snapChain, snapSegment, type Bridge, type Guide, smoothRing, traceOutline, type Art, type Decor, type Pt, type Ring, type Texture,
+  artKey, artOf, boundsOf, bridgeDeck, drawOrder, frameOf, guideOf, portalLength, portalSize, TOKEN_RADIUS, WALL_WIDTH, scatterDecor, snapChain, snapSegment, type Bridge, type Guide, smoothRing, traceOutline, type Art, type Decor, type Pt, type Ring, type Texture,
 } from '../engine/mapArt.ts'
 import type { MapDoc } from '../engine/mapModel.ts'
 import { fitView, markOf, panBy, pinchStep, visibleRange, zoomAt, type Paint, type View } from '../engine/mapView.ts'
@@ -82,30 +82,35 @@ function build(a: Art, key: string): Built {
 
 /** A bridge: a plank deck laid across the route, with a rail and posts along each side. World units. */
 function drawBridge(ctx: CanvasRenderingContext2D, b: Bridge, wood: string, ink: string) {
+  // Drawn along the deck's long side, so the rails are always on the long sides (VTTER-128).
+  const d = bridgeDeck(b)
+  const half = d.long / 2
+  const w = d.short / 2
   ctx.save()
-  ctx.translate(b.cx, b.cy)
-  ctx.rotate(Math.atan2(b.uy, b.ux))
-  const w = b.width / 2
+  ctx.translate(d.cx, d.cy)
+  ctx.rotate(d.angle)
   // A soft shadow on the water, then the deck.
   ctx.fillStyle = 'rgba(0, 0, 0, .18)'
-  ctx.fillRect(-b.half + 0.06, -w + 0.1, b.half * 2, b.width)
+  ctx.fillRect(-half + 0.06, -w + 0.1, d.long, d.short)
   ctx.fillStyle = wood
-  ctx.fillRect(-b.half, -w, b.half * 2, b.width)
-  // Planks run across the deck.
+  ctx.fillRect(-half, -w, d.long, d.short)
+  // Planks run across the deck, the short way.
   ctx.strokeStyle = shade(wood, -0.35, 0.8)
   ctx.lineWidth = 0.025
   ctx.beginPath()
-  for (let x = -b.half + 0.16; x < b.half; x += 0.16) { ctx.moveTo(x, -w); ctx.lineTo(x, w) }
+  for (let x = -half + 0.16; x < half; x += 0.16) { ctx.moveTo(x, -w); ctx.lineTo(x, w) }
   ctx.stroke()
-  // Rails along both sides, with posts.
+  // Rails along both long sides, with posts.
   ctx.strokeStyle = ink
   ctx.lineWidth = 0.07
   ctx.lineCap = 'round'
   ctx.beginPath()
-  for (const y of [-w, w]) { ctx.moveTo(-b.half, y); ctx.lineTo(b.half, y) }
+  for (const y of [-w, w]) { ctx.moveTo(-half, y); ctx.lineTo(half, y) }
   ctx.stroke()
   ctx.fillStyle = ink
-  for (let x = -b.half; x <= b.half + 1e-6; x += Math.max(0.4, (b.half * 2) / Math.max(1, Math.round(b.half * 2 / 0.6)))) {
+  const posts = Math.max(1, Math.round(d.long / 0.6))
+  for (let k = 0; k <= posts; k++) {
+    const x = -half + (k * d.long) / posts
     for (const y of [-w, w]) { ctx.beginPath(); ctx.arc(x, y, 0.06, 0, Math.PI * 2); ctx.fill() }
   }
   ctx.restore()
@@ -222,47 +227,55 @@ function drawPortal(ctx: CanvasRenderingContext2D, [a, b]: [Pt, Pt], type: strin
   ctx.save()
   ctx.translate(mx, my)
   ctx.rotate(angle)
-  const half = len / 2
+  // How much of the gap the symbol fills, and how thick it is (portalSize, VTTER-128).
+  const { thick } = portalSize(type)
+  const half = portalLength(type, len) / 2
+  const t = thick / 2
   ctx.lineWidth = 0.05
   ctx.strokeStyle = c.ink
   switch (type) {
     case 'door':
     case 'secret-door':
       ctx.fillStyle = c.fill
-      ctx.fillRect(-half * 0.7, -0.1, half * 1.4, 0.2)
+      ctx.fillRect(-half, -t, half * 2, thick)
       if (type === 'secret-door') { ctx.strokeStyle = c.gm; ctx.setLineDash([0.08, 0.06]) }
-      ctx.strokeRect(-half * 0.7, -0.1, half * 1.4, 0.2)
+      ctx.strokeRect(-half, -t, half * 2, thick)
       ctx.setLineDash([])
+      // A line down the middle where the door's leaves meet.
+      ctx.beginPath()
+      ctx.moveTo(0, -t)
+      ctx.lineTo(0, t)
+      ctx.stroke()
       break
     case 'gate':
     case 'portcullis': {
       ctx.lineWidth = 0.07
+      ctx.lineCap = 'round'
       ctx.beginPath()
-      ctx.moveTo(-half * 0.8, 0)
-      ctx.lineTo(half * 0.8, 0)
-      const bars = type === 'portcullis' ? 7 : 4
+      ctx.moveTo(-half, 0)
+      ctx.lineTo(half, 0)
+      // Bars across the full gap, closer together on a portcullis.
+      const bars = Math.max(3, Math.round((half * 2) / (type === 'portcullis' ? 0.12 : 0.24)) + 1)
       for (let k = 0; k < bars; k++) {
-        const x = -half * 0.7 + (k * half * 1.4) / (bars - 1)
-        ctx.moveTo(x, -0.1)
-        ctx.lineTo(x, 0.1)
+        const x = -half + (k * half * 2) / (bars - 1)
+        ctx.moveTo(x, -t)
+        ctx.lineTo(x, t)
       }
       ctx.stroke()
       break
     }
     case 'window':
-    case 'arrow-slit': {
-      const w = type === 'window' ? half * 0.9 : half * 0.35
+    case 'arrow-slit':
       ctx.fillStyle = 'rgba(190, 220, 235, .95)'
-      ctx.fillRect(-w, -0.06, w * 2, 0.12)
-      ctx.strokeRect(-w, -0.06, w * 2, 0.12)
+      ctx.fillRect(-half, -t, half * 2, thick)
+      ctx.strokeRect(-half, -t, half * 2, thick)
       break
-    }
     default: {
       // An opening or a hole: a gap with a jamb at each end.
       ctx.strokeStyle = c.accent
       ctx.lineWidth = 0.08
       ctx.beginPath()
-      for (const x of [-half * 0.85, half * 0.85]) { ctx.moveTo(x, -0.16); ctx.lineTo(x, 0.16) }
+      for (const x of [-half, half]) { ctx.moveTo(x, -t); ctx.lineTo(x, t) }
       ctx.stroke()
     }
   }
@@ -530,7 +543,7 @@ export default function MapCanvas({ map, mapId, showGrid, paint, selectedId, edg
       if (a.kind !== 'edges' || !path) continue
       const fence = a.o.type === 'fence'
       ctx.strokeStyle = a.o.id === selectedId ? sel : a.o.gmOnly ? gm : wall
-      ctx.lineWidth = fence ? 0.1 : 0.26
+      ctx.lineWidth = fence ? 0.1 : WALL_WIDTH
       if (fence) ctx.setLineDash([0.32, 0.12])
       ctx.stroke(path)
       ctx.setLineDash([])
@@ -585,7 +598,7 @@ export default function MapCanvas({ map, mapId, showGrid, paint, selectedId, edg
         if (col < r.col0 || col > r.col1 || row < r.row0 || row > r.row1) continue
         const { x, y } = hexCenter(grid, hex, s)
         ctx.beginPath()
-        ctx.arc(x + view.x, y + view.y, s * 0.62, 0, Math.PI * 2)
+        ctx.arc(x + view.x, y + view.y, s * TOKEN_RADIUS, 0, Math.PI * 2)
         ctx.fillStyle = o.id === selectedId ? sel : o.kind === 'entity' ? color(o.type === 'foe' ? 'foe' : 'npc', '#a3322a') : color('mark', '#fff')
         ctx.fill()
         ctx.strokeStyle = o.gmOnly ? gm : ink
