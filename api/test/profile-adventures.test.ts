@@ -1,3 +1,5 @@
+import bestiary from '../../data/bestiary.json'
+import npcLibrary from '../../data/npc-library.json'
 import { MemoryPortraits } from './portraits-helper.ts'
 import { describe, expect, it } from 'vitest'
 import { parseAdventure, type AdventureDraft, type AdventureRecord } from '../src/adventure.ts'
@@ -94,9 +96,11 @@ const hearth = {
   levelMin: 1,
   levelMax: 2,
   scenes: [
-    { id: 'village', title: 'The village', type: 'social', text: 'Talk to the elder.', foes: [] },
-    { id: 'vent', title: 'The vent', type: 'exploration', text: 'Climb down.', foes: ['2 Ash Rat swarms'] },
+    { id: 'village', title: 'The village', type: 'social', text: 'Talk to the elder.', enemies: [], npcs: ['maren'] },
+    { id: 'vent', title: 'The vent', type: 'exploration', text: 'Climb down.', enemies: [{ id: 'rat', count: 2 }], npcs: [] },
   ],
+  enemies: [{ id: 'rat', name: 'Ash Rat Swarm', tier: 'minion', defense: 10, grit: 1, attackDc: 11, damage: '3', moves: '2', traits: [], dread: [] }],
+  npcs: [{ id: 'maren', name: 'Maren', role: 'Elder', attitude: 'friendly', description: '', secret: '' }],
   hooks: ['A letter signed by the Ashen Choir.'],
 }
 
@@ -222,7 +226,7 @@ describe('adventures', () => {
 describe('parseAdventure (values from /data)', () => {
   it('fills defaults for a minimal adventure', () => {
     expect(parseAdventure({ title: 'Tiny' })).toEqual({
-      title: 'Tiny', summary: '', levelMin: 1, levelMax: 10, visibility: 'private', scenes: [], hooks: [],
+      title: 'Tiny', summary: '', levelMin: 1, levelMax: 10, visibility: 'private', scenes: [], hooks: [], enemies: [], npcs: [],
     })
   })
 
@@ -238,11 +242,43 @@ describe('parseAdventure (values from /data)', () => {
     ['duplicate scene ids', { scenes: [scene, { ...scene, title: 'Again' }] }],
     ['too many scenes', { scenes: Array.from({ length: 51 }, (_, i) => ({ ...scene, id: `s${i}` })) }],
     ['scenes not a list', { scenes: 'one' }],
-    ['foe not a string', { scenes: [{ ...scene, foes: [3] }] }],
+    ['scene enemy not in the adventure', { scenes: [{ ...scene, enemies: [{ id: 'dragon', count: 1 }] }] }],
+    ['scene enemy listed twice', { scenes: [{ ...scene, enemies: [{ id: 'rat', count: 1 }, { id: 'rat', count: 2 }] }] }],
+    ['scene enemy count of zero', { scenes: [{ ...scene, enemies: [{ id: 'rat', count: 0 }] }] }],
+    ['scene npc not in the adventure', { scenes: [{ ...scene, npcs: ['nobody'] }] }],
     ['too many hooks', { hooks: Array.from({ length: 21 }, () => 'x') }],
     ['empty hook', { hooks: [''] }],
   ])('rejects %s', (_label, patch) => {
     expect(() => parseAdventure({ ...hearth, ...patch })).toThrow()
+  })
+
+  const enemy = { id: 'rat', name: 'Ash Rat', tier: 'minion', defense: 10, grit: 1, attackDc: 11, damage: '3', moves: '2', traits: ['Swarm'], dread: [] }
+  const npc = { id: 'maren', name: 'Maren', role: 'Elder', attitude: 'friendly', description: 'Kind.', secret: '' }
+
+  it('parses enemies and NPCs, with willDc and resolve optional', () => {
+    const a = parseAdventure({ ...hearth, enemies: [enemy], npcs: [npc] })
+    expect(a.enemies[0]).toMatchObject({ id: 'rat', tier: 'minion', willDc: null, resolve: null })
+    expect(a.npcs[0].attitude).toBe('friendly')
+  })
+
+  it.each([
+    ['enemy without a name', { enemies: [{ ...enemy, name: '' }] }],
+    ['unknown tier', { enemies: [{ ...enemy, tier: 'legend' }] }],
+    ['defense not a number', { enemies: [{ ...enemy, defense: 'high' }] }],
+    ['zero grit', { enemies: [{ ...enemy, grit: 0 }] }],
+    ['duplicate enemy ids', { enemies: [enemy, enemy] }],
+    ['too many traits', { enemies: [{ ...enemy, traits: Array.from({ length: 11 }, () => 'x') }] }],
+    ['too many enemies', { enemies: Array.from({ length: 41 }, (_, i) => ({ ...enemy, id: i === 0 ? 'rat' : `e${i}` })) }],
+    ['unknown attitude', { npcs: [{ ...npc, attitude: 'smitten' }] }],
+    ['NPC without a name', { npcs: [{ ...npc, name: '' }] }],
+    ['duplicate NPC ids', { npcs: [npc, npc] }],
+  ])('rejects %s', (_label, patch) => {
+    expect(() => parseAdventure({ ...hearth, ...patch })).toThrow()
+  })
+
+  it('accepts every enemy and NPC in the libraries', () => {
+    const entries = <T extends { id: string }>(xs: T[]) => xs.map(x => ({ ...x }))
+    expect(() => parseAdventure({ title: 'Library', enemies: entries(bestiary.enemies), npcs: entries(npcLibrary.npcs) })).not.toThrow()
   })
 
   it('trims text and keeps scene order', () => {

@@ -533,3 +533,6 @@ textarea.cs-in { resize: vertical; }
 .chat-form textarea:focus-visible { outline: 2px solid var(--ember); outline-offset: 1px; }
 .chat-foot { font-size: .8rem; }
 .chat-over { color: var(--bad); font-weight: 600; }
+.library-list { max-height: 360px; overflow: auto; }
+.library-row { list-style: none; display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
+.library-row > ul { flex: 1; margin: 0; padding: 0; }

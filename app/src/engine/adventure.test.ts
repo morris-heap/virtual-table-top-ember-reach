@@ -13,7 +13,7 @@ describe('editing the scene list', () => {
     d = addScene(d)
     expect(d.scenes).toHaveLength(2)
     expect(d.scenes[0].id).not.toBe(d.scenes[1].id)
-    expect(d.scenes[0]).toMatchObject({ title: '', type: SCENE_TYPES[0], text: '', foes: [] })
+    expect(d.scenes[0]).toMatchObject({ title: '', type: SCENE_TYPES[0], text: '', enemies: [], npcs: [] })
   })
 
   it('generates ids the API accepts, and never reuses one', () => {

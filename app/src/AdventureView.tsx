@@ -3,6 +3,7 @@ import { profileApi } from './api/client.ts'
 import type { Auth } from './auth/useAuth.ts'
 import { findBuiltIn } from './adventures/builtIn.ts'
 import { levelRange, sceneLabel } from './engine/adventure.ts'
+import AdventureCast, { SceneWho } from './AdventureCast.tsx'
 import Link from './Link.tsx'
 import Shell from './Shell.tsx'
 import StartGame from './StartGame.tsx'
@@ -40,11 +41,13 @@ export default function AdventureView({ auth, slug }: { auth: Auth; slug: string
             <li key={s.id} className="scene">
               <div className="scene-head"><b>{s.title}</b> <span className="chip-tag">{sceneLabel(s.type)}</span></div>
               <p>{s.text}</p>
-              {s.foes.length > 0 && <p className="muted">Foes: {s.foes.join(', ')}</p>}
+              <SceneWho scene={s} enemies={a.enemies} npcs={a.npcs} />
             </li>
           ))}
         </ol>
       </section>
+
+      <AdventureCast enemies={a.enemies} npcs={a.npcs} />
 
       {a.hooks.length > 0 && (
         <section className="panel" aria-labelledby="hooks-title">
