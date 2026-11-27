@@ -113,7 +113,7 @@ function world() {
 }
 
 const draft = (title: string, visibility: string): AdventureDraft => ({
-  title, summary: '', levelMin: 1, levelMax: 2, visibility, scenes: [], hooks: [],
+  title, summary: '', levelMin: 1, levelMax: 2, visibility, scenes: [], hooks: [], enemies: [], npcs: [],
 })
 
 /** Ana and Ben become friends. */

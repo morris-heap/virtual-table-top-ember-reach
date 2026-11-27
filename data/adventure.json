@@ -1,14 +1,24 @@
 {
-  "$comment": "Adventure authoring data used by the app and API. Scene types follow rules/gm-guide.md §5. Change both together (see CLAUDE.md).",
+  "$comment": "Adventure authoring data used by the app and API. Scene types follow rules/gm-guide.md §5. Enemy stat blocks follow rules/gm-guide.md §2. Change both together (see CLAUDE.md).",
   "sceneTypes": ["social", "exploration", "puzzle", "trap", "choice", "combat", "boss"],
+  "enemyTiers": ["minion", "standard", "elite", "boss"],
+  "npcAttitudes": ["hostile", "wary", "neutral", "friendly"],
   "visibilities": ["private", "friends", "public"],
   "liveVisibilities": ["private", "friends"],
   "limits": {
     "maxScenes": 50,
     "maxHooks": 20,
-    "maxFoes": 20,
+    "maxSceneEnemies": 20,
+    "maxSceneNpcs": 20,
+    "maxCount": 12,
     "titleMax": 80,
     "summaryMax": 500,
-    "textMax": 2000
+    "textMax": 2000,
+    "maxEnemies": 40,
+    "maxNpcs": 40,
+    "maxTraits": 10,
+    "nameMax": 80,
+    "lineMax": 200,
+    "statMax": 200
   }
 }

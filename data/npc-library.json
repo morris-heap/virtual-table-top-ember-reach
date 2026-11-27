@@ -1,0 +1,200 @@
+{
+  "$comment": "Library of ready-made NPCs for adventure authors. Original to Emberreach. The secret is for the GM only.",
+  "npcs": [
+    {
+      "id": "brannoch-tallowby",
+      "name": "Brannoch Tallowby",
+      "role": "Innkeeper of the Warm Hearth",
+      "attitude": "friendly",
+      "description": "Round, loud and generous. His inn holds the only fire in the village that has never gone out.",
+      "secret": "Pays a smuggler to keep a cellar door unlocked. He does not know what the smuggler carries.",
+      "tags": [
+        "town",
+        "inn",
+        "rumors"
+      ]
+    },
+    {
+      "id": "ilsabet-coalwright",
+      "name": "Ilsabet Coalwright",
+      "role": "Wandering smith",
+      "attitude": "friendly",
+      "description": "Her cart rings with hammers and tongs. She will mend a weapon for a story as readily as for silver.",
+      "secret": "She is hunting the person who ruined her old forge, and she recognizes one of the heroes' marks.",
+      "tags": [
+        "smith",
+        "craft",
+        "ally"
+      ]
+    },
+    {
+      "id": "brother-quill",
+      "name": "Brother Quill",
+      "role": "Shrine-keeper",
+      "attitude": "neutral",
+      "description": "Soft-spoken and ink-stained, he tends a shrine to the Ember and writes down every visitor.",
+      "secret": "His ledger lists who has visited the vault below, and he has been paid to burn two pages.",
+      "tags": [
+        "shrine",
+        "lore",
+        "clue"
+      ]
+    },
+    {
+      "id": "dacey-two-coin",
+      "name": "Dacey Two-Coin",
+      "role": "Smuggler",
+      "attitude": "wary",
+      "description": "Quick with a smile and slower with the truth. She sells maps, rumors and the occasional unlabelled crate.",
+      "secret": "Her best route runs straight through the dungeon the heroes are about to enter, and she knows where the traps are.",
+      "tags": [
+        "smuggler",
+        "rogue",
+        "info"
+      ]
+    },
+    {
+      "id": "captain-verrin-hale",
+      "name": "Captain Verrin Hale",
+      "role": "Captain of the watch",
+      "attitude": "neutral",
+      "description": "Weathered and exhausted, with too few guards for the roads. Hires heroes quietly and pays on time.",
+      "secret": "He suspects someone in his own watch is selling patrol routes to bandits.",
+      "tags": [
+        "guard",
+        "quest-giver",
+        "law"
+      ]
+    },
+    {
+      "id": "mother-sorrel",
+      "name": "Mother Sorrel",
+      "role": "Hedge witch",
+      "attitude": "wary",
+      "description": "A herb-seller who keeps bees and grudges. Villagers fear her and visit her at night.",
+      "secret": "Her salves are laced with a mild charm that makes people trust her. She means no harm by it, yet.",
+      "tags": [
+        "witch",
+        "healer",
+        "curse"
+      ]
+    },
+    {
+      "id": "tobiah-reedlow",
+      "name": "Tobiah Reedlow",
+      "role": "Ferryman",
+      "attitude": "neutral",
+      "description": "Silent, patient and entirely unimpressed by heroes. His ferry crosses where no bridge will hold.",
+      "secret": "He once carried something across at midnight that rang like a bell, and he has never told anyone.",
+      "tags": [
+        "water",
+        "guide",
+        "travel"
+      ]
+    },
+    {
+      "id": "sera-ashgrove",
+      "name": "Sera Ashgrove",
+      "role": "Ember-warden scout",
+      "attitude": "friendly",
+      "description": "Lean, sunburned and dry-humored. She reads tracks and weather like other people read signs.",
+      "secret": "She was sent to see whether the heroes can be trusted with the location of a second hearth.",
+      "tags": [
+        "scout",
+        "ally",
+        "wild"
+      ]
+    },
+    {
+      "id": "archivist-penhallow",
+      "name": "Archivist Penhallow",
+      "role": "Keeper of the old records",
+      "attitude": "neutral",
+      "description": "A scholar in a coat too big for them. Loves a question more than an answer, and a long answer most of all.",
+      "secret": "They have forged one page in the archive to hide an embarrassing mistake, and a wrong answer follows from it.",
+      "tags": [
+        "scholar",
+        "lore",
+        "clue"
+      ]
+    },
+    {
+      "id": "lady-corvane-ashdown",
+      "name": "Lady Corvane Ashdown",
+      "role": "Noble patron",
+      "attitude": "neutral",
+      "description": "Gracious, exact and always one step ahead. She offers the heroes work that happens to need doing.",
+      "secret": "She wants the same relic the heroes do, and plans to take it from them afterward.",
+      "tags": [
+        "noble",
+        "patron",
+        "intrigue"
+      ]
+    },
+    {
+      "id": "gorr-redhand",
+      "name": "Gorr Redhand",
+      "role": "Bandit chief",
+      "attitude": "hostile",
+      "description": "A broad man with a red-dyed glove and a hearty laugh. He taxes the road and calls it protection.",
+      "secret": "He is afraid of someone higher up the chain, and a reasonable offer can turn him.",
+      "tags": [
+        "bandit",
+        "leader",
+        "road"
+      ]
+    },
+    {
+      "id": "little-marl",
+      "name": "Little Marl",
+      "role": "Street informant",
+      "attitude": "friendly",
+      "description": "A twelve-year-old with big ears and a very small price. Knows who is in town and where they sleep.",
+      "secret": "Is secretly paid by two factions at once.",
+      "tags": [
+        "town",
+        "info",
+        "rumors"
+      ]
+    },
+    {
+      "id": "joss-kettleburn",
+      "name": "Joss Kettleburn",
+      "role": "Sellsword",
+      "attitude": "wary",
+      "description": "Heavy-eyed and scarred, between jobs and between meals. Guards the heroes' camp for the price of a hot dinner.",
+      "secret": "He used to fight for the Ashen Choir and knows their signs.",
+      "tags": [
+        "mercenary",
+        "ally",
+        "warrior"
+      ]
+    },
+    {
+      "id": "wren-halloway",
+      "name": "Wren Halloway",
+      "role": "Rival delver",
+      "attitude": "wary",
+      "description": "Cheerful, competitive and in all the same places the heroes are. Leaves a mess and a mocking note.",
+      "secret": "Wren is working off a debt owed to Lady Ashdown and will betray the party if pressed.",
+      "tags": [
+        "rival",
+        "rogue",
+        "intrigue"
+      ]
+    },
+    {
+      "id": "envoy-of-the-ashen-choir",
+      "name": "Envoy of the Ashen Choir",
+      "role": "Cult messenger",
+      "attitude": "hostile",
+      "description": "Soot-stained robes and a polite voice. Speaks of ash as a kindness and of embers as a theft.",
+      "secret": "Carries a letter sealed in black wax naming the next ember the Choir plans to put out.",
+      "tags": [
+        "cult",
+        "villain",
+        "ash"
+      ]
+    }
+  ]
+}

@@ -29,8 +29,16 @@ export interface Scene {
   title: string
   type: string
   text: string
-  foes: string[]
+  /** Enemies in this scene: an id from the adventure's `enemies`, and how many. */
+  enemies: SceneEnemy[]
+  /** Ids from the adventure's `npcs`. */
+  npcs: string[]
 }
+
+export interface SceneEnemy { id: string; count: number }
+
+export type Enemy = import('../../../api/src/adventure.ts').Enemy
+export type Npc = import('../../../api/src/adventure.ts').Npc
 
 export interface AdventureDraft {
   title: string
@@ -40,6 +48,8 @@ export interface AdventureDraft {
   visibility: Visibility
   scenes: Scene[]
   hooks: string[]
+  enemies: Enemy[]
+  npcs: Npc[]
 }
 
 export interface Adventure extends AdventureDraft {

@@ -1,0 +1,906 @@
+{
+  "$comment": "Library of ready-made enemies for adventure authors. Original content only. Numbers follow rules/gm-guide.md §2.2 by level band; tags are for search. Change both together (see CLAUDE.md).",
+  "enemies": [
+    {
+      "id": "ash-rat-swarm",
+      "name": "Ash Rat Swarm",
+      "tier": "minion",
+      "levelMin": 1,
+      "levelMax": 2,
+      "tags": [
+        "beast",
+        "vermin",
+        "swarm",
+        "cave"
+      ],
+      "defense": 10,
+      "grit": 1,
+      "attackDc": 11,
+      "damage": "3 (one attack per swarm)",
+      "willDc": null,
+      "resolve": null,
+      "moves": "2",
+      "traits": [
+        "Each rat that drops lowers the swarm's damage by 1."
+      ],
+      "dread": []
+    },
+    {
+      "id": "cave-spider-swarm",
+      "name": "Cave Spider Swarm",
+      "tier": "minion",
+      "levelMin": 1,
+      "levelMax": 3,
+      "tags": [
+        "beast",
+        "vermin",
+        "swarm",
+        "cave",
+        "poison"
+      ],
+      "defense": 10,
+      "grit": 1,
+      "attackDc": 11,
+      "damage": "3 (one attack per swarm)",
+      "willDc": null,
+      "resolve": null,
+      "moves": "2, climbs",
+      "traits": [
+        "Venom. A hit also gives the target a Bane on Might Tests until the end of the scene."
+      ],
+      "dread": []
+    },
+    {
+      "id": "bone-pilgrim",
+      "name": "Bone Pilgrim",
+      "tier": "minion",
+      "levelMin": 1,
+      "levelMax": 4,
+      "tags": [
+        "undead",
+        "swarm",
+        "crypt"
+      ],
+      "defense": 11,
+      "grit": 1,
+      "attackDc": 12,
+      "damage": "4 (one attack per swarm)",
+      "willDc": null,
+      "resolve": null,
+      "moves": "2",
+      "traits": [
+        "Undead. Immune to fear and poison.",
+        "Hollow. Takes double damage from Shatter and other thunder effects."
+      ],
+      "dread": []
+    },
+    {
+      "id": "cinder-goblin",
+      "name": "Cinder Goblin",
+      "tier": "standard",
+      "levelMin": 1,
+      "levelMax": 2,
+      "tags": [
+        "goblin",
+        "humanoid",
+        "fire"
+      ],
+      "defense": 12,
+      "grit": 9,
+      "attackDc": 12,
+      "damage": "5 (spear)",
+      "willDc": null,
+      "resolve": null,
+      "moves": "2",
+      "traits": [
+        "Skulk. Gains Hidden when in darkness."
+      ],
+      "dread": [
+        "(1) Fire Pot. Throws a pot at a zone. Every hero there dodges vs DC 12 or starts Burning."
+      ]
+    },
+    {
+      "id": "hollow-sentry",
+      "name": "Hollow Sentry",
+      "tier": "standard",
+      "levelMin": 1,
+      "levelMax": 3,
+      "tags": [
+        "construct",
+        "automaton",
+        "forge"
+      ],
+      "defense": 14,
+      "grit": 14,
+      "attackDc": 12,
+      "damage": "6",
+      "willDc": null,
+      "resolve": null,
+      "moves": "1",
+      "traits": [
+        "Immune to poison and fear. Takes double damage from Shatter and other thunder effects."
+      ],
+      "dread": []
+    },
+    {
+      "id": "reach-wolf",
+      "name": "Reach Wolf",
+      "tier": "standard",
+      "levelMin": 1,
+      "levelMax": 2,
+      "tags": [
+        "beast",
+        "wolf",
+        "wild"
+      ],
+      "defense": 12,
+      "grit": 10,
+      "attackDc": 12,
+      "damage": "5",
+      "willDc": null,
+      "resolve": null,
+      "moves": "3",
+      "traits": [
+        "Pack. +2 damage if another wolf is next to the target."
+      ],
+      "dread": [
+        "(1) Drag Down. A hit knocks the target prone."
+      ]
+    },
+    {
+      "id": "smoke-wraith",
+      "name": "Smoke Wraith",
+      "tier": "standard",
+      "levelMin": 1,
+      "levelMax": 3,
+      "tags": [
+        "undead",
+        "spirit",
+        "cold",
+        "fear"
+      ],
+      "defense": 13,
+      "grit": 12,
+      "attackDc": 13,
+      "damage": "5 cold",
+      "willDc": 12,
+      "resolve": null,
+      "moves": "2, flies",
+      "traits": [
+        "Takes half damage from non-magic weapons."
+      ],
+      "dread": [
+        "(1) Dread Wail. Every hero in Near range rolls Will vs Will DC 12 or becomes Frightened."
+      ]
+    },
+    {
+      "id": "bandit-cutthroat",
+      "name": "Bandit Cutthroat",
+      "tier": "standard",
+      "levelMin": 1,
+      "levelMax": 2,
+      "tags": [
+        "bandit",
+        "humanoid",
+        "road"
+      ],
+      "defense": 12,
+      "grit": 10,
+      "attackDc": 12,
+      "damage": "5 (knife)",
+      "willDc": null,
+      "resolve": null,
+      "moves": "2",
+      "traits": [
+        "Dirty Fighter. +1 damage against a hero who has a Bane."
+      ],
+      "dread": [
+        "(1) Dust in the Eyes. A hero in reach dodges vs DC 12 or takes a Bane on their next Test."
+      ]
+    },
+    {
+      "id": "bandit-archer",
+      "name": "Bandit Archer",
+      "tier": "standard",
+      "levelMin": 1,
+      "levelMax": 2,
+      "tags": [
+        "bandit",
+        "humanoid",
+        "road",
+        "ranged"
+      ],
+      "defense": 12,
+      "grit": 8,
+      "attackDc": 12,
+      "damage": "5 (bow)",
+      "willDc": null,
+      "resolve": null,
+      "moves": "2",
+      "traits": [
+        "Volley. Attacks at Far range without a Bane."
+      ],
+      "dread": [
+        "(1) Pin Down. A hit means the target cannot move on their next turn."
+      ]
+    },
+    {
+      "id": "slag-hound",
+      "name": "Slag Hound",
+      "tier": "standard",
+      "levelMin": 1,
+      "levelMax": 3,
+      "tags": [
+        "beast",
+        "fire",
+        "forge"
+      ],
+      "defense": 12,
+      "grit": 11,
+      "attackDc": 12,
+      "damage": "5 fire",
+      "willDc": null,
+      "resolve": null,
+      "moves": "3",
+      "traits": [
+        "Hot Hide. A hero who hits it in melee takes 1 fire damage.",
+        "Immune to fire."
+      ],
+      "dread": [
+        "(1) Ember Bark. Every hero in Near range dodges vs DC 12 or starts Burning."
+      ]
+    },
+    {
+      "id": "tomb-shambler",
+      "name": "Tomb Shambler",
+      "tier": "standard",
+      "levelMin": 1,
+      "levelMax": 3,
+      "tags": [
+        "undead",
+        "crypt"
+      ],
+      "defense": 11,
+      "grit": 16,
+      "attackDc": 12,
+      "damage": "6 (fists)",
+      "willDc": null,
+      "resolve": null,
+      "moves": "1",
+      "traits": [
+        "Slow. Acts last in the Foes' Phase.",
+        "Undead. Immune to fear and poison."
+      ],
+      "dread": []
+    },
+    {
+      "id": "bandit-captain",
+      "name": "Bandit Captain",
+      "tier": "elite",
+      "levelMin": 1,
+      "levelMax": 3,
+      "tags": [
+        "bandit",
+        "humanoid",
+        "leader",
+        "road"
+      ],
+      "defense": 14,
+      "grit": 30,
+      "attackDc": 13,
+      "damage": "7 x2",
+      "willDc": null,
+      "resolve": null,
+      "moves": "2",
+      "traits": [
+        "Commander. Allied bandits get +1 damage."
+      ],
+      "dread": [
+        "(2) Parry. Cancel one hit against the captain."
+      ]
+    },
+    {
+      "id": "ember-drake",
+      "name": "Ember Drake",
+      "tier": "elite",
+      "levelMin": 2,
+      "levelMax": 4,
+      "tags": [
+        "drake",
+        "dragonkin",
+        "fire",
+        "flier"
+      ],
+      "defense": 14,
+      "grit": 40,
+      "attackDc": 14,
+      "damage": "8 bite + 4 burning",
+      "willDc": null,
+      "resolve": null,
+      "moves": "2, flies",
+      "traits": [
+        "Immune to fire."
+      ],
+      "dread": [
+        "(2) Flame Breath. Line attack. Dodge vs DC 14 or take 12 fire damage (half on a success at a cost)."
+      ]
+    },
+    {
+      "id": "soot-king",
+      "name": "The Soot King",
+      "tier": "boss",
+      "levelMin": 2,
+      "levelMax": 3,
+      "tags": [
+        "boss",
+        "smoke",
+        "elemental",
+        "ash"
+      ],
+      "defense": 14,
+      "grit": 70,
+      "attackDc": 13,
+      "damage": "8",
+      "willDc": 13,
+      "resolve": null,
+      "moves": "2",
+      "traits": [
+        "Boss turns. After each hero's turn, the Soot King makes one attack or moves.",
+        "Ash Crown. Below 35 Grit, the room fills with smoke. Everyone without darkvision is Blinded beyond Reach."
+      ],
+      "dread": [
+        "(1) Summon Soot. Call 3 Ash Rats.",
+        "(2) Smother. Grab a hero (escape DC 13). That hero takes 6 damage at the start of each round."
+      ]
+    },
+    {
+      "id": "glass-wasp-swarm",
+      "name": "Glass Wasp Swarm",
+      "tier": "minion",
+      "levelMin": 3,
+      "levelMax": 5,
+      "tags": [
+        "beast",
+        "vermin",
+        "swarm",
+        "flier",
+        "poison"
+      ],
+      "defense": 12,
+      "grit": 1,
+      "attackDc": 13,
+      "damage": "4 (one attack per swarm)",
+      "willDc": null,
+      "resolve": null,
+      "moves": "3, flies",
+      "traits": [
+        "Brittle. Each wasp that drops lowers the swarm's damage by 1.",
+        "Sting. A hit also gives the target a Bane on Grace Tests until the end of their next turn."
+      ],
+      "dread": []
+    },
+    {
+      "id": "ashen-knight",
+      "name": "Ashen Knight",
+      "tier": "standard",
+      "levelMin": 3,
+      "levelMax": 5,
+      "tags": [
+        "undead",
+        "knight",
+        "humanoid"
+      ],
+      "defense": 14,
+      "grit": 18,
+      "attackDc": 13,
+      "damage": "7 (sword)",
+      "willDc": null,
+      "resolve": null,
+      "moves": "2",
+      "traits": [
+        "Cinder Plate. Reduce the first hit against it each round by 2."
+      ],
+      "dread": [
+        "(1) Shield Bash. The target knocks prone unless they dodge vs DC 13."
+      ]
+    },
+    {
+      "id": "bog-lurker",
+      "name": "Bog Lurker",
+      "tier": "standard",
+      "levelMin": 3,
+      "levelMax": 4,
+      "tags": [
+        "beast",
+        "swamp",
+        "water",
+        "ambusher"
+      ],
+      "defense": 13,
+      "grit": 16,
+      "attackDc": 13,
+      "damage": "7",
+      "willDc": null,
+      "resolve": null,
+      "moves": "2, swims",
+      "traits": [
+        "Ambush. It is Hidden while submerged. Its first attack from hiding adds +2 to its Attack DC."
+      ],
+      "dread": [
+        "(1) Drag Under. Grab a hero (escape DC 13). A held hero takes 3 damage at the start of each round."
+      ]
+    },
+    {
+      "id": "veil-witch",
+      "name": "Veil Witch",
+      "tier": "standard",
+      "levelMin": 3,
+      "levelMax": 5,
+      "tags": [
+        "humanoid",
+        "caster",
+        "witch",
+        "curse"
+      ],
+      "defense": 13,
+      "grit": 14,
+      "attackDc": 13,
+      "damage": "6 (hexbolt, Near)",
+      "willDc": 13,
+      "resolve": 12,
+      "moves": "2",
+      "traits": [
+        "Veil. Attacks against her from beyond Reach take a Bane."
+      ],
+      "dread": [
+        "(1) Hex Knot. One hero rolls Will vs Will DC 13 or takes a Bane on all Tests until the end of the witch's next turn."
+      ]
+    },
+    {
+      "id": "mirror-stalker",
+      "name": "Mirror Stalker",
+      "tier": "standard",
+      "levelMin": 3,
+      "levelMax": 5,
+      "tags": [
+        "fey",
+        "trickster",
+        "ambusher"
+      ],
+      "defense": 14,
+      "grit": 14,
+      "attackDc": 13,
+      "damage": "6",
+      "willDc": 13,
+      "resolve": null,
+      "moves": "3",
+      "traits": [
+        "Reflection. When a hero misses it by 5 or more, the hero takes 2 damage."
+      ],
+      "dread": [
+        "(1) Borrowed Face. It looks like one hero until it attacks or is hit."
+      ]
+    },
+    {
+      "id": "chain-warden",
+      "name": "Chain Warden",
+      "tier": "elite",
+      "levelMin": 3,
+      "levelMax": 5,
+      "tags": [
+        "construct",
+        "prison",
+        "forge"
+      ],
+      "defense": 14,
+      "grit": 28,
+      "attackDc": 13,
+      "damage": "7 x2 (chains, reach 2 zones)",
+      "willDc": null,
+      "resolve": null,
+      "moves": "2",
+      "traits": [
+        "Reach. Its chains hit targets up to 2 zones away.",
+        "Constructed. Immune to poison."
+      ],
+      "dread": [
+        "(2) Haul In. Pull a hero next to it. That hero takes a Bane on their next Test."
+      ]
+    },
+    {
+      "id": "hollow-queen",
+      "name": "The Hollow Queen",
+      "tier": "boss",
+      "levelMin": 3,
+      "levelMax": 5,
+      "tags": [
+        "boss",
+        "undead",
+        "water"
+      ],
+      "defense": 14,
+      "grit": 65,
+      "attackDc": 13,
+      "damage": "8",
+      "willDc": 14,
+      "resolve": null,
+      "moves": "2",
+      "traits": [
+        "Boss turns. After each hero's turn, the Hollow Queen makes one attack or moves.",
+        "Drowned Court. Below 30 Grit, the room floods knee-deep. Moving costs double."
+      ],
+      "dread": [
+        "(1) Call the Bell. Every hero rolls Will vs Will DC 14 or loses their next Action.",
+        "(2) Raise the Drowned. Summon 4 Bone Pilgrims."
+      ]
+    },
+    {
+      "id": "quarry-brute",
+      "name": "Quarry Brute",
+      "tier": "standard",
+      "levelMin": 5,
+      "levelMax": 6,
+      "tags": [
+        "giant",
+        "humanoid",
+        "mine"
+      ],
+      "defense": 14,
+      "grit": 20,
+      "attackDc": 14,
+      "damage": "10 (maul)",
+      "willDc": null,
+      "resolve": null,
+      "moves": "2",
+      "traits": [
+        "Thick Skin. Reduce all damage against it by 1."
+      ],
+      "dread": [
+        "(1) Rockfall. Every hero in a zone dodges vs DC 14 or takes 6 damage."
+      ]
+    },
+    {
+      "id": "storm-harrier",
+      "name": "Storm Harrier",
+      "tier": "standard",
+      "levelMin": 5,
+      "levelMax": 6,
+      "tags": [
+        "beast",
+        "storm",
+        "flier",
+        "lightning"
+      ],
+      "defense": 14,
+      "grit": 14,
+      "attackDc": 14,
+      "damage": "9 (talons)",
+      "willDc": null,
+      "resolve": null,
+      "moves": "3, flies",
+      "traits": [
+        "Stormcharged. A hero who hits it with a metal weapon takes 2 lightning damage."
+      ],
+      "dread": [
+        "(1) Thunderclap. Every hero in Near range dodges vs DC 14 or is Deafened until the end of the scene."
+      ]
+    },
+    {
+      "id": "greywood-stalker",
+      "name": "Greywood Stalker",
+      "tier": "elite",
+      "levelMin": 5,
+      "levelMax": 7,
+      "tags": [
+        "plant",
+        "forest",
+        "wild"
+      ],
+      "defense": 15,
+      "grit": 34,
+      "attackDc": 14,
+      "damage": "9 x2 (claws)",
+      "willDc": null,
+      "resolve": null,
+      "moves": "2",
+      "traits": [
+        "Bark Hide. Takes double damage from fire.",
+        "Rooted. Cannot be pushed or knocked prone."
+      ],
+      "dread": [
+        "(2) Grasping Roots. Every hero in a zone is Held (escape DC 14)."
+      ]
+    },
+    {
+      "id": "gloom-priest",
+      "name": "Gloom Priest",
+      "tier": "elite",
+      "levelMin": 5,
+      "levelMax": 7,
+      "tags": [
+        "humanoid",
+        "caster",
+        "cult",
+        "fear"
+      ],
+      "defense": 14,
+      "grit": 32,
+      "attackDc": 14,
+      "damage": "8 shadow (Near)",
+      "willDc": 14,
+      "resolve": 13,
+      "moves": "2",
+      "traits": [
+        "Shroud. Allies in Near range get +1 to their Defense."
+      ],
+      "dread": [
+        "(2) Dread Litany. Every hero rolls Will vs Will DC 14 or becomes Frightened.",
+        "(1) Shadow Ward. Cancel one hit against an ally."
+      ]
+    },
+    {
+      "id": "deep-rail-crawler",
+      "name": "Deep Rail Crawler",
+      "tier": "standard",
+      "levelMin": 5,
+      "levelMax": 6,
+      "tags": [
+        "beast",
+        "cave",
+        "mine"
+      ],
+      "defense": 14,
+      "grit": 18,
+      "attackDc": 14,
+      "damage": "9 (mandibles)",
+      "willDc": null,
+      "resolve": null,
+      "moves": "3, climbs",
+      "traits": [
+        "Burrower. It can come up under any zone in the scene."
+      ],
+      "dread": [
+        "(1) Tunnel Strike. It surfaces next to a hero and attacks with +2 damage."
+      ]
+    },
+    {
+      "id": "rift-wisp-swarm",
+      "name": "Rift Wisp Swarm",
+      "tier": "minion",
+      "levelMin": 7,
+      "levelMax": 8,
+      "tags": [
+        "spirit",
+        "swarm",
+        "flier",
+        "arcane"
+      ],
+      "defense": 14,
+      "grit": 1,
+      "attackDc": 15,
+      "damage": "6 (one attack per swarm)",
+      "willDc": null,
+      "resolve": null,
+      "moves": "3, flies",
+      "traits": [
+        "Flicker. The swarm ignores terrain and cover."
+      ],
+      "dread": []
+    },
+    {
+      "id": "pale-reaver",
+      "name": "Pale Reaver",
+      "tier": "standard",
+      "levelMin": 7,
+      "levelMax": 8,
+      "tags": [
+        "undead",
+        "raider",
+        "humanoid"
+      ],
+      "defense": 15,
+      "grit": 20,
+      "attackDc": 15,
+      "damage": "12 (greataxe)",
+      "willDc": null,
+      "resolve": null,
+      "moves": "2",
+      "traits": [
+        "Undead. Immune to fear and poison.",
+        "Relentless. When it drops, roll d6: on a 6 it stands with 1 Grit."
+      ],
+      "dread": [
+        "(1) Cleave. A second hero next to the target takes half the damage."
+      ]
+    },
+    {
+      "id": "hollow-duelist",
+      "name": "Hollow Duelist",
+      "tier": "elite",
+      "levelMin": 7,
+      "levelMax": 9,
+      "tags": [
+        "construct",
+        "automaton",
+        "duelist"
+      ],
+      "defense": 16,
+      "grit": 36,
+      "attackDc": 15,
+      "damage": "12 x2 (rapier)",
+      "willDc": null,
+      "resolve": null,
+      "moves": "3",
+      "traits": [
+        "Fast. It can move before and after its attacks."
+      ],
+      "dread": [
+        "(1) Riposte. When a hero misses it by 5 or more, it attacks that hero at once.",
+        "(2) Disarm. A hero drops their weapon unless they dodge vs DC 15."
+      ]
+    },
+    {
+      "id": "furnace-colossus",
+      "name": "Furnace Colossus",
+      "tier": "elite",
+      "levelMin": 7,
+      "levelMax": 9,
+      "tags": [
+        "construct",
+        "fire",
+        "forge",
+        "giant"
+      ],
+      "defense": 16,
+      "grit": 44,
+      "attackDc": 15,
+      "damage": "13 x2 (fists, fire)",
+      "willDc": null,
+      "resolve": null,
+      "moves": "2",
+      "traits": [
+        "Immune to fire.",
+        "Molten Core. Below 20 Grit, everyone in Reach takes 3 fire damage each round."
+      ],
+      "dread": [
+        "(2) Vent. Every hero in Near range dodges vs DC 15 or takes 12 fire damage (half on a success at a cost)."
+      ]
+    },
+    {
+      "id": "tidecaller",
+      "name": "Tidecaller",
+      "tier": "elite",
+      "levelMin": 7,
+      "levelMax": 9,
+      "tags": [
+        "spirit",
+        "water",
+        "caster"
+      ],
+      "defense": 15,
+      "grit": 38,
+      "attackDc": 15,
+      "damage": "12 cold (Near)",
+      "willDc": 15,
+      "resolve": null,
+      "moves": "2, swims",
+      "traits": [
+        "Sea-born. Gets a Boon on Tests in water.",
+        "Immune to cold."
+      ],
+      "dread": [
+        "(2) Rising Tide. The scene floods: all heroes dodge vs DC 15 or are Knocked prone and swept one zone.",
+        "(1) Undertow. A hero is pulled one zone toward the Tidecaller."
+      ]
+    },
+    {
+      "id": "cinder-wyrm",
+      "name": "Cinder Wyrm",
+      "tier": "elite",
+      "levelMin": 9,
+      "levelMax": 10,
+      "tags": [
+        "drake",
+        "dragonkin",
+        "fire",
+        "flier"
+      ],
+      "defense": 16,
+      "grit": 45,
+      "attackDc": 16,
+      "damage": "16 bite + 6 burning",
+      "willDc": null,
+      "resolve": null,
+      "moves": "3, flies",
+      "traits": [
+        "Immune to fire.",
+        "Hot Scales. A hero who hits it in melee takes 3 fire damage."
+      ],
+      "dread": [
+        "(2) Cinder Breath. Cone attack. Dodge vs DC 16 or take 16 fire damage and start Burning (half and no Burning on a success at a cost)."
+      ]
+    },
+    {
+      "id": "voidglass-seer",
+      "name": "Voidglass Seer",
+      "tier": "elite",
+      "levelMin": 9,
+      "levelMax": 10,
+      "tags": [
+        "caster",
+        "arcane",
+        "aberration"
+      ],
+      "defense": 16,
+      "grit": 40,
+      "attackDc": 16,
+      "damage": "14 force (Far)",
+      "willDc": 16,
+      "resolve": 15,
+      "moves": "2, flies",
+      "traits": [
+        "Foresight. It gets a Boon on dodge Tests it makes against Attack DCs of 16 or less."
+      ],
+      "dread": [
+        "(2) Shatter Mind. Every hero rolls Will vs Will DC 16 or loses their next Action.",
+        "(1) Reflect. Send a spell back at its caster."
+      ]
+    },
+    {
+      "id": "ash-sovereign",
+      "name": "The Ash Sovereign",
+      "tier": "boss",
+      "levelMin": 9,
+      "levelMax": 10,
+      "tags": [
+        "boss",
+        "undead",
+        "ash",
+        "crown"
+      ],
+      "defense": 16,
+      "grit": 90,
+      "attackDc": 16,
+      "damage": "16",
+      "willDc": 16,
+      "resolve": null,
+      "moves": "2",
+      "traits": [
+        "Boss turns. After each hero's turn, the Ash Sovereign makes one attack or moves.",
+        "Phases. At 60 and 30 Grit the throne room changes: first falling embers (2 damage a round in Reach), then darkness (all Tests Bane beyond Reach)."
+      ],
+      "dread": [
+        "(1) Call the Court. Summon 4 Pale Reavers.",
+        "(2) Final Ember. Every hero dodges vs DC 16 or takes 14 fire damage (half on a success at a cost)."
+      ]
+    },
+    {
+      "id": "throne-revenant",
+      "name": "Throne Revenant",
+      "tier": "boss",
+      "levelMin": 9,
+      "levelMax": 10,
+      "tags": [
+        "boss",
+        "undead",
+        "cold",
+        "crown"
+      ],
+      "defense": 16,
+      "grit": 100,
+      "attackDc": 16,
+      "damage": "17",
+      "willDc": 16,
+      "resolve": null,
+      "moves": "2",
+      "traits": [
+        "Boss turns. After each hero's turn, the Revenant makes one attack or moves.",
+        "Undying. At 0 Grit it rises once with 30 Grit, unless a hero spends an Action on the Ember Seal (Spirit Test DC 16)."
+      ],
+      "dread": [
+        "(1) Command. One hero rolls Will vs Will DC 16 or attacks an ally.",
+        "(2) Grave Chill. Every hero takes 8 cold damage and a Bane on Grace Tests until the end of the scene."
+      ]
+    }
+  ]
+}
