@@ -29,7 +29,7 @@ A change argued without numbers gets approved on vibes and gets reverted two ses
 
 Check it against what's already locked:
 
-- **`docs/decisions.md`** — if an entry already decides this, say which, and treat the change as
+- **`docs/decisions.md`** (the index, then the full file in `docs/decisions/`) — if an entry already decides this, say which, and treat the change as
   reopening a locked decision. That needs the user's explicit agreement to overturn it.
 - **The v0.1 foundation entry** — the nine items there are the game's identity (core roll, degrees of
   result, Boons/Banes, players roll all dice, Grit + Wounds, side-based turns, shared pools, flat
@@ -49,8 +49,9 @@ Nothing below happens until the user says yes.
 
 ## 3. Write it, in this order
 
-**a. The decisions entry.** Newest at the **top** of `docs/decisions.md`, under the `---`, in the
-established format:
+**a. The decisions entry.** A new file `docs/decisions/YYYY-MM-DD-slug.md` in the established format, plus a
+one-line row at the **top** of the "Everything else" table in `docs/decisions.md` (date, title, the locked rule in
+one line, link). A rule every task needs (a core mechanic) also goes into the index's locked sections in full:
 
 ```
 ### YYYY-MM-DD — Title (VTTER-<n>)

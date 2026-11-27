@@ -19,7 +19,7 @@ Pushing a rebased branch rewrites a remote branch, so confirm the PR with the us
    `git worktree add .claude/worktrees/fc-<n> -b fc-<n> origin/<headRefName>`.
 4. **Rebase:** `git rebase origin/main`. For each conflict, read both sides and keep the intent of both.
    These files conflict most:
-   - `docs/decisions.md`: keep every entry, newest first, no duplicates.
+   - `docs/decisions.md`: keep every index row, newest first, no duplicates. Files in `docs/decisions/` rarely conflict.
    - `CLAUDE.md` / `AGENTS.md`: keep both sides' rules and links.
    - `data/*.json`, `api/src/store.ts`, `infra/lib/*.ts`: merge both additions. Don't drop a field,
      IAM action or `BUILT_IN_IDS` entry.
