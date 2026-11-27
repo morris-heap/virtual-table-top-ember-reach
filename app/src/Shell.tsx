@@ -29,8 +29,9 @@ function sectionOf(route: Route): Section | null {
 }
 
 function TopNav() {
-  const current = sectionOf(useRoute())
-  const unread = useUnread(true)
+  const route = useRoute()
+  const current = sectionOf(route)
+  const unread = useUnread(true, route.name === 'chat' ? route.playerId : undefined)
   return (
     <nav className="topnav" aria-label="Main">
       {SECTIONS.map(s => (
