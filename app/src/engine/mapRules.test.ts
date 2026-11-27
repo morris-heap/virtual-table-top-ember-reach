@@ -162,3 +162,21 @@ describe('shortest path', () => {
     expect(shortestPath(walled, 0, indexOf(grid, 0, 9))).toBeNull()
   })
 })
+
+describe('a starting state of open or closed (VTTER-129)', () => {
+  const edge = edgeBetween(grid, left, X)!
+  const withPortal = (type: string, open?: boolean) => map([
+    { id: 'w', kind: 'route', type: 'wall', line: 'edge', at: [edge, 1] },
+    { id: 'p', kind: 'portal', type, at: [edge, 1], ...(open === undefined ? {} : { props: { open } }) },
+  ])
+
+  it('leaves movement as it was: you go through a door, gate or portcullis whether it starts open or closed', () => {
+    // Opening and shutting during play is table state (VTTER-87), locked 2026-11-27.
+    for (const type of ['door', 'secret-door', 'gate', 'portcullis']) {
+      for (const open of [undefined, false, true]) {
+        expect(canCross(withPortal(type, open), left, X), `${type} ${open}`).toBe(true)
+        expect(enterCost(withPortal(type, open), left, X), `${type} ${open}`).toEqual({ cost: 1 })
+      }
+    }
+  })
+})

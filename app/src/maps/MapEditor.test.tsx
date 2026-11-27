@@ -119,6 +119,29 @@ describe('the map editor', () => {
     expect(screen.getByRole('img', { name: /Hex map/ })).toBeInTheDocument()
   })
 
+  it('offers Starts open on a door, and says what it changes, but never on a wall (VTTER-129)', () => {
+    open()
+    addKind('Route', 'wall')
+    const options = () => [...(screen.getByLabelText('Add a property') as HTMLSelectElement).options].map(o => o.value)
+    expect(options()).not.toContain('open')
+    addKind('Portal', 'door')
+    expect(options()).toContain('open')
+    fireEvent.change(screen.getByLabelText('Add a property'), { target: { value: 'open' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }))
+    // The door's Blocks (move+sight, from Door) is switched off while it starts open.
+    expect(screen.getByRole('note')).toHaveTextContent('While it starts open: off.')
+  })
+
+  it('adds a trap as a Static Object that brings its Hazard and Hidden (VTTER-129)', () => {
+    open()
+    addKind('Static Object', 'spike-pit')
+    expect(screen.getByRole('heading', { name: 'Spike pit' })).toBeInTheDocument()
+    // Both come from the type, so the panel lists them "from Spike pit"; both act later (VTTER-110).
+    expect(screen.getByText('Hazard')).toBeInTheDocument()
+    expect(screen.getByText('Hidden')).toBeInTheDocument()
+    expect(screen.getAllByText(/from Spike pit/)).toHaveLength(2)
+  })
+
   it('removes an object, moving what sat on it down a layer', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     open()

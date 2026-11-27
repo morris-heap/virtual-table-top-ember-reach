@@ -280,4 +280,58 @@ describe("a player's view of a map (ADR 0011 §4)", () => {
   it('leaves the author their whole map', () => {
     expect(parseMap(forge()).objects).toHaveLength(7)
   })
+
+  it('hides every Hidden object, by its own Notice DC or its type\'s, and everything on one (VTTER-129)', () => {
+    const m = parseMap({
+      ...forge(),
+      objects: [
+        { id: 'o1', kind: 'enclosure', type: 'cavern', at: [0, 900] },
+        { id: 't', kind: 'static', type: 'spike-pit', name: 'The pit', on: 'o1', at: [40, 1] }, // Hidden from its type
+        { id: 'x', kind: 'static', type: 'statue', name: 'Hollow statue', on: 'o1', at: [50, 1], props: { hidden: 14 } },
+        { id: 'y', kind: 'static', type: 'chest', name: 'Its key', on: 'x', at: [50, 1] },
+        { id: 'sd', kind: 'portal', type: 'secret-door', on: 'o1', at: [960, 1] },
+        { id: 'c', kind: 'static', type: 'chest', on: 'o1', at: [70, 1], links: ['t'] },
+      ],
+    })
+    const v = playerViewOfMap(m)
+    expect(v.objects.map(o => o.id)).toEqual(['o1', 'c'])
+    expect(v.objects[1]).not.toHaveProperty('links') // its only link pointed at the hidden pit
+    expect(JSON.stringify(v)).not.toMatch(/The pit|Hollow statue|Its key|spike-pit|secret-door/)
+  })
+})
+
+describe('traps and a starting open or closed state (VTTER-129)', () => {
+  const at = { door: 900 + 31, wall: 900 + 32 } // two edges (direction 1, hexes 31 and 32)
+
+  it('saves a trap with its type, and keeps any value the author changes', () => {
+    const m = parseMap({ ...forge(), objects: [
+      { id: 't', kind: 'static', type: 'falling-block', at: [40, 1] },
+      { id: 'u', kind: 'static', type: 'dart-trap', at: [41, 1], props: { hidden: 8 } },
+    ] })
+    expect(m.objects.map(o => o.type)).toEqual(['falling-block', 'dart-trap'])
+    expect(m.objects[1].props).toEqual({ hidden: 8 })
+  })
+
+  it('accepts Starts open on things that open', () => {
+    for (const [kind, type, place] of [['portal', 'door', at.door], ['portal', 'gate', at.door], ['portal', 'portcullis', at.door], ['static', 'chest', 40]] as const) {
+      const m = parseMap({ ...forge(), objects: [{ id: 'p', kind, type, at: [place, 1], props: { open: true } }] })
+      expect(m.objects[0].props, type).toEqual({ open: true })
+    }
+  })
+
+  it('refuses Starts open on anything that does not open', () => {
+    for (const [kind, type, place, line] of [['route', 'wall', at.wall, 'edge'], ['portal', 'window', at.door, undefined], ['static', 'statue', 40, undefined]] as const) {
+      const raw = { id: 'p', kind, type, at: [place, 1], props: { open: true }, ...(line ? { line } : {}) }
+      expect(() => parseMap({ ...forge(), objects: [raw] }), type).toThrow(/only goes on something that opens/)
+    }
+  })
+
+  it('refuses a value for Starts open that is not a flag', () => {
+    expect(() => parseMap({ ...forge(), objects: [{ id: 'p', kind: 'portal', type: 'door', at: [at.door, 1], props: { open: 'yes' } }] })).toThrow()
+  })
+
+  it('knows every trap type the app offers', () => {
+    const traps = mapData.types.filter(t => t.kind === 'static' && (t as { props?: Record<string, unknown> }).props?.hazard)
+    expect(traps.map(t => t.id).sort()).toEqual(['dart-trap', 'falling-block', 'pressure-plate', 'snare', 'spike-pit'])
+  })
 })

@@ -16,9 +16,9 @@ type ValueSpec = {
   fields?: Record<string, ValueSpec>
   grants?: string[]
 }
-type TypeDef = { id: string; kind: string; line?: string; placement?: string }
+type TypeDef = { id: string; kind: string; line?: string; placement?: string; opens?: boolean; props?: Record<string, unknown> }
 
-const PROPERTIES = new Map(mapData.properties.map(p => [p.name, p as { name: string; value: ValueSpec }]))
+const PROPERTIES = new Map(mapData.properties.map(p => [p.name, p as { name: string; value: ValueSpec; requires?: string }]))
 const TYPES = new Map((mapData.types as TypeDef[]).map(t => [t.id, t]))
 const SIZES = new Map(mapData.sizes.map(s => [s.id, s]))
 
@@ -170,6 +170,8 @@ function objectOf(raw: unknown, i: number, hexes: number): MapObject {
     for (const name of names) {
       const def = PROPERTIES.get(name)
       if (!def) fail(`${where}.props.${name} is not a known property`)
+      // `open` (a starting state) only goes on a type that opens, VTTER-129.
+      if (def.requires === 'opens' && !type.opens) fail(`${where}.props.${name} only goes on something that opens`)
       const v = props[name]
       // `false` turns off a flag the type gives by default.
       out.props[name] = v === false && def.value.type === 'flag' ? false : value(def.value, v, `${where}.props.${name}`)
@@ -224,10 +226,19 @@ export function parseMap(body: unknown): MapDraft {
   return draft
 }
 
+/** True when an object carries Hidden, set on it or given by its type. A number property, so only absence turns it off. */
+function isHiddenProp(o: MapObject): boolean {
+  const own = o.props?.hidden
+  if (own !== undefined && own !== false) return true
+  return own === undefined && TYPES.get(o.type)?.props?.hidden !== undefined
+}
+
 /**
  * What a player in a Game receives (ADR 0011 §4, data-model.md "What each reader receives"). Built in the
  * API so a hidden object never reaches the client. Removes:
  * - every GM-only object, and everything layered on one (a secret room's floor would give the room away);
+ * - every Hidden object (its own `hidden`, or its type's, such as a trap or a secret door), and everything on one:
+ *   Hidden is GM-only until spotted (properties.md), and spotting is table state (VTTER-87), so for now it stays out;
  * - every Entity, because Entities are shown only where the party can see them now, and sight is fog of war (VTTER-111);
  * - every `note`.
  * Links to removed objects are dropped. No remaining object sits on a removed one, because a removed
@@ -241,7 +252,7 @@ export function playerViewOfMap<T extends MapDraft>(map: T): T {
     const seen = new Set<string>()
     let cur: MapObject | undefined = o
     while (cur && !seen.has(cur.id)) {
-      if (cur.gmOnly || cur.kind === 'entity') return true
+      if (cur.gmOnly || cur.kind === 'entity' || isHiddenProp(cur)) return true
       seen.add(cur.id)
       cur = cur.on ? byId.get(cur.on) : undefined
     }

@@ -2,7 +2,7 @@
 // catalog in data/map.json. Movement properties are tagged "acts now"; the rest "acts later" or "describes".
 import { useState } from 'react'
 import {
-  chainOf, effectiveCovers, KIND_LABELS, MAP_LIMITS, objectLabel, PROPERTIES, propertyDef, typeDef, typesOfKind,
+  chainOf, effectiveCovers, KIND_LABELS, MAP_LIMITS, objectLabel, PROPERTIES, propertyAllowed, propertyDef, typeDef, typesOfKind,
   type MapDoc, type MapObject, type PropScalar, type PropValue, type ValueSpec,
 } from '../engine/mapModel.ts'
 
@@ -85,7 +85,7 @@ export default function PropertyPanel({ map, object, onChange, onRemove }: {
   // What the object has: its type's defaults, overridden by its own values. `false` turns a default flag off.
   const names = [...new Set([...Object.keys(defaults), ...Object.keys(own)])]
   const shown = names.filter(n => own[n] !== false || n in defaults)
-  const missing = PROPERTIES.filter(p => !names.includes(p.name) || own[p.name] === false && !(p.name in defaults))
+  const missing = PROPERTIES.filter(p => propertyAllowed(p, object.type) && (!names.includes(p.name) || own[p.name] === false && !(p.name in defaults)))
 
   const setProp = (name: string, v: PropValue | undefined) => {
     const next = { ...own }
@@ -153,6 +153,8 @@ export default function PropertyPanel({ map, object, onChange, onRemove }: {
         const value = name in own ? own[name] : defaults[name]
         const fromType = !(name in own)
         const off = value === false
+        // Starting open changes some properties (an open door stops blocking sight): say so where it applies.
+        const openChange = own.open === true && type?.opens && type.whenOpen && name in type.whenOpen ? type.whenOpen[name] : undefined
         return (
           <div key={name} className={`map-prop${off ? ' off' : ''}`}>
             <header>
@@ -160,6 +162,11 @@ export default function PropertyPanel({ map, object, onChange, onRemove }: {
               <span className={`map-tag ${def.acts}`}>{ACTS_LABEL[def.acts]}</span>
             </header>
             <p className="muted">{def.help}</p>
+            {openChange !== undefined && (
+              <p className="notice" role="note">
+                While it starts open: {openChange === false ? 'off' : String(openChange)}.
+              </p>
+            )}
             {def.value.type !== 'flag' && !off && <ValueInput spec={def.value} label="Value" value={value} onChange={v => setProp(name, v)} />}
             <div className="row-actions">
               {def.value.type === 'flag'

@@ -487,6 +487,20 @@ export const TOKEN_RADIUS = 0.62
 export const PASSAGE_WIDTH = 2 * TOKEN_RADIUS + 0.16
 
 /**
+ * An open door or gate (VTTER-129), in the Portal's own frame: the doorway runs along x from −len/2 to len/2, and the
+ * leaf has swung 90° about its hinge at the left jamb, to the −y side. Returns the hinge, the leaf's free end, and the
+ * quarter circle its free end swept, so the doorway itself is left clear.
+ */
+export function openLeaf(len: number): { hinge: Pt; tip: Pt; arc: { cx: number; cy: number; r: number; from: number; to: number } } {
+  const half = len / 2
+  return {
+    hinge: [-half, 0],
+    tip: [-half, -len],
+    arc: { cx: -half, cy: 0, r: len, from: -Math.PI / 2, to: 0 },
+  }
+}
+
+/**
  * How big an edge Portal is drawn (VTTER-128): a share of its gap (`span`), never less than `min` long, and a
  * thickness, all in hex radii. Doors, secret doors, gates, portcullises, openings and holes are passages: they fill
  * their gap at the wall's thickness and are at least PASSAGE_WIDTH wide. Windows and arrow slits are set into the

@@ -153,3 +153,20 @@ Each becomes an **Environment space type** with default properties the author ca
 | Neutral (grey) | Entity side **Neutral** (NPC) | keep | |
 
 The app keeps the colour idea and takes the actual colours from its own theme.
+
+## Traps (added 2026-11-27, VTTER-129)
+
+Not from the cartography program: added at the author's request. Each is a **Static Object** type that brings `hazard`
+and `hidden` as defaults (a trap that fires on a trigger is a property, layered model §10). The numbers are in
+`data/map.json`, anchored on the GM guide's steam vent (Notice DC 12, dodge DC 12, 2d6).
+
+| Type | Hidden (Notice DC) | Hazard: damage · dodge DC · trigger · frequency |
+|---|---|---|
+| Pressure plate | 12 | 1d6 · 12 · enter · each (link it to what it sets off) |
+| Spike pit | 12 | 2d6 · 12 · enter · each |
+| Snare | 12 | 1d4 · 12 · enter · once |
+| Dart trap | 12 | 1d6 · 12 · enter · each |
+| Falling block | 16 | 3d6 · 16 · enter · once |
+
+They fire during play once map triggers (VTTER-110) are built. Until then they are placed, configured and kept out of
+a player's view.

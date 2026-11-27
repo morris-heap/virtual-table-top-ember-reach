@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import mapData from '../../../data/map.json'
 import {
-  addObject, chainOf, effectiveProps, MAP_LIMITS, MAP_SCHEMA_VERSION, mapWarnings, MapTooNewError, migrateMap, MIN_SIDE, newMap,
+  addObject, chainOf, effectiveProps, isTrap, MAP_LIMITS, propertyAllowed, propertyDef, startsOpen, typeDef, MAP_SCHEMA_VERSION, mapWarnings, MapTooNewError, migrateMap, MIN_SIDE, newMap,
   onEdges, paint, PROPERTIES, removeObject, SIZES, TYPES, updateObject, type MapDoc,
 } from './mapModel.ts'
 
@@ -125,5 +125,78 @@ describe('warnings (same rules as the API)', () => {
     for (let k = 0; k <= MAP_LIMITS.onDepth; k++) m = addObject(m, 'room', k ? { on: `o${k}` } : {}).map
     expect(chainOf(m, `o${MAP_LIMITS.onDepth + 1}`)).toHaveLength(MAP_LIMITS.onDepth + 1)
     expect(mapWarnings(m).join()).toMatch(/layers deep/)
+  })
+})
+
+describe('traps (VTTER-129)', () => {
+  const TRAPS = ['pressure-plate', 'spike-pit', 'snare', 'dart-trap', 'falling-block']
+
+  it('are Static Objects that bring a Hazard and a Hidden Notice DC from data/map.json', () => {
+    for (const id of TRAPS) {
+      const t = typeDef(id)!
+      expect(t.kind, id).toBe('static')
+      const hazard = t.props?.hazard as Record<string, unknown>
+      expect(hazard, id).toMatchObject({ on: 'enter' })
+      expect(typeof hazard.damage).toBe('string')
+      expect(typeof t.props?.hidden).toBe('number')
+      // The trap's defaults are values the property catalog accepts (the API checks the same).
+      const spec = propertyDef('hazard')!.value.fields!
+      expect(spec.every.options).toContain(hazard.every)
+      expect(hazard.dodge as number).toBeGreaterThanOrEqual(spec.dodge.min!)
+      expect(hazard.dodge as number).toBeLessThanOrEqual(spec.dodge.max!)
+      expect(isTrap({ id: 'o', kind: 'static', type: id, at: [] }), id).toBe(true)
+    }
+  })
+
+  it('match the GM guide steam vent for the everyday ones (dodge DC 12, Notice DC 12)', () => {
+    for (const id of ['pressure-plate', 'spike-pit', 'snare', 'dart-trap']) {
+      expect((typeDef(id)!.props!.hazard as { dodge: number }).dodge, id).toBe(12)
+      expect(typeDef(id)!.props!.hidden, id).toBe(12)
+    }
+    expect(typeDef('spike-pit')!.props!.hazard).toMatchObject({ damage: '2d6' }) // the steam vent's 2d6
+  })
+
+  it('counts any Static Object given a Hazard as a trap, and nothing else', () => {
+    expect(isTrap({ id: 'o', kind: 'static', type: 'chest', at: [] })).toBe(false)
+    expect(isTrap({ id: 'o', kind: 'static', type: 'chest', at: [], props: { hazard: { damage: '1d4', dodge: 8, on: 'touch', every: 'once' } } })).toBe(true)
+  })
+})
+
+describe('starting open or closed (VTTER-129)', () => {
+  const o = (type: string, open?: boolean) => ({ id: 'o', kind: typeDef(type)!.kind, type, at: [], ...(open === undefined ? {} : { props: { open } }) })
+
+  it('offers Starts open only on things that open: the five Portals and the Chest', () => {
+    const open = propertyDef('open')!
+    const opens = TYPES.filter(t => propertyAllowed(open, t.id)).map(t => t.id).sort()
+    expect(opens).toEqual(['chest', 'door', 'gate', 'portcullis', 'secret-door', 'trap-door'])
+    expect(propertyAllowed(propertyDef('cover')!, 'wall')).toBe(true) // other properties are unaffected
+  })
+
+  it('stops a door, secret door or trap door blocking sight when it starts open', () => {
+    for (const type of ['door', 'secret-door', 'trap-door']) {
+      expect(effectiveProps(o(type)).blocks, type).toBe('move+sight')
+      expect(effectiveProps(o(type, false)).blocks, type).toBe('move+sight')
+      expect(effectiveProps(o(type, true)).blocks, type).toBeUndefined()
+      expect(startsOpen(o(type, true))).toBe(true)
+    }
+  })
+
+  it('never lets a gate or portcullis block sight, open or closed', () => {
+    for (const type of ['gate', 'portcullis']) {
+      expect(effectiveProps(o(type)).blocks, type).toBe('move')
+      expect(effectiveProps(o(type, true)).blocks, type).toBeUndefined()
+    }
+  })
+
+  it('changes nothing else when it starts open: a secret door is still Hidden', () => {
+    expect(effectiveProps(o('secret-door', true)).hidden).toBe(12)
+  })
+
+  it('ignores Starts open on a type that does not open, and warns about it', () => {
+    const win = { id: 'o1', kind: 'portal' as const, type: 'window', at: [], props: { open: true } }
+    expect(effectiveProps(win).blocks).toBe('move') // a window keeps its own blocks
+    expect(startsOpen(win)).toBe(false)
+    const m = { ...doc(), objects: [{ id: 'o1', kind: 'portal' as const, type: 'window', at: [0, 1], props: { open: true } }] }
+    expect(mapWarnings(m).join()).toMatch(/only something that opens can have Starts open/)
   })
 })

@@ -59,6 +59,8 @@ export interface PropertyDef {
   acts: 'now' | 'later' | 'describes'
   stack: 'max' | 'top' | 'each' | 'sum' | 'none'
   help: string
+  /** Only types with this flag can carry the property (`open` needs a type that opens, VTTER-129). */
+  requires?: 'opens'
 }
 
 export interface TypeDef {
@@ -70,6 +72,8 @@ export interface TypeDef {
   opens?: boolean
   covers?: string[]
   props?: Record<string, PropValue>
+  /** What changes when it starts open: these override its properties (`false` turns one off). VTTER-129. */
+  whenOpen?: Record<string, PropValue>
 }
 
 export interface SizeDef { id: string; label: string; max: number; paidLater?: boolean }
@@ -102,12 +106,28 @@ export function onEdges(o: Pick<MapObject, 'kind' | 'type' | 'line'>): boolean {
   return false
 }
 
-/** The object's properties: its type's defaults, overridden by its own. A flag set to `false` turns a default off. */
+/**
+ * The object's properties: its type's defaults, overridden by its own. A flag set to `false` turns a default off.
+ * Something that starts open (`open`) also takes its type's `whenOpen` changes: an open door stops blocking sight.
+ */
 export function effectiveProps(o: MapObject): Record<string, PropValue> {
-  const merged: Record<string, PropValue> = { ...(typeDef(o.type)?.props ?? {}), ...(o.props ?? {}) }
+  const type = typeDef(o.type)
+  const merged: Record<string, PropValue> = { ...(type?.props ?? {}), ...(o.props ?? {}) }
+  if (merged.open === true && type?.opens && type.whenOpen) Object.assign(merged, type.whenOpen)
   for (const [k, v] of Object.entries(merged)) if (v === false) delete merged[k]
   return merged
 }
+
+/** Whether a type can carry a property: `open` only goes on something that opens. */
+export function propertyAllowed(def: PropertyDef, type: string): boolean {
+  return def.requires !== 'opens' || typeDef(type)?.opens === true
+}
+
+/** True when something that opens starts open (`open` on a type that opens). */
+export const startsOpen = (o: MapObject) => typeDef(o.type)?.opens === true && effectiveProps(o).open === true
+
+/** True when an object is a trap: it carries a Hazard, from its type or its own properties. */
+export const isTrap = (o: MapObject) => effectiveProps(o).hazard !== undefined
 
 /** What the object covers for an Entity standing on it: its own list, else its type's. */
 export const effectiveCovers = (o: MapObject): string[] => o.covers ?? typeDef(o.type)?.covers ?? []
@@ -283,6 +303,7 @@ export function mapWarnings(map: Omit<MapDoc, 'id' | 'updatedAt'> & Partial<Pick
     for (const [k, v] of props) {
       const def = propertyDef(k)
       if (!def) { out.push(`${label} has an unknown property "${k}".`); continue }
+      if (!propertyAllowed(def, o.type)) { out.push(`${label}: only something that opens can have ${def.label}.`); continue }
       if (v === false && def.value.type === 'flag') continue
       checkValue(def.value, v, `${label} ${def.label}`, out)
     }

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import mapData from '../../../data/map.json'
 import { DIRECTIONS, edgeHexes, edgesAround, edgeSegment, hexAt, hexCenter, hexCount, indexOf, neighbour, ownedEdge, type Grid } from './hex.ts'
 import {
-  artKey, artOf, BRIDGE_WIDTH, bridgeDeck, bridgeOf, PASSAGE_WIDTH, portalLength, portalSize, TOKEN_RADIUS, WALL_WIDTH, chainSegments, frameOf, guideOf, relax, shapeParts, snapChain, snapSegment, type Guide, drawOrder, edgeChains, hasTexture, isWide, pointInRings, routeLines, scatterDecor, shapeOf,
+  artKey, artOf, BRIDGE_WIDTH, bridgeDeck, openLeaf, bridgeOf, PASSAGE_WIDTH, portalLength, portalSize, TOKEN_RADIUS, WALL_WIDTH, chainSegments, frameOf, guideOf, relax, shapeParts, snapChain, snapSegment, type Guide, drawOrder, edgeChains, hasTexture, isWide, pointInRings, routeLines, scatterDecor, shapeOf,
   smoothLine, textureOf, traceOutline, type Pt,
 } from './mapArt.ts'
 import { generateMap } from './mapGen.ts'
@@ -520,5 +520,18 @@ describe('door and bridge proportions (VTTER-128)', () => {
     const b = { cx: 0, cy: 0, ux: 0.6, uy: 0.8, half: 0.7, width: 3 }
     const d = bridgeDeck(b)
     expect(d.long * d.short).toBeCloseTo(b.half * 2 * b.width)
+  })
+})
+
+describe('an open door (VTTER-129)', () => {
+  it('swings its leaf 90° on the hinge at one jamb, leaving the doorway clear', () => {
+    const { hinge, tip, arc } = openLeaf(1.4)
+    expect(hinge).toEqual([-0.7, 0])
+    // The leaf is as long as the doorway and stands straight out from the wall.
+    expect(Math.hypot(tip[0] - hinge[0], tip[1] - hinge[1])).toBeCloseTo(1.4)
+    expect(tip[0]).toBeCloseTo(hinge[0])
+    // Its swing is a quarter circle about the hinge, from the open leaf to the far jamb.
+    expect(arc).toEqual({ cx: -0.7, cy: 0, r: 1.4, from: -Math.PI / 2, to: 0 })
+    expect(arc.cx + arc.r * Math.cos(arc.to)).toBeCloseTo(0.7)
   })
 })
