@@ -7,7 +7,7 @@ import { FRIEND_LIMITS, toFriendLists, type FriendEdge, type FriendIdentity, typ
 import { parseGame, type GameDraft, type GameRecord } from './game.ts'
 import { parsePortraitUpload, PORTRAIT, type PortraitStore } from './portrait.ts'
 import { onlineIds, type PresenceRecord } from './presence.ts'
-import { isPlayerId, parseProfilePatch, type ProfilePatch, type ProfileRecord } from './profile.ts'
+import { DISPLAY_NAME_MAX, isPlayerId, NAME_SEARCH, parseProfilePatch, type FoundPlayer, type ProfilePatch, type ProfileRecord } from './profile.ts'
 import { parseSheet, ValidationError, type CharacterRecord, type CharacterSheet, type CharacterSummary } from './sheet.ts'
 
 export interface CharacterStore {
@@ -27,6 +27,16 @@ export interface ProfileStore {
   peek(ownerId: string): Promise<ProfileRecord | null>
   /** Who a public player ID belongs to, or null if no one has it. */
   ownerOfPlayer(playerId: string): Promise<string | null>
+  /**
+   * Players who opted in to being found and whose display name is exactly `name` (case and spacing folded),
+   * at most `limit`, never the caller (VTTER-108). Public fields only.
+   */
+  findByName(name: string, exceptOwnerId: string, limit: number): Promise<FoundPlayer[]>
+  /**
+   * Counts one name search against the caller's per-minute allowance and says whether it may go ahead.
+   * Names are not secret to someone who knows them, so the cap is what stops a script walking the player list.
+   */
+  allowSearch(ownerId: string): Promise<boolean>
 }
 
 /**
@@ -263,6 +273,22 @@ async function profileRoute(req: Request, owner: string, deps: Deps, cors: Recor
     default:
       throw new HttpError(405, 'Method not allowed')
   }
+}
+
+/**
+ * `GET /players?name=` (VTTER-108): find a player by display name, to add as a friend. Any signed-in player
+ * may ask. A result is a player ID and a display name and nothing else, and only for a player who turned on
+ * "let people find me by name". The name must match whole: there is no way to list players by prefix.
+ */
+async function playersRoute(req: Request, owner: string, deps: Deps, cors: Record<string, string>): Promise<Response> {
+  if (req.method !== 'GET') throw new HttpError(405, 'Method not allowed')
+  const name = (new URL(req.url).searchParams.get('name') ?? '').trim()
+  if (!name) throw new HttpError(400, 'Type the name to look for')
+  if (name.length > DISPLAY_NAME_MAX) throw new HttpError(400, `Names are at most ${DISPLAY_NAME_MAX} characters`)
+  if (!(await deps.profiles.allowSearch(owner))) throw new HttpError(429, 'You are searching too fast. Wait a moment.', { 'Retry-After': '30' })
+  const found = await deps.profiles.findByName(name, owner, NAME_SEARCH.maxResults)
+  // Field by field, so nothing else on a profile or an index row can ride along.
+  return json({ players: found.map(p => ({ playerId: p.playerId, displayName: p.displayName })) }, 200, cors)
 }
 
 /** What a member sees of a Game: names and player IDs, never Cognito ids. */
@@ -631,10 +657,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
 
     const resource = parts[0]
-    const maxParts = resource === 'profile' || resource === 'portraits' || resource === 'presence' ? 1 : resource === 'games' || resource === 'friends' ? 4 : resource === 'characters' ? 3 : 2
+    const maxParts = resource === 'profile' || resource === 'portraits' || resource === 'presence' || resource === 'players' ? 1 : resource === 'games' || resource === 'friends' ? 4 : resource === 'characters' ? 3 : 2
     // Three parts is only ever /games/:id/hero (VTTER-77), /characters/:id/portrait (VTTER-55) or
     // /friends/:playerId/adventures (VTTER-73); gamesRoute and friendsRoute reject any other segment.
-    if (!['characters', 'profile', 'adventures', 'games', 'friends', 'portraits', 'presence'].includes(resource) || parts.length > maxParts
+    if (!['characters', 'profile', 'adventures', 'games', 'friends', 'portraits', 'presence', 'players'].includes(resource) || parts.length > maxParts
       || (parts.length === 3 && resource !== 'games' && resource !== 'friends' && !(resource === 'characters' && parts[2] === 'portrait'))) {
       throw new HttpError(404, 'Not found')
     }
@@ -649,6 +675,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
       return json(null, 204, cors)
     }
     if (resource === 'profile') return await profileRoute(req, owner, deps, cors)
+    if (resource === 'players') return await playersRoute(req, owner, deps, cors)
     if (resource === 'games') return await gamesRoute(req, parts, owner, deps, cors)
     if (resource === 'friends') return await friendsRoute(req, parts, owner, deps, cors)
 

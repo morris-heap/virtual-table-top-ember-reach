@@ -6,6 +6,7 @@ import { nameKey, parseGame, type GameDraft, type GameRecord } from '../src/game
 import { handle, NameTaken, type AdventureStore, type CharacterStore, type GameStore, type PresenceStore, type ProfileStore } from '../src/handler.ts'
 import type { PresenceRecord } from '../src/presence.ts'
 import type { ProfilePatch, ProfileRecord } from '../src/profile.ts'
+import { findInMemory, searchAllowance } from './profile-search-helper.ts'
 
 const ORIGIN = 'https://emberreach.morris-heap.com'
 // Limits come from /data, never hard-coded in a test either.
@@ -40,6 +41,8 @@ class MemoryProfiles implements ProfileStore {
   async ownerOfPlayer(playerId: string) {
     return [...this.rows].find(([, r]) => r.playerId === playerId)?.[0] ?? null
   }
+  async findByName(name: string, except: string, limit: number) { return findInMemory(this.rows, name, except, limit) }
+  allowSearch = searchAllowance(3)
 }
 
 class MemoryAdventures implements AdventureStore {

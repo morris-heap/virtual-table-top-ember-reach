@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { profileApi } from './api/client.ts'
 import type { Profile as ProfileData } from './api/types.ts'
 import type { Auth } from './auth/useAuth.ts'
+import { DISPLAY_NAME_MAX } from './engine/friends.ts'
 import Link from './Link.tsx'
 import Shell, { LoadState } from './Shell.tsx'
 import { useLoad } from './useLoad.ts'
@@ -23,7 +24,7 @@ export function ProfileForm({ profile, signInName, onSaved }: { profile: Profile
     return () => clearTimeout(t)
   }, [saving])
 
-  async function save(patch: Partial<Pick<ProfileData, 'displayName' | 'gameMaster'>>) {
+  async function save(patch: Partial<Pick<ProfileData, 'displayName' | 'gameMaster' | 'findable'>>) {
     setSaving({ status: 'saving' })
     try {
       onSaved(await profileApi.update(patch))
@@ -55,7 +56,7 @@ export function ProfileForm({ profile, signInName, onSaved }: { profile: Profile
         <form className="form" onSubmit={onSubmit}>
           <label className="field">
             <span>Display name</span>
-            <input value={displayName} maxLength={40} placeholder={signInName} onChange={e => setDisplayName(e.target.value)} />
+            <input value={displayName} maxLength={DISPLAY_NAME_MAX} placeholder={signInName} onChange={e => setDisplayName(e.target.value)} />
             <small className="muted">Shown to other players. Leave it empty to use “{signInName}”.</small>
           </label>
           <div className="form-actions">
@@ -77,6 +78,21 @@ export function ProfileForm({ profile, signInName, onSaved }: { profile: Profile
           </div>
           <small className="muted">Share this so friends can find you. It never changes.</small>
         </div>
+
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={profile.findable === true}
+            disabled={saving.status === 'saving'}
+            onChange={e => void save({ findable: e.target.checked })}
+          />
+          <span>Let people find me by my display name</span>
+        </label>
+        <p className="muted">
+          Off by default. When it is on, another player who types your whole display name in Add a friend sees it and your player ID,
+          and nothing else.
+          {profile.findable === true && profile.displayName === '' && ' You have no display name yet, so no one can find you until you set one.'}
+        </p>
       </section>
 
       <section className="panel" aria-labelledby="gm-title">
@@ -99,7 +115,7 @@ export function ProfileForm({ profile, signInName, onSaved }: { profile: Profile
       <section className="panel" aria-labelledby="friends-title">
         <h2 id="friends-title">Friends</h2>
         <p className="muted">
-          Friends find you by your player ID, and can read the adventures you share with them.{' '}
+          Friends find you by your player ID (or, if you allow it above, your display name), and can read the adventures you share with them.{' '}
           <Link to="/friends">Open your friends list</Link>
         </p>
       </section>

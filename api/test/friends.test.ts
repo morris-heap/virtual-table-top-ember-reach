@@ -5,6 +5,7 @@ import { FRIEND_LIMITS, type FriendEdge, type FriendIdentity, type FriendStatus 
 import { handle, type AdventureStore, type FriendStore, type GameStore, type ProfileStore } from '../src/handler.ts'
 import type { ProfilePatch, ProfileRecord } from '../src/profile.ts'
 import { MemoryPortraits } from './portraits-helper.ts'
+import { findInMemory, searchAllowance } from './profile-search-helper.ts'
 
 const ORIGIN = 'https://emberreach.morris-heap.com'
 // Cognito ids: these must never appear in any response body.
@@ -35,6 +36,8 @@ class MemoryProfiles implements ProfileStore {
   async ownerOfPlayer(playerId: string) {
     return [...this.rows].find(([, r]) => r.playerId === playerId)?.[0] ?? null
   }
+  async findByName(name: string, except: string, limit: number) { return findInMemory(this.rows, name, except, limit) }
+  allowSearch = searchAllowance(3)
 }
 
 /** Mirrors the DynamoDB layout: each player holds their own side, keyed (me, other). */

@@ -139,8 +139,11 @@ through GitHub OIDC (role `emberreach-github-deploy`, environment `aws`).
   under the GM), a member pointer per player (`id: gm#<uuid>`, which also holds that member's `heroId`) and a Game lookup (`ownerId: _game`)
   ([ADR 0006](docs/adr/0006-games.md)), a per-GM Game-name reservation (`id: name#<normalized>`) and the shared
   sparse `gsi1` index ([ADR 0008](docs/adr/0008-public-games-and-unique-names.md)).
+  A profile with `findable: true` and a name also writes `gsi1pk: player#name` so friends can be found by name
+  ([ADR 0013](docs/adr/0013-find-players-by-name.md)). `GET /players` returns only a player ID and display name, so
+  never spread an index row there either, and it is rate limited like chat.
   **`gsi1` is the table's one general-purpose index**, keyed `gsi1pk` / `gsi1sk`. A kind that needs listing
-  across partitions writes its own namespaced value there (`game#public` today) instead of getting its own
+  across partitions writes its own namespaced value there (`game#public` and `player#name` today) instead of getting its own
   index: a table allows 20 GSIs and each charges write capacity on every indexed write. Items that write no
   `gsi1pk` are absent from it and cost nothing. Widening its projection costs every indexed write, so don't.
   **Every Game read goes through the caller's member pointer**, so keep it that way and

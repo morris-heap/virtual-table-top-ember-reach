@@ -141,7 +141,7 @@ describe('DynamoProfileStore', () => {
   it('returns an existing profile without claiming anything, and hides internal fields', async () => {
     ddb.on(GetCommand).resolves({ Item: { ownerId: A, id: 'profile', ...saved } })
     const p = await profiles().getOrCreate(A)
-    expect(p).toEqual({ displayName: '', gameMaster: false, playerId: 'EMBER-AAAAA', createdAt: 'c', updatedAt: 'u' })
+    expect(p).toEqual({ displayName: '', gameMaster: false, findable: false, playerId: 'EMBER-AAAAA', createdAt: 'c', updatedAt: 'u' })
     expect(ddb.commandCalls(UpdateCommand)).toHaveLength(0)
     expect(ddb.commandCalls(GetCommand)[0].args[0].input.ConsistentRead).toBe(true)
   })
