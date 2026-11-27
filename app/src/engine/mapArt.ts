@@ -116,13 +116,44 @@ export function smoothRing(ring: Ring, passes = 2): Ring {
   return pts
 }
 
-/** Chaikin on an open line, keeping both ends where they are. A closed loop (first point = last) is smoothed as a ring. */
+/** Taubin's two weights: a shrinking step, then a slightly stronger inflating one, so wiggles fade but size stays. */
+const TAUBIN_LAMBDA = 0.5
+const TAUBIN_MU = -0.53
+/** How many shrink-and-inflate rounds `relax` runs. Enough to turn a 7-hex flower round and a staircase into a band. */
+export const RELAX_ROUNDS = 24
+
+/**
+ * Taubin smoothing: each point moves toward the middle of its two neighbours, then back out a little further.
+ * Hex-sized zigzags (alternating corners) vanish in one round and petal-sized bumps in a few, while the shape's
+ * overall size and position are kept, unlike plain averaging, which shrinks it. `pinned` points never move (map
+ * border corners, a line's two ends).
+ */
+export function relax(pts: Pt[], closed: boolean, pinned: (k: number) => boolean = () => false, rounds = RELAX_ROUNDS): Pt[] {
+  const n = pts.length
+  if (n < 3) return pts
+  let cur = pts.map(p => [p[0], p[1]] as Pt)
+  const step = (w: number) => {
+    const next = cur.map(p => [p[0], p[1]] as Pt)
+    for (let k = 0; k < n; k++) {
+      if (pinned(k)) continue
+      if (!closed && (k === 0 || k === n - 1)) continue
+      const a = cur[(k - 1 + n) % n]
+      const b = cur[(k + 1) % n]
+      next[k] = [cur[k][0] + w * ((a[0] + b[0]) / 2 - cur[k][0]), cur[k][1] + w * ((a[1] + b[1]) / 2 - cur[k][1])]
+    }
+    cur = next
+  }
+  for (let r = 0; r < rounds; r++) { step(TAUBIN_LAMBDA); step(TAUBIN_MU) }
+  return cur
+}
+
+/** An open line made smooth: relaxed with both ends pinned, then rounded. A closed loop (first point = last) is smoothed as a ring. */
 export function smoothLine(line: Pt[], passes = 2): Pt[] {
   if (line.length > 3 && keyOf(line[0]) === keyOf(line[line.length - 1])) {
-    const ring = smoothRing(line.slice(0, -1), passes)
+    const ring = smoothRing(relax(line.slice(0, -1), true), passes)
     return [...ring, ring[0]]
   }
-  let pts = line
+  let pts = relax(line, false)
   for (let p = 0; p < passes && pts.length > 2; p++) {
     const out: Pt[] = [pts[0]]
     for (let k = 0; k < pts.length - 1; k++) {
@@ -137,9 +168,16 @@ export function smoothLine(line: Pt[], passes = 2): Pt[] {
   return pts
 }
 
-/** The smooth outline of a set of hexes: traced, roughened by `seed`, then rounded. */
+/**
+ * The smooth outline of a set of hexes: traced, roughened by `seed`, relaxed (Taubin) so no hex silhouette is
+ * left, then rounded. Corners on the map's border stay pinned, so a shape that fills to the edge still does.
+ */
 export function shapeOf(g: Grid, hexes: Iterable<number>, seed: string): Ring[] {
-  return traceOutline(g, hexes).map(r => smoothRing(roughen(g, r, seed)))
+  const border = bordersOf(g)
+  return traceOutline(g, hexes).map(r => {
+    const pinned = r.map(p => border.has(keyOf(p)))
+    return smoothRing(relax(roughen(g, r, seed), true, k => pinned[k]))
+  })
 }
 
 /** Even-odd point-in-shape over every ring, so holes count as outside. */
@@ -313,14 +351,75 @@ export function textureOf(o: MapObject): Texture {
 export const hasTexture = (type: string) => type in TYPE_TEXTURE
 
 /** What gets drawn for one object, in world units. */
+/**
+ * A bridge drawn as a deck across a route: its centre, the unit direction it runs in, half its length, and its width
+ * (all in hex radii). It runs along its own hexes when it has two or more, and across the route under it when it has one.
+ */
+export interface Bridge { cx: number; cy: number; ux: number; uy: number; half: number; width: number }
+
+export const BRIDGE_WIDTH = 0.9
+/** How far a bridge reaches past its end hex centres, so it lands on the banks. */
+const BRIDGE_OVERHANG = 0.8
+
+/** Where a bridge goes and which way it runs. `under` is the fill Route hexes beneath it, if any. */
+export function bridgeOf(g: Grid, hexes: number[], under: ReadonlySet<number>): Bridge | null {
+  const pts = hexes.filter(i => i >= 0 && i < hexCount(g)).map(i => hexCenter(g, i, 1))
+  if (!pts.length) return null
+  const cx = pts.reduce((a, p) => a + p.x, 0) / pts.length
+  const cy = pts.reduce((a, p) => a + p.y, 0) / pts.length
+  let ux = 1
+  let uy = 0
+  if (pts.length >= 2) {
+    // The main axis of the hex centres (the larger eigenvector of their spread).
+    let sxx = 0, syy = 0, sxy = 0
+    for (const p of pts) { sxx += (p.x - cx) ** 2; syy += (p.y - cy) ** 2; sxy += (p.x - cx) * (p.y - cy) }
+    const angle = 0.5 * Math.atan2(2 * sxy, sxx - syy)
+    ux = Math.cos(angle)
+    uy = Math.sin(angle)
+  } else {
+    // Across the route: perpendicular to the way the route runs through this hex.
+    const i = hexes[0]
+    let dx = 0, dy = 0
+    for (const d of DIRECTIONS) {
+      const nb = neighbour(g, i, d)
+      if (nb === null || !under.has(nb)) continue
+      const c = hexCenter(g, nb, 1)
+      let vx = c.x - cx, vy = c.y - cy
+      // Opposite neighbours describe the same line, so fold them onto one side before adding.
+      if (vx < 0 || (vx === 0 && vy < 0)) { vx = -vx; vy = -vy }
+      dx += vx; dy += vy
+    }
+    const len = Math.hypot(dx, dy)
+    if (len > 0) { ux = -dy / len; uy = dx / len }
+  }
+  let half = 0
+  for (const p of pts) half = Math.max(half, Math.abs((p.x - cx) * ux + (p.y - cy) * uy))
+  return { cx, cy, ux, uy, half: half + BRIDGE_OVERHANG, width: BRIDGE_WIDTH }
+}
+
+/** What gets drawn for one object, in world units. */
 export type Art =
   | { kind: 'shape'; o: MapObject; texture: Texture; rings: Ring[] }
   | { kind: 'route'; o: MapObject; texture: Texture; lines: Pt[][]; rings: Ring[] | null }
   | { kind: 'edges'; o: MapObject; lines: Pt[][] }
   | { kind: 'portal'; o: MapObject; segments: [Pt, Pt][] }
+  | { kind: 'bridge'; o: MapObject; bridge: Bridge }
+  | { kind: 'hatch'; o: MapObject; centres: Pt[] }
+
+/** The hexes of the fill Routes under a hex Portal, so a one-hex bridge can lie across them. */
+function routeHexesUnder(o: MapObject, hexes: number[], others: readonly MapObject[]): Set<number> {
+  const out = new Set<number>()
+  const mine = new Set(hexes)
+  for (const r of others) {
+    if (r === o || r.kind !== 'route' || r.line === 'edge') continue
+    const at = decodeRuns(r.at)
+    if (at.some(i => mine.has(i))) for (const i of at) out.add(i)
+  }
+  return out
+}
 
 /** The drawing for one object, or null for Static Objects and Entities (drawn as marks, as before). */
-export function artOf(g: Grid, o: MapObject, mapId: string): Art | null {
+export function artOf(g: Grid, o: MapObject, mapId: string, others: readonly MapObject[] = []): Art | null {
   if (o.kind === 'static' || o.kind === 'entity') return null
   const at = decodeRuns(o.at)
   const seed = `${mapId}|${o.id}`
@@ -328,16 +427,47 @@ export function artOf(g: Grid, o: MapObject, mapId: string): Art | null {
     if (o.kind === 'portal') return { kind: 'portal', o, segments: at.filter(e => e >= 0 && e < 3 * hexCount(g)).map(e => edgeSegment(g, e, 1)) }
     return { kind: 'edges', o, lines: edgeChains(g, at) }
   }
+  if (o.kind === 'portal') {
+    // A bridge is a deck across the water; any other Portal on a hex (a trap door) is a hatch on each hex.
+    if (o.type === 'bridge') {
+      const bridge = bridgeOf(g, at, routeHexesUnder(o, at, others))
+      return bridge ? { kind: 'bridge', o, bridge } : null
+    }
+    return { kind: 'hatch', o, centres: at.filter(i => i >= 0 && i < hexCount(g)).map(i => { const c = hexCenter(g, i, 1); return [c.x, c.y] as Pt }) }
+  }
   const texture = textureOf(o)
   if (o.kind === 'route') {
-    return { kind: 'route', o, texture, lines: routeLines(g, at).map(l => smoothLine(l)), rings: isWide(g, at) ? shapeOf(g, at, seed) : null }
+    // A route painted as an area (two or more hexes wide) is one smooth band; a thin one is a path through hex centres.
+    const wide = isWide(g, at)
+    return { kind: 'route', o, texture, lines: wide ? [] : routeLines(g, at).map(l => smoothLine(l)), rings: wide ? shapeOf(g, at, seed) : null }
   }
   return { kind: 'shape', o, texture, rings: shapeOf(g, at, seed) }
 }
 
-/** What an object's drawing depends on, so the canvas rebuilds it only when this changes. */
-export const artKey = (o: MapObject, mapId: string) =>
-  `${mapId}|${o.kind}|${o.type}|${o.line ?? ''}|${o.at.join(',')}`
+/**
+ * What an object's drawing depends on, so the canvas rebuilds it only when this changes. A bridge also depends on
+ * the routes under it, so its key carries its placement.
+ */
+export function artKey(o: MapObject, mapId: string, others: readonly MapObject[] = []): string {
+  const base = `${mapId}|${o.kind}|${o.type}|${o.line ?? ''}|${o.at.join(',')}`
+  if (o.kind !== 'portal' || o.type !== 'bridge') return base
+  const at = decodeRuns(o.at)
+  if (at.length !== 1) return base
+  return `${base}|${[...routeHexesUnder(o, at, others)].sort((a, b) => a - b).join(',')}`
+}
+
+/** How far inside the map's outermost straight line the art's frame sits, so rounded border notches never show. */
+export const FRAME_INSET = 0.3
+
+/**
+ * The straight frame the art is clipped to, in world units: inside the zigzag of the map's border hexes on all four
+ * sides. Left and right, the border notches sit at x = 0.5 and x = 1.5 × width; top and bottom, at half a hex height
+ * and at height × hex height. Smoothing can pull a notch in by up to about a quarter, hence the inset.
+ */
+export function frameOf(g: Grid): { x0: number; y0: number; x1: number; y1: number } {
+  const h = Math.sqrt(3)
+  return { x0: 0.5 + FRAME_INSET, y0: h / 2 + FRAME_INSET, x1: 1.5 * g.width - FRAME_INSET, y1: h * g.height - FRAME_INSET }
+}
 
 /** Bounding box of rings or lines, in world units. */
 export function boundsOf(parts: Pt[][]): { x0: number; y0: number; x1: number; y1: number } {
