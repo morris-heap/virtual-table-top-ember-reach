@@ -7,6 +7,108 @@ Format: `### YYYY-MM-DD — Title` · **Decision** · **Why** · **Affects** (fi
 
 ---
 
+### 2026-11-26 — The layered map object model (VTTER-86)
+
+**Decision:** Product rules for the companion app's maps. The only game-rule change is the Terrain entry below, so
+the rules are at **v0.4**. Details in [docs/map-model/](map-model/README.md) and [ADR 0011](adr/0011-layered-map-objects.md).
+
+1. **Everything on a map is an object**, in one of six kinds, using Heath's names: **Environment space**,
+   **Enclosure**, **Route**, **Portal**, **Static Object** (the map) and **Entity** (what moves and acts).
+   This answers VTTER-86's open question 1.
+2. **An Environment space covers one or more hexes.** It carries ground conditions only. Regions and storeys
+   (realm, village, building, floor) are **Enclosures**. The program's Surface is split between the two.
+3. **A Route is any line**: river, road, fence, wall, stairs, and patrol paths (a Route with `patrol`). It declares
+   `fill` (it occupies hexes) or `edge` (it lies between hexes, like a fence). This answers question 4.
+4. **Properties flow down the `on` chain.** An Enclosure with `shelter` stops weather from above, and nothing else
+   is stopped implicitly. This answers question 2.
+5. **Each property names its stacking rule** (`max`, `top`, `each`, `sum`). A Portal or upper storey **covers** the
+   properties it lists, for an Entity standing on it. This answers question 3.
+6. **Triggers** are `enter`, `leave`, `start-of-turn` and `touch`, firing `each` time, `once`, `once-per-entity` or
+   `once-per-round`. "While inside" effects end when the Entity leaves. This answers question 5.
+7. **When a trigger fires, the app asks the affected player to roll, and the GM can undo it.** Effects use only
+   existing Tests. This answers question 6.
+8. **1 hex = 1 zone**, and terrain costs zones (the Terrain rule below). This answers question 7.
+9. **Height** is an optional grid on the map, in storeys. A cliff is where neighbours differ by 1 or more.
+   Climbing is a proposal that needs its own rule before it acts. This answers question 8.
+10. **A trap that fires on a trigger is a property; a trap that acts by itself every round is an Entity.**
+11. **The cartography program's content is generic** (real-world place nouns, generic marker styles), with no names
+    from another game. Modern-sounding room names are renamed. This answers question 9.
+12. **One DynamoDB item per map**, `map#<uuid>` under its author, capped at 350 KB and 500 objects.
+    The map is the author's template; positions, explored hexes and revealed secrets are the Game's table state.
+13. **The API decides what a player receives.** GM-only objects and fog of war are filtered server-side.
+
+**Why:**
+- Heath's program already proved the "everything is an object, in layers" idea. Six kinds described every one of
+  its place types, and all four paper tests (a nested world, stacked mud, fire and snowstorm, a river with a bridge,
+  the steam vent trap) fit with no special cases.
+- One object per hex would need about 600 KB on a 100×100 map, over DynamoDB's 400 KB item limit. Areas need about 75–200 KB.
+- Splitting Surface keeps "which layer am I in" apart from "what is the ground like".
+- Filtering in the client would hand a hidden trap to anyone who opens dev tools.
+
+**Affects:** docs/map-model/ (new: README, properties, data-model, paper-tests, inventory),
+docs/adr/0011-layered-map-objects.md (new), docs/mockups/map-editor.html (new), CLAUDE.md, README.md.
+Jira: VTTER-74 rewritten against the model; later phases filed as backlog stories VTTER-110 to VTTER-114. No `data/` change beyond the
+Terrain entry: `data/map.json` arrives with VTTER-74.
+
+---
+
+### 2026-11-26 — Fog of war comes into scope, as a GM setting (amends 2026-11-25) (VTTER-86)
+
+**Decision:** Product scope for the companion app. The rules stay at **v0.4**.
+
+1. **Fog of war is in scope.** Each hero has a sight in zones (default **3**, the far end of Far in §6.3), and
+   sight stops at `blocks-sight`. Hexes not yet seen are hidden from players.
+2. **The GM chooses the vision mode for each Game** and can switch it at any time:
+   **party vision** (every player sees what any hero sees) or **per-token vision** (each player sees only what
+   their own hero sees).
+3. **The GM always sees the whole map**, and can **view as** the party or as any one hero, to see exactly the fog
+   of war the players have.
+4. **The API filters, never the client.** A player receives only the hexes their vision allows, and Entities only
+   in current sight.
+5. **Still out of scope:** dynamic lighting (light sources, bright and dim light) and 3D terrain. The rest of the
+   2026-11-25 list is unchanged.
+6. **It ships after the live shared table (VTTER-87)**, not in the map designer (VTTER-74).
+
+**Why:**
+- Heath's Environment space lists fog of war, and the user chose real fog of war on 2026-11-26, as a GM toggle
+  between party and per-token vision so each table can play it its own way.
+- The cost the 2026-11-25 entry warned about is mostly lighting, which stays out. Line of sight at sight 3 covers
+  at most 37 hexes per hero, and an explored set is 1.25 KB on a 100×100 map, so even per-token vision for eight
+  heroes is 10 KB.
+- Filtering in the API is the only way a hidden room stays hidden.
+
+**Affects:** CLAUDE.md (scope lock), README.md (roadmap and scope line), docs/adr/0011-layered-map-objects.md,
+docs/map-model/. Amends the 2026-11-25 "Automate our own rules" entry, item 2's first bullet.
+
+---
+
+### 2026-11-26 — Terrain: Difficult and Impassable zones (VTTER-86)
+
+**Decision:** A new rule in core rules §6.3. Core rules go to **v0.4**; the GM guide stays at **v0.2**.
+
+1. **Entering a Difficult zone costs 2 zones of your Speed.** Leaving one costs nothing extra.
+2. **Difficult doesn't stack past 2.** Mud *and* a snowstorm on the same zone still cost 2.
+3. **You can't enter an Impassable zone.**
+4. **Dash still gives you another Move**, so you can cross more Difficult zones in one turn.
+5. **On a hex map, 1 hex = 1 zone.** Map terrain costs are counted in zones, never squares.
+6. The numbers are `movement.difficultCost` (2) and `movement.difficultCap` (2) in `data/core.json`.
+
+**Why:**
+- The layered map model (VTTER-86) needs terrain to affect movement, and the rules had no terrain cost at all.
+  The user chose zones over a finer square grid (which would undo VTTER-74's one-hex-one-zone choice) and over Banes
+  (which never change how far you move).
+- With Speed 2, one Move crosses 2 open zones or 1 Difficult zone; with Dash, 2 Difficult zones. A Cinnabar hero
+  (each Move covers 1 extra zone) crosses 1 Difficult + 1 open zone per Move. No to-hit, Grit, DC or Momentum number changes,
+  and there's no new roll.
+- The cap keeps stacked map layers from making a zone cost more than a whole Move, which would strand a Speed 2
+  hero without Dash. The user chose the cap over "+1 per Difficult layer".
+
+**Affects:** rules/core-rules.md (§6.3, title v0.4), data/core.json (`version` 0.4, `movement`), data/character.json and data/creation.json (`version` 0.4),
+app/src/engine/hero.test.ts and api/test/handler.test.ts (read `core.version` instead of a hard-coded `0.3`), README.md (status and roadmap).
+No sheet or GM guide numbers change: the soot pits in the GM guide §5 keep their Bane on movement.
+
+---
+
 ### 2026-11-26 — Enemies and NPCs in an adventure, and a library to pick from
 
 **Decision:** Product rule for the companion app. No change to the d20 rules, so the rules stay at **v0.2** (core v0.3).
@@ -249,6 +351,8 @@ The app **deeply automates Emberreach's own rules**. It does **not** become a pl
    a GM-only layer with editing during play (VTTER-90), and slabs (VTTER-91).
 2. **Out of scope, deliberately:**
    - **Dynamic lighting and per-token vision.** Years of work, and pillar 4 says a grid isn't even required.
+     *(Amended 2026-11-26: fog of war, including per-token vision, is now in scope as a GM setting. Dynamic lighting
+     stays out. See the entry above.)*
    - **3D terrain and sculpting.** Those competitors are whole game engines.
    - **A user scripting language** (Let's Role's JavaScript, Tabletop Simulator's Lua). We are one game, not an engine.
    - **A system builder for other RPGs.** Generalising costs us the rules automation, which is the only reason

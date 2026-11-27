@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import core from '../../../data/core.json'
 import { ANCESTRIES, CALLINGS, emptyHero, heroProblems, newHeroSheet } from './hero.ts'
 
 describe('new hero', () => {
@@ -23,6 +24,6 @@ describe('new hero', () => {
 
   it('builds a level 1 sheet with the name trimmed', () => {
     expect(newHeroSheet({ name: '  Ash  ', ancestry: 'Emberkin', calling: 'Mender' }))
-      .toEqual({ rulesVersion: '0.3', name: 'Ash', level: 1, ancestry: 'Emberkin', calling: 'Mender' })
+      .toEqual({ rulesVersion: core.version, name: 'Ash', level: 1, ancestry: 'Emberkin', calling: 'Mender' })
   })
 })

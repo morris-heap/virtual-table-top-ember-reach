@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Map Editor Mockup</title>
+<!-- VTTER-86 UI mockup. Static, sample data only (the Forge corridor from The Soot King's Hearth).
+     Colors match app/src/index.css. The model is docs/map-model/. -->
+<style>
+  :root {
+    --bg: #f7f3ee; --panel: #ffffff; --text: #2a2420; --muted: #6e625a; --border: #e4dbd2;
+    --ember: #d9531e; --ember-soft: #fbe6dc; --gold: #b8860b; --bad: #a3322a; --bad-soft: #f8e1df;
+    --ok: #2f7d4f; --gm: #6b4fa3; --gm-soft: #ece6f6;
+    --rock: #cfc6bc; --floor: #e9e1d6; --rubble: #b9ab9b; --vent: #f2c3ae; --wall: #3b302a; --fog: rgba(23,18,15,.72);
+    --radius: 14px;
+    font: 15px/1.45 system-ui, 'Segoe UI', Roboto, sans-serif;
+    color: var(--text); background: var(--bg);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17120f; --panel: #221b17; --text: #f1e8e0; --muted: #b3a79d; --border: #3a2f28;
+      --ember: #ff7a3d; --ember-soft: #3d2216; --gold: #e0b44a; --bad: #ff8a80; --bad-soft: #3d1d1a;
+      --ok: #6fcf97; --gm: #b49bea; --gm-soft: #2c2340;
+      --rock: #4a4039; --floor: #5d5249; --rubble: #3b322c; --vent: #7a3f28; --wall: #f1e8e0; --fog: rgba(0,0,0,.72);
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); }
+  main { max-width: 1240px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1, h2, h3 { margin: 0; line-height: 1.2; }
+  h1 { font-size: 24px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
+  .lede { color: var(--muted); max-width: 70ch; margin: 6px 0 24px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .btn { border: 1px solid var(--border); background: var(--panel); color: var(--text); border-radius: 10px;
+    padding: 6px 10px; font: inherit; font-size: 14px; cursor: pointer; }
+  .btn[aria-pressed="true"] { background: var(--ember); border-color: var(--ember); color: #fff; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .spacer { flex: 1; }
+  .muted { color: var(--muted); font-size: 13px; }
+
+  /* Desktop editor */
+  .editor { display: grid; grid-template-columns: 250px minmax(0, 1fr) 290px; gap: 12px; align-items: start; }
+  .toolbar { grid-column: 1 / -1; }
+  .kinds { display: flex; gap: 6px; flex-wrap: wrap; }
+  .kind { display: inline-flex; align-items: center; gap: 6px; }
+  .kind i { font-style: normal; width: 18px; text-align: center; }
+
+  .tree { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+  .tree ul { list-style: none; margin: 0; padding-left: 16px; border-left: 1px dashed var(--border); }
+  .tree li > div { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 8px; }
+  .tree li > div.sel { background: var(--ember-soft); outline: 1px solid var(--ember); }
+  .tree small { color: var(--muted); }
+  .tag { font-size: 11px; border-radius: 999px; padding: 1px 7px; border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+  .tag.gm { background: var(--gm-soft); border-color: var(--gm); color: var(--gm); }
+  .tag.now { background: color-mix(in srgb, var(--ok) 15%, transparent); border-color: var(--ok); color: var(--ok); }
+  .tag.later { border-style: dashed; }
+
+  .canvas { padding: 8px; overflow: hidden; }
+  .canvas svg { display: block; width: 100%; height: auto; }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); padding: 6px 4px 0; }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; border: 1px solid var(--border); }
+
+  .props label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: 10px; }
+  .props .val { font-weight: 600; }
+  .prop { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; margin-top: 8px; }
+  .prop header { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 600; }
+  .prop p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+  .switch { display: inline-flex; align-items: center; gap: 8px; }
+  .switch b { width: 34px; height: 20px; border-radius: 999px; background: var(--gm); position: relative; display: inline-block; }
+  .switch b::after { content: ""; position: absolute; right: 3px; top: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; }
+  .note { font-size: 13px; background: var(--gm-soft); border-radius: 8px; padding: 8px; margin-top: 6px; }
+
+  .banner { margin-top: 8px; font-size: 13px; padding: 6px 10px; border-radius: 8px; background: var(--gm-soft); color: var(--gm); display: none; }
+  .banner.on { display: block; }
+
+  /* Phone */
+  .phones { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 12px; }
+  .phone { width: 360px; height: 740px; border: 10px solid #1d1714; border-radius: 36px; background: var(--bg);
+    overflow: hidden; display: flex; flex-direction: column; position: relative; }
+  .phone .bar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--panel); border-bottom: 1px solid var(--border); font-size: 14px; }
+  .phone .bar b { flex: 1; }
+  .phone .map { flex: 1; overflow: hidden; position: relative; }
+  .phone .map svg { width: 100%; height: 100%; }
+  .fab { position: absolute; right: 12px; bottom: 12px; display: grid; gap: 6px; }
+  .fab .btn { width: 44px; height: 44px; padding: 0; border-radius: 50%; font-size: 18px; }
+  .sheet { background: var(--panel); border-top: 1px solid var(--border); border-radius: 18px 18px 0 0; padding: 8px 14px 14px;
+    box-shadow: 0 -6px 18px rgba(0,0,0,.12); }
+  .sheet .grip { width: 40px; height: 4px; border-radius: 4px; background: var(--border); margin: 0 auto 8px; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+  .caption { margin-top: 8px; font-size: 13px; color: var(--muted); max-width: 360px; }
+
+  @media (max-width: 1000px) {
+    .editor { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Map editor <span class="muted">· mockup for VTTER-86</span></h1>
+  <p class="lede">Sample map: <b>The Forge corridor</b> (Soot King's Hearth, scene 3) on a Small 30×30 map, showing a
+    16×10 window. Every object is one of six kinds, stacked by <code>on</code>. The GM always sees everything; the
+    <b>View as</b> buttons draw the players' fog of war over the GM's map.</p>
+
+  <h2>Desktop</h2>
+  <div class="editor">
+    <div class="panel toolbar">
+      <div class="row">
+        <div class="kinds" role="toolbar" aria-label="Add object">
+          <button class="btn kind" aria-pressed="true"><i>⬢</i>Environment space</button>
+          <button class="btn kind"><i>▢</i>Enclosure</button>
+          <button class="btn kind"><i>〰</i>Route</button>
+          <button class="btn kind"><i>⌂</i>Portal</button>
+          <button class="btn kind"><i>♣</i>Static Object</button>
+          <button class="btn kind"><i>●</i>Entity</button>
+        </div>
+        <span class="spacer"></span>
+        <div class="row" role="group" aria-label="Tool">
+          <button class="btn" aria-pressed="true">Paint</button>
+          <button class="btn">Edge</button>
+          <button class="btn">Select</button>
+          <button class="btn">Erase</button>
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <span class="muted">Vision</span>
+        <div class="row" role="group" aria-label="Vision mode">
+          <button class="btn" id="mode-party" aria-pressed="true">Party vision</button>
+          <button class="btn" id="mode-token">Per-token vision</button>
+        </div>
+        <span class="spacer"></span>
+        <span class="muted">View as</span>
+        <div class="row" role="group" aria-label="View as" id="viewas"></div>
+      </div>
+      <div class="banner" id="banner"></div>
+    </div>
+
+    <aside class="panel">
+      <h2>Layers</h2>
+      <ul class="tree">
+        <li><div>▾ <span>The Forge vent</span> <small>Enclosure</small></div>
+          <ul>
+            <li><div>Rock floor <small>Environment space</small></div></li>
+            <li><div>Rubble <small>Environment space</small> <span class="tag now">difficult</span></div></li>
+            <li><div>▾ <span>Forge corridor</span> <small>Enclosure</small></div>
+              <ul>
+                <li><div>Corridor wall <small>Route · edge</small></div></li>
+                <li><div>Iron door <small>Portal</small></div></li>
+                <li><div class="sel">Steam vents <small>Environment space</small> <span class="tag gm">GM</span></div></li>
+                <li><div>Hollow Sentry <small>Entity · foe</small> <span class="tag gm">GM</span></div></li>
+              </ul>
+            </li>
+          </ul>
+        </li>
+      </ul>
+      <p class="muted" style="margin-top:12px">Drag to re-stack. An object's parent is its <code>on</code>.</p>
+    </aside>
+
+    <section class="panel canvas" aria-label="Map">
+      <svg id="desk" role="img" aria-label="Hex map of the Forge corridor"></svg>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--rock)"></i>Rock floor</span>
+        <span><i class="sw" style="background:var(--floor)"></i>Corridor</span>
+        <span><i class="sw" style="background:var(--rubble)"></i>Rubble (Difficult)</span>
+        <span><i class="sw" style="background:var(--vent)"></i>Steam vents (GM-only)</span>
+        <span><i class="sw" style="background:var(--wall)"></i>Wall (edge Route)</span>
+        <span><i class="sw" style="background:var(--ember)"></i>Iron door</span>
+      </div>
+    </section>
+
+    <aside class="panel props">
+      <h2>Steam vents</h2>
+      <div class="row"><span class="tag">Environment space</span><span class="tag">type: steam-vents</span><span class="tag">on: Forge corridor</span></div>
+      <label>Name</label><div class="val">Steam vents</div>
+      <label>Visibility</label>
+      <div class="switch"><b></b><span>GM-only <span class="muted">· players never receive it</span></span></div>
+      <label>Properties</label>
+      <div class="prop">
+        <header><span>hidden</span><span class="tag later">acts later</span></header>
+        <p>Notice DC <b>12</b>. GM-only until spotted, or until it fires.</p>
+      </div>
+      <div class="prop">
+        <header><span>hazard</span><span class="tag later">acts later</span></header>
+        <p><b>2d6</b> · dodge DC <b>12</b> · on <b>enter</b> · <b>each</b> time.
+          The app asks the player to roll; the GM can undo.</p>
+      </div>
+      <button class="btn" style="margin-top:8px">+ Add property</button>
+      <label>GM note</label>
+      <div class="note">Notice DC 12 to spot. Dodge DC 12 or 2d6. A Craft Test can vent it safely.</div>
+      <p class="muted" style="margin-top:12px">Saved · 8 of 500 objects · 2 KB of 350 KB</p>
+    </aside>
+  </div>
+
+  <h2 style="margin-top:32px">Phone</h2>
+  <div class="phones">
+    <div>
+      <div class="phone">
+        <div class="bar"><span>‹</span><b>Forge corridor</b><span class="tag gm">GM view</span></div>
+        <div class="map"><svg id="phone1" role="img" aria-label="Map on a phone"></svg>
+          <div class="fab"><button class="btn" title="Add">＋</button><button class="btn" title="Layers">☰</button></div>
+        </div>
+        <div class="sheet">
+          <div class="grip"></div>
+          <div class="tabs"><button class="btn">Layers</button><button class="btn" aria-pressed="true">Properties</button></div>
+          <b>Steam vents</b> <span class="tag gm">GM</span>
+          <div class="prop"><header><span>hidden</span><span class="tag later">later</span></header><p>Notice DC 12</p></div>
+          <div class="prop"><header><span>hazard</span><span class="tag later">later</span></header><p>2d6 · dodge 12 · on enter</p></div>
+        </div>
+      </div>
+      <p class="caption">Edit: the map fills the screen; pinch to zoom, drag to pan. The bottom sheet holds layers and
+        properties and slides up over the map.</p>
+    </div>
+    <div>
+      <div class="phone">
+        <div class="bar"><span>‹</span><b>Forge corridor</b><span class="tag">Kestrel</span></div>
+        <div class="map"><svg id="phone2" role="img" aria-label="A player's view with fog of war"></svg></div>
+        <div class="sheet">
+          <div class="grip"></div>
+          <b>Steam vent!</b>
+          <p class="muted" style="margin:4px 0 8px">Kestrel walked onto a hidden steam vent. Roll a dodge vs DC 12.</p>
+          <div class="row"><button class="btn" aria-pressed="true">Roll d20 + Dodge</button><span class="muted">The GM can undo.</span></div>
+        </div>
+      </div>
+      <p class="caption">Play (later phase): a player's phone only receives what their vision allows. When a trigger
+        fires, the app stops the move and asks that player to roll.</p>
+    </div>
+  </div>
+</main>
+
+<script>
+// Sample map, offset columns ("odd-q"): odd columns sit half a hex lower.
+const W = 16, H = 10;
+const corridor = (c, r) => r >= 3 && r <= 5 && c >= 3 && c <= 12;
+const vents = new Set(['6,4', '7,4', '8,4']);
+const rubble = new Set(['2,7', '3,7', '4,7', '3,8']);
+const sentry = [11, 4], kestrel = [4, 4], brann = [3, 3];
+
+function cube(c, r) { const x = c, z = r - (c - (c & 1)) / 2; return [x, -x - z, z]; }
+function dist(a, b) { const p = cube(...a), q = cube(...b); return Math.max(Math.abs(p[0]-q[0]), Math.abs(p[1]-q[1]), Math.abs(p[2]-q[2])); }
+// The corridor walls block sight, so a hero inside sees only corridor hexes in range.
+function sees(hero, c, r) { return corridor(c, r) && dist(hero, [c, r]) <= 3; }
+
+function render(svg, size, opts) {
+  const R = size, h = Math.sqrt(3) * R, NS = 'http://www.w3.org/2000/svg';
+  const vb = [0, 0, 1.5 * R * (W - 1) + 2 * R + 4, h * H + h / 2 + 4];
+  svg.setAttribute('viewBox', vb.join(' '));
+  svg.innerHTML = '';
+  const center = (c, r) => [R + 2 + 1.5 * R * c, h / 2 + 2 + h * r + (c & 1 ? h / 2 : 0)];
+  const corner = (cx, cy, k) => [cx + R * Math.cos(Math.PI / 3 * k), cy + R * Math.sin(Math.PI / 3 * k)];
+  const el = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); svg.appendChild(e); return e; };
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const seen = opts.seen || (() => true);
+
+  const pts = (c, r) => { const [cx, cy] = center(c, r); return [0, 1, 2, 3, 4, 5].map(k => corner(cx, cy, k).join(',')).join(' '); };
+  // 1. Ground.
+  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) {
+    const [cx, cy] = center(c, r), key = c + ',' + r;
+    let fill = css('--rock');
+    if (rubble.has(key)) fill = css('--rubble');
+    if (corridor(c, r)) fill = css('--floor');
+    if (vents.has(key) && opts.gm) fill = css('--vent');
+    el('polygon', { points: pts(c, r), fill, stroke: css('--border'), 'stroke-width': 1 });
+    if (vents.has(key) && opts.gm) el('text', { x: cx, y: cy + 4, 'text-anchor': 'middle', 'font-size': R * .7, fill: css('--bad') }).textContent = '♨';
+    if (rubble.has(key)) el('text', { x: cx, y: cy + 4, 'text-anchor': 'middle', 'font-size': R * .6, fill: css('--muted') }).textContent = '∴';
+  }
+  // 2. The wall: an edge Route on every corridor edge that faces a non-corridor hex, except the open west end.
+  //    Edge k runs from corner k to corner k+1; corners 5-0 are the north-east edge, where the door is.
+  const neighbour = (c, r, k) => { const [cx, cy] = center(c, r), p = corner(cx, cy, k), q = corner(cx, cy, (k + 1) % 6);
+    const tx = cx + (p[0] + q[0] - 2 * cx), ty = cy + (p[1] + q[1] - 2 * cy);
+    let best = null, bd = Infinity;
+    for (let rr = r - 2; rr <= r + 2; rr++) for (let cc = c - 2; cc <= c + 2; cc++) { const [x, y] = center(cc, rr), d = (x - tx) ** 2 + (y - ty) ** 2; if (d < bd) { bd = d; best = [cc, rr]; } }
+    return best; };
+  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) {
+    if (!corridor(c, r)) continue;
+    for (let k = 0; k < 6; k++) {
+      const [nc, nr] = neighbour(c, r, k);
+      if (corridor(nc, nr) || nc < 3) continue;
+      const [cx, cy] = center(c, r), p = corner(cx, cy, k), q = corner(cx, cy, (k + 1) % 6);
+      const door = c === 12 && r === 4 && k === 5;
+      el('line', { x1: p[0], y1: p[1], x2: q[0], y2: q[1], stroke: css(door ? '--ember' : '--wall'), 'stroke-width': R * (door ? .34 : .28), 'stroke-linecap': 'round' });
+    }
+  }
+  // 3. Fog of war, drawn over the ground and the walls.
+  for (let r = 0; r < H; r++) for (let c = 0; c < W; c++) if (!seen(c, r)) el('polygon', { points: pts(c, r), fill: css('--fog'), stroke: 'none' });
+
+  const token = ([c, r], label, color, show) => { if (!show) return; const [cx, cy] = center(c, r);
+    el('circle', { cx, cy, r: R * .62, fill: color, stroke: '#fff', 'stroke-width': 2 });
+    el('text', { x: cx, y: cy + R * .25, 'text-anchor': 'middle', 'font-size': R * .7, 'font-weight': 700, fill: '#fff' }).textContent = label; };
+  token(sentry, 'S', '#a3322a', opts.gm);
+  token(kestrel, 'K', '#2b5fa8', true);
+  token(brann, 'B', '#2b5fa8', true);
+}
+
+const views = { gm: null };
+let mode = 'party';
+function setView(who) {
+  const banner = document.getElementById('banner');
+  document.querySelectorAll('#viewas .btn').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.who === who)));
+  if (who === 'gm') { banner.classList.remove('on'); render(document.getElementById('desk'), 22, { gm: true }); return; }
+  const heroes = who === 'party' ? [kestrel, brann] : [who === 'Kestrel' ? kestrel : brann];
+  banner.textContent = who === 'party'
+    ? 'Viewing as the party: the fog of war every player sees. GM-only objects are hidden. You still edit the full map.'
+    : 'Viewing as ' + who + ': only what ' + who + ' sees (per-token vision).';
+  banner.classList.add('on');
+  render(document.getElementById('desk'), 22, { gm: false, seen: (c, r) => heroes.some(h => sees(h, c, r)) });
+}
+function buildViewAs() {
+  const box = document.getElementById('viewas');
+  const opts = mode === 'party' ? [['gm', 'GM (all)'], ['party', 'Party']] : [['gm', 'GM (all)'], ['Kestrel', 'Kestrel'], ['Brann', 'Brann']];
+  box.innerHTML = opts.map(([who, label]) => `<button class="btn" data-who="${who}">${label}</button>`).join('');
+  box.querySelectorAll('.btn').forEach(b => b.onclick = () => setView(b.dataset.who));
+  setView('gm');
+}
+document.getElementById('mode-party').onclick = () => { mode = 'party'; document.getElementById('mode-party').setAttribute('aria-pressed', 'true'); document.getElementById('mode-token').setAttribute('aria-pressed', 'false'); buildViewAs(); };
+document.getElementById('mode-token').onclick = () => { mode = 'token'; document.getElementById('mode-token').setAttribute('aria-pressed', 'true'); document.getElementById('mode-party').setAttribute('aria-pressed', 'false'); buildViewAs(); };
+
+function renderAll() {
+  buildViewAs();
+  render(document.getElementById('phone1'), 18, { gm: true });
+  render(document.getElementById('phone2'), 18, { gm: false, seen: (c, r) => sees(kestrel, c, r) });
+}
+renderAll();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', renderAll);
+</script>
+</body>
+</html>
