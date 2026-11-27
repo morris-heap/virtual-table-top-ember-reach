@@ -30,6 +30,11 @@ export const adventuresApi = {
   remove: (id: string) => call<void>('DELETE', `/adventures/${id}`),
 }
 
+/** Say you have the app open on a page that is not a Game (VTTER-73). Writes only your own presence. */
+export const presenceApi = {
+  heartbeat: () => call<void>('PUT', '/presence'),
+}
+
 export const friendsApi = {
   list: () => call<FriendLists>('GET', '/friends'),
   /** Ask a player to be friends, or accept their request. Both are the same call. */

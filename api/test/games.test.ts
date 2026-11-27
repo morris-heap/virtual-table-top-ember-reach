@@ -139,7 +139,7 @@ class MemoryGames implements GameStore {
 /** Presence in memory, keyed by Cognito id like the real item (VTTER-73). */
 class MemoryPresence implements PresenceStore {
   seen: Record<string, PresenceRecord> = {}
-  async beat(userId: string, gameId: string, nowMs: number) { this.seen[userId] = { gameId, seenAt: nowMs } }
+  async beat(userId: string, gameId: string | null, nowMs: number) { this.seen[userId] = { gameId: gameId ?? '', seenAt: nowMs } }
   async presenceOf(userIds: string[]) {
     return Object.fromEntries(userIds.filter(id => this.seen[id]).map(id => [id, this.seen[id]]))
   }

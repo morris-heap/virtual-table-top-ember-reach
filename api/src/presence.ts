@@ -1,10 +1,10 @@
-// Presence (VTTER-73, docs/adr/0012-presence.md): who has a Game page open right now. Pure helpers:
+// Presence (VTTER-73, docs/adr/0012-presence.md): who has the app open right now, and on which Game page if any. Pure helpers:
 // the store does the I/O. Ids here are Cognito ids and never leave the API.
 import gameData from '../../data/game.json'
 
 export const PRESENCE = gameData.presence
 
-/** The last heartbeat a player sent: which Game page they had open, and when (epoch ms). */
+/** The last heartbeat a player sent: which Game page they had open ('' for any other page), and when (epoch ms). */
 export interface PresenceRecord {
   gameId: string
   seenAt: number

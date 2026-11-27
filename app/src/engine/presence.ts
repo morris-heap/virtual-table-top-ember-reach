@@ -21,5 +21,5 @@ export function onlineFirst(friends: Friend[]): Friend[] {
 export function presenceText(f: Pick<Friend, 'online' | 'game'>): string {
   if (!f.online) return 'Offline'
   // A Game is named only when you are at that table too, so a stranger's private Game stays private.
-  return f.game ? `At the table in “${f.game.name}”` : 'In a Game'
+  return f.game ? `At the table in “${f.game.name}”` : 'Online'
 }

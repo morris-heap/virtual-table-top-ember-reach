@@ -98,8 +98,8 @@ export interface FriendStore {
  * own item, and a read is by id, so the handler decides who may see whom. Ids are Cognito ids.
  */
 export interface PresenceStore {
-  /** Record that `userId` has `gameId` open at `nowMs`. */
-  beat(userId: string, gameId: string, nowMs: number): Promise<void>
+  /** Record that `userId` has the app open at `nowMs`, on `gameId`'s page, or on any other page when `gameId` is null. */
+  beat(userId: string, gameId: string | null, nowMs: number): Promise<void>
   /** The last heartbeat of each player who has sent one. A player who never has is absent. */
   presenceOf(userIds: string[]): Promise<Record<string, PresenceRecord>>
 }
@@ -631,10 +631,10 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
 
     const resource = parts[0]
-    const maxParts = resource === 'profile' || resource === 'portraits' ? 1 : resource === 'games' || resource === 'friends' ? 4 : resource === 'characters' ? 3 : 2
+    const maxParts = resource === 'profile' || resource === 'portraits' || resource === 'presence' ? 1 : resource === 'games' || resource === 'friends' ? 4 : resource === 'characters' ? 3 : 2
     // Three parts is only ever /games/:id/hero (VTTER-77), /characters/:id/portrait (VTTER-55) or
     // /friends/:playerId/adventures (VTTER-73); gamesRoute and friendsRoute reject any other segment.
-    if (!['characters', 'profile', 'adventures', 'games', 'friends', 'portraits'].includes(resource) || parts.length > maxParts
+    if (!['characters', 'profile', 'adventures', 'games', 'friends', 'portraits', 'presence'].includes(resource) || parts.length > maxParts
       || (parts.length === 3 && resource !== 'games' && resource !== 'friends' && !(resource === 'characters' && parts[2] === 'portrait'))) {
       throw new HttpError(404, 'Not found')
     }
@@ -642,6 +642,12 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     // `return await` so errors thrown inside a route are caught below and become 4xx/5xx responses.
     if (resource === 'portraits') return await portraitsRoute(req, owner, deps, cors)
+    // /presence: a heartbeat from any page that is not a Game page (ADR 0012). Writes only the caller's own item.
+    if (resource === 'presence') {
+      if (req.method !== 'PUT') throw new HttpError(405, 'Method not allowed')
+      await deps.presence.beat(owner, null, Date.now())
+      return json(null, 204, cors)
+    }
     if (resource === 'profile') return await profileRoute(req, owner, deps, cors)
     if (resource === 'games') return await gamesRoute(req, parts, owner, deps, cors)
     if (resource === 'friends') return await friendsRoute(req, parts, owner, deps, cors)
