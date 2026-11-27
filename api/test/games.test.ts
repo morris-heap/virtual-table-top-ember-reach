@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest'
 import type { AdventureDraft, AdventureRecord } from '../src/adventure.ts'
 import gameData from '../../data/game.json'
 import { nameKey, parseGame, type GameDraft, type GameRecord } from '../src/game.ts'
-import { handle, NameTaken, type AdventureStore, type CharacterStore, type GameStore, type ProfileStore } from '../src/handler.ts'
+import { handle, NameTaken, type AdventureStore, type CharacterStore, type GameStore, type PresenceStore, type ProfileStore } from '../src/handler.ts'
+import type { PresenceRecord } from '../src/presence.ts'
 import type { ProfilePatch, ProfileRecord } from '../src/profile.ts'
 
 const ORIGIN = 'https://emberreach.morris-heap.com'
@@ -135,6 +136,15 @@ class MemoryGames implements GameStore {
   }
 }
 
+/** Presence in memory, keyed by Cognito id like the real item (VTTER-73). */
+class MemoryPresence implements PresenceStore {
+  seen: Record<string, PresenceRecord> = {}
+  async beat(userId: string, gameId: string, nowMs: number) { this.seen[userId] = { gameId, seenAt: nowMs } }
+  async presenceOf(userIds: string[]) {
+    return Object.fromEntries(userIds.filter(id => this.seen[id]).map(id => [id, this.seen[id]]))
+  }
+}
+
 /** Just enough hero store for VTTER-77: heroes keyed (owner, id), so one owner never sees another's. */
 class MemoryHeroes implements CharacterStore {
   rows = new Map<string, { id: string; name: string; level: number; ancestry: string; calling: string }>()
@@ -158,20 +168,21 @@ async function world() {
   const adventures = new MemoryAdventures()
   const games = new MemoryGames()
   const heroes = new MemoryHeroes()
+  const presence = new MemoryPresence()
   const call = (method: string, path: string, owner: string | null, body?: unknown): Promise<Reply> => {
     const headers: Record<string, string> = { Origin: ORIGIN }
     if (owner) headers.Authorization = `Bearer token-${owner}`
     if (body !== undefined) headers['Content-Type'] = 'application/json'
     return handle(
       new Request(`https://api.test${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }),
-      { store: heroes, profiles, adventures, games, friends: {} as never, chat: {} as never, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken },
+      { store: heroes, profiles, adventures, games, friends: {} as never, chat: {} as never, presence, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken },
     ) as unknown as Promise<Reply>
   }
   const gm = await profiles.getOrCreate(GM)
   await profiles.update(GM, { gameMaster: true })
   const ana = await profiles.getOrCreate(ANA)
   const ben = await profiles.getOrCreate(BEN)
-  return { profiles, adventures, games, heroes, call, ids: { gm: gm.playerId, ana: ana.playerId, ben: ben.playerId } }
+  return { profiles, adventures, games, heroes, presence, call, ids: { gm: gm.playerId, ana: ana.playerId, ben: ben.playerId } }
 }
 
 const table = { name: 'Friday night', adventure: { source: 'builtin', id: 'soot-kings-hearth' }, visibility: 'private' }
@@ -219,7 +230,7 @@ describe('Games: creating', () => {
   it('lists a Game for its GM with the GM as the first member, and never leaks Cognito ids', async () => {
     const { call, ids } = await world()
     const created = await (await call('PUT', `/games/${G1}`, GM, table)).json()
-    expect(created.members).toEqual([{ playerId: ids.gm, displayName: GM, role: 'gm', hero: null, mine: true }])
+    expect(created.members).toEqual([{ playerId: ids.gm, displayName: GM, role: 'gm', hero: null, mine: true, online: false }])
     expect(JSON.stringify(created)).not.toContain('memberIds')
     expect(JSON.stringify(created)).not.toContain('ownerId')
     const list = await (await call('GET', '/games', GM)).json()
@@ -365,7 +376,7 @@ describe('a hero in a Game', () => {
     // name, so checking for the raw id itself would always match.)
     expect(JSON.stringify(seen)).not.toContain('memberIds')
     expect(JSON.stringify(seen)).not.toContain('ownerId')
-    expect(Object.keys(anaRow).sort()).toEqual(['displayName', 'hero', 'mine', 'playerId', 'role'])
+    expect(Object.keys(anaRow).sort()).toEqual(['displayName', 'hero', 'mine', 'online', 'playerId', 'role'])
   })
 
   it("refuses a hero that is not the caller's, and a Game the caller is not in", async () => {

@@ -55,7 +55,7 @@ who can carry light into the dark and bring treasure back.
   adventures, a profile with a player ID and a Game Master switch, and can write private adventures (VTTER-71).
   They can start a solo Game on a built-in adventure, and a Game Master can run a public or private Game for friends
   (VTTER-72, up to 5 heroes recommended). A friends list by player ID (VTTER-73) lets players share adventures with
-  friends and lets a Game Master invite from it, and friends can chat to arrange a session (VTTER-109). Next: the character sheet with guided creation (VTTER-47).
+  friends and lets a Game Master invite from it, friends can chat to arrange a session (VTTER-109), and you can see which friends are online (VTTER-73). Next: the character sheet with guided creation (VTTER-47).
 - **Later:** the side-based combat tracker, a live shared table with a shared roll log, rolling straight from
   the sheet, hex maps built on the [layered map model](docs/map-model/README.md) with a GM layer and fog of war,
   print layout, art direction.

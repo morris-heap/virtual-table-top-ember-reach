@@ -54,6 +54,9 @@ class MemoryFriends implements FriendStore {
   async areFriends(a: string, b: string) {
     return this.sides.get(`${a}/${b}`)?.status === 'accepted' && this.sides.get(`${b}/${a}`)?.status === 'accepted'
   }
+  async mutualWith(me: string, ids: string[]) {
+    return ids.filter(id => this.sides.get(`${id}/${me}`)?.status === 'accepted')
+  }
   async identities(ids: string[]) {
     const out: Record<string, FriendIdentity> = {}
     for (const id of ids) {
@@ -114,7 +117,7 @@ function world(maxPerMinute?: number) {
       new Request(`https://api.test${path}`, { method, headers, body: opts.body === undefined ? undefined : JSON.stringify(opts.body) }),
       {
         store: {} as never, games: {} as GameStore, profiles: profiles as unknown as ProfileStore, adventures: {} as never,
-        friends, chat, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken,
+        friends, chat, presence: { presenceOf: async () => ({}), beat: async () => {} } as never, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken,
       },
     ) as unknown as Promise<Reply>
   }

@@ -10,10 +10,13 @@ import type { Auth } from './auth/useAuth.ts'
 import { levelRange, sceneLabel } from './engine/adventure.ts'
 import { invitable, personName } from './engine/friends.ts'
 import { cleanPlayerId, gameLink, GAME_LIMITS, memberName, partyWarning } from './engine/game.ts'
+import { withOnline } from './engine/presence.ts'
 import { navigate } from './nav.ts'
 import Link from './Link.tsx'
+import PresenceDot from './PresenceDot.tsx'
 import Shell, { LoadState } from './Shell.tsx'
 import { useLoad } from './useLoad.ts'
+import { usePresence } from './usePresence.ts'
 
 type Found = { kind: 'game'; game: Game } | { kind: 'outsider' }
 
@@ -173,6 +176,9 @@ function GameScreen({ game, myPlayerId, onChange, onGone }: {
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  // Tell the table this player is here, and keep the dots current (VTTER-73).
+  usePresence(game.id, online => onChange({ ...game, members: withOnline(game.members, online) }))
+
   async function run(work: () => Promise<void>) {
     setBusy(true)
     setError(null)
@@ -232,7 +238,11 @@ function GameScreen({ game, myPlayerId, onChange, onGone }: {
           <ul className="rows">
             {game.members.map(m => (
               <li key={m.playerId || m.displayName} className="row">
-                <b>{memberName(m)}</b>
+                <span className="friend-line">
+                  <PresenceDot online={!!m.online} />
+                  <b>{memberName(m)}</b>
+                  {m.online && !m.mine && <span className="muted">here now</span>}
+                </span>
                 <span className="muted">{m.role === 'gm' ? 'Game Master' : 'Player'} · {m.playerId}</span>
                 <HeroLine member={m} />
                 {m.role === 'player' && (isGm || m.playerId === myPlayerId) && (

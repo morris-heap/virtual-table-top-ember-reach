@@ -10,5 +10,7 @@
     "maxGamesPerGm": 20,
     "maxGamesPerPlayer": 50,
     "browsePageMax": 24
-  }
+  },
+  "$presenceComment": "Who is at the table (VTTER-73, docs/adr/0012-presence.md). A heartbeat is sent while a Game page is open and visible. A player counts as online while their last beat is newer than onlineSeconds and named that Game. The beat is under half the window, so one missed beat does not flicker the dot.",
+  "presence": { "heartbeatSeconds": 25, "onlineSeconds": 70 }
 }
