@@ -6,6 +6,7 @@ import { Logo } from './Landing.tsx'
 import Link from './Link.tsx'
 import { useRoute } from './nav.ts'
 import type { Route } from './router.ts'
+import { useUnread } from './useUnread.ts'
 
 type Section = 'home' | 'heroes' | 'adventures' | 'friends'
 
@@ -22,17 +23,21 @@ function sectionOf(route: Route): Section | null {
     case 'home': case 'game': return 'home'
     case 'heroes': case 'hero': return 'heroes'
     case 'adventures': case 'adventure': case 'builtIn': return 'adventures'
-    case 'friends': case 'friendAdventure': return 'friends'
+    case 'friends': case 'friendAdventure': case 'chat': return 'friends'
     default: return null
   }
 }
 
 function TopNav() {
   const current = sectionOf(useRoute())
+  const unread = useUnread(true)
   return (
     <nav className="topnav" aria-label="Main">
       {SECTIONS.map(s => (
-        <Link key={s.section} to={s.to} aria-current={s.section === current ? 'page' : undefined}>{s.label}</Link>
+        <Link key={s.section} to={s.to} aria-current={s.section === current ? 'page' : undefined}>
+          {s.label}
+          {s.section === 'friends' && unread > 0 && <span className="unread-dot" role="img" aria-label="New messages" />}
+        </Link>
       ))}
     </nav>
   )

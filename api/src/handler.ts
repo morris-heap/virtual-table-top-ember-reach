@@ -2,6 +2,7 @@
 
 import { parseAdventure, type AdventureDraft, type AdventureRecord, type AdventureSummary } from './adventure.ts'
 import gameData from '../../data/game.json'
+import { isMessageId, parseMessage, toMessageView, type ChatMessageRecord } from './chat.ts'
 import { FRIEND_LIMITS, toFriendLists, type FriendEdge, type FriendIdentity } from './friend.ts'
 import { parseGame, type GameDraft, type GameRecord } from './game.ts'
 import { parsePortraitUpload, PORTRAIT, type PortraitStore } from './portrait.ts'
@@ -90,6 +91,19 @@ export interface FriendStore {
 }
 
 /**
+ * Chat between friends (ADR 0010). Ids here are Cognito ids and never leave the API. The handler checks
+ * friendship before every call, so the store never decides who may talk to whom.
+ */
+export interface ChatStore {
+  /** One page of the pair's thread, oldest first. `after` reads forward (polling), `before` reads back, neither reads the newest. */
+  list(a: string, b: string, query: { before?: string; after?: string }): Promise<{ messages: ChatMessageRecord[]; hasMore: boolean }>
+  /** Store a message, or null when the sender is over the per-minute cap. Also sets the unread markers. */
+  send(from: string, to: string, text: string): Promise<ChatMessageRecord | null>
+  /** The caller has seen the thread up to now. */
+  markRead(userId: string, otherId: string): Promise<void>
+}
+
+/**
  * Checks a bearer token and returns the verified user id (the Cognito `sub`), or null if the token is invalid.
  * Production uses the Cognito access-token verifier in src/auth.ts. Tests inject a fake.
  */
@@ -101,6 +115,7 @@ export interface Deps {
   adventures: AdventureStore
   games: GameStore
   friends: FriendStore
+  chat: ChatStore
   portraits: PortraitStore
   allowedOrigins: string[]
   verifyToken: VerifyToken
@@ -489,6 +504,12 @@ async function friendsRoute(req: Request, parts: string[], owner: string, deps: 
     return json(await friendLists(owner, deps), 200, cors)
   }
 
+  // /friends/:playerId/messages and /friends/:playerId/messages/read (VTTER-109, ADR 0010). Same 404 as adventures.
+  if (parts[2] === 'messages') {
+    if (!target || target === owner || !(await friends.areFriends(owner, target))) throw new HttpError(404, 'Not found')
+    return chatRoute(req, parts, owner, target, deps, cors)
+  }
+
   // /friends/:playerId/adventures and /friends/:playerId/adventures/:id — read-only, `friends` visibility only.
   if (parts[2] !== 'adventures' || parts.length > 4) throw new HttpError(404, 'Not found')
   if (req.method !== 'GET') throw new HttpError(405, 'Method not allowed')
@@ -505,6 +526,35 @@ async function friendsRoute(req: Request, parts: string[], owner: string, deps: 
   // The record carries its owner's Cognito id; it must never leave the API.
   const { ownerId: _o, ...shared } = adventure
   return json(shared, 200, cors)
+}
+
+/** Messages with one friend. The caller has already been checked as a friend of `target`. */
+async function chatRoute(req: Request, parts: string[], owner: string, target: string, deps: Deps, cors: Record<string, string>): Promise<Response> {
+  const { chat } = deps
+  if (parts.length === 4) {
+    if (parts[3] !== 'read') throw new HttpError(404, 'Not found')
+    if (req.method !== 'POST') throw new HttpError(405, 'Method not allowed')
+    await chat.markRead(owner, target)
+    return json(null, 204, cors)
+  }
+  if (parts.length !== 3) throw new HttpError(404, 'Not found')
+
+  if (req.method === 'GET') {
+    const url = new URL(req.url)
+    const before = url.searchParams.get('before')
+    const after = url.searchParams.get('after')
+    if (before !== null && after !== null) throw new HttpError(400, 'Use before or after, not both')
+    for (const cursor of [before, after]) if (cursor !== null && !isMessageId(cursor)) throw new HttpError(400, 'That is not a message id')
+    const page = await chat.list(owner, target, { before: before ?? undefined, after: after ?? undefined })
+    return json({ messages: page.messages.map(m => toMessageView(m, owner)), hasMore: page.hasMore }, 200, cors)
+  }
+  if (req.method === 'POST') {
+    const text = parseMessage(await readJson(req))
+    const sent = await chat.send(owner, target, text)
+    if (!sent) throw new HttpError(429, 'You are sending messages too fast. Wait a moment.', { 'Retry-After': '30' })
+    return json(toMessageView(sent, owner), 201, cors)
+  }
+  throw new HttpError(405, 'Method not allowed')
 }
 
 export async function handle(req: Request, deps: Deps): Promise<Response> {

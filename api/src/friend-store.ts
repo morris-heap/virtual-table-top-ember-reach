@@ -23,7 +23,7 @@ export class DynamoFriendStore implements FriendStore {
         KeyConditionExpression: 'ownerId = :o AND begins_with(id, :p)',
         ExpressionAttributeValues: { ':o': userId, ':p': FRIEND_PREFIX },
         ExpressionAttributeNames: { '#s': 'status' },
-        ProjectionExpression: 'id, #s',
+        ProjectionExpression: 'id, #s, lastMessageAt, lastReadAt',
         ExclusiveStartKey: start,
       })))
       for (const it of page.Items ?? []) edges.push(toEdge(it))
@@ -103,5 +103,10 @@ export class DynamoFriendStore implements FriendStore {
 
 /** Strip the storage prefix, so what the handler sees is the other player's bare id. */
 function toEdge(item: Record<string, unknown>): FriendEdge {
-  return { userId: (item.id as string).slice(FRIEND_PREFIX.length), status: item.status as FriendStatus }
+  return {
+    userId: (item.id as string).slice(FRIEND_PREFIX.length),
+    status: item.status as FriendStatus,
+    lastMessageAt: item.lastMessageAt as string | undefined,
+    lastReadAt: item.lastReadAt as string | undefined,
+  }
 }

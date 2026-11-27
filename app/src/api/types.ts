@@ -74,9 +74,29 @@ export interface Person {
   displayName: string
 }
 
+/** A friend, and whether their chat has messages you haven't opened (VTTER-109). */
+export interface Friend extends Person {
+  unread?: boolean
+}
+
+/** One message in a chat with a friend. The API says only whether it is yours, never who sent it. */
+export interface ChatMessage {
+  /** `<ISO time>#<8 hex>`. Sorts by time, and is the cursor for `before` and `after`. */
+  id: string
+  mine: boolean
+  text: string
+  createdAt: string
+}
+
+export interface ChatPage {
+  messages: ChatMessage[]
+  /** More messages exist beyond this page (older for the newest page and `before`, newer for `after`). */
+  hasMore: boolean
+}
+
 /** Your friends, requests that wait on you (`incoming`) and requests that wait on them (`outgoing`) (VTTER-73). */
 export interface FriendLists {
-  friends: Person[]
+  friends: Friend[]
   incoming: Person[]
   outgoing: Person[]
 }

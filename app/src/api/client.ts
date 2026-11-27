@@ -3,7 +3,7 @@
 import { apiUrl, authConfig } from '../auth/config.ts'
 import { currentUser, getAccessToken } from '../auth/session.ts'
 import { ApiError, request } from './request.ts'
-import type { Adventure, AdventureDraft, AdventureSummary, FriendLists, Game, GameDraft, GameSummary, Profile, PublicGamePage } from './types.ts'
+import type { Adventure, AdventureDraft, AdventureSummary, ChatMessage, ChatPage, FriendLists, Game, GameDraft, GameSummary, Profile, PublicGamePage } from './types.ts'
 
 export { ApiError }
 
@@ -41,6 +41,16 @@ export const friendsApi = {
     (await call<{ adventures: AdventureSummary[] }>('GET', `/friends/${encodeURIComponent(playerId)}/adventures`)).adventures,
   adventure: (playerId: string, id: string) =>
     call<Adventure>('GET', `/friends/${encodeURIComponent(playerId)}/adventures/${id}`),
+  /** Chat with a friend (VTTER-109). No cursor: the newest page. `before` pages back, `after` reads what is new. A non-friend gets 404. */
+  messages: (playerId: string, cursor: { before?: string; after?: string } = {}) => {
+    const q = cursor.before ? `?before=${encodeURIComponent(cursor.before)}` : cursor.after ? `?after=${encodeURIComponent(cursor.after)}` : ''
+    return call<ChatPage>('GET', `/friends/${encodeURIComponent(playerId)}/messages${q}`)
+  },
+  send: (playerId: string, text: string) =>
+    call<ChatMessage>('POST', `/friends/${encodeURIComponent(playerId)}/messages`, { text }),
+  /** Say the thread has been seen, which clears its unread dot. */
+  markRead: (playerId: string) =>
+    call<void>('POST', `/friends/${encodeURIComponent(playerId)}/messages/read`),
 }
 
 export const gamesApi = {
