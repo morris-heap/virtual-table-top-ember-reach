@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { edgeAt, hexAt, hexCenter, hexCorners, indexOf, type Grid } from '../engine/hex.ts'
 import {
-  artKey, artOf, boundsOf, drawOrder, frameOf, type Bridge, scatterDecor, smoothRing, traceOutline, type Art, type Decor, type Pt, type Ring, type Texture,
+  artKey, artOf, boundsOf, drawOrder, frameOf, guideOf, scatterDecor, snapChain, snapSegment, type Bridge, type Guide, smoothRing, traceOutline, type Art, type Decor, type Pt, type Ring, type Texture,
 } from '../engine/mapArt.ts'
 import type { MapDoc } from '../engine/mapModel.ts'
 import { fitView, markOf, panBy, pinchStep, visibleRange, zoomAt, type Paint, type View } from '../engine/mapView.ts'
@@ -336,6 +336,9 @@ export default function MapCanvas({ map, mapId, showGrid, paint, selectedId, edg
 
   // Each object's drawing, rebuilt only when what it depends on changes (artKey).
   const art = useRef(new Map<string, Built>())
+  // Walls and doors laid along the outlines they lie on, and the map they were worked out for.
+  const snapped = useRef<{ objects: unknown; mapId: string; lines: Map<string, Path2D>; segs: Map<string, [Pt, Pt][]> }>(
+    { objects: null, mapId: '', lines: new Map(), segs: new Map() })
   const textures = useRef(new TextureBank())
   const order = useMemo(() => drawOrder(map), [map])
   const gmShape = useMemo(() => {
@@ -386,6 +389,37 @@ export default function MapCanvas({ map, mapId, showGrid, paint, selectedId, edg
       if (a) art.current.set(o.id, build(a, key))
     }
     for (const id of [...art.current.keys()]) if (!live.has(id)) art.current.delete(id)
+
+    // Walls and doors follow the smoothed outline of the shape they lie on (VTTER-126): the Enclosure they sit on
+    // first, then any Enclosure, then any space. Worked out when the map changes, not on every pan.
+    if (snapped.current.objects !== map.objects || snapped.current.mapId !== mapId) {
+      type ShapeArt = Extract<Art, { kind: 'shape' }>
+      const shapes = order.map(o => art.current.get(o.id)?.a).filter((a): a is ShapeArt => a?.kind === 'shape')
+      const enclosures = guideOf(shapes.filter(a => a.o.kind === 'enclosure'))
+      const spaces = guideOf(shapes.filter(a => a.o.kind !== 'enclosure'))
+      const byId = new Map(shapes.map(a => [a.o.id, a]))
+      const own = new Map<string, Guide>()
+      const guidesFor = (o: { on?: string }) => {
+        const parent = o.on ? byId.get(o.on) : undefined
+        if (!parent) return [enclosures, spaces]
+        let gd = own.get(parent.o.id)
+        if (!gd) { gd = guideOf([parent]); own.set(parent.o.id, gd) }
+        return [gd, enclosures, spaces]
+      }
+      const lines = new Map<string, Path2D>()
+      const segs = new Map<string, [Pt, Pt][]>()
+      for (const b of art.current.values()) {
+        const a = b.a
+        if (a.kind === 'edges') {
+          const p = new Path2D()
+          addLines(p, a.lines.map(l => snapChain(l, guidesFor(a.o))))
+          lines.set(a.o.id, p)
+        } else if (a.kind === 'portal') {
+          segs.set(a.o.id, a.segments.map(sg => snapSegment(sg, guidesFor(a.o))))
+        }
+      }
+      snapped.current = { objects: map.objects, mapId, lines, segs }
+    }
 
     const vx0 = -view.x / s
     const vy0 = -view.y / s
@@ -481,18 +515,6 @@ export default function MapCanvas({ map, mapId, showGrid, paint, selectedId, edg
       ctx.setLineDash([])
     }
 
-    // Walls and fences: one continuous stroke per run of edges.
-    for (const b of drawn) {
-      const a = b.a
-      if (a.kind !== 'edges' || !b.lines) continue
-      const fence = a.o.type === 'fence'
-      ctx.strokeStyle = a.o.id === selectedId ? sel : a.o.gmOnly ? gm : wall
-      ctx.lineWidth = fence ? 0.1 : 0.26
-      if (fence) ctx.setLineDash([0.32, 0.12])
-      ctx.stroke(b.lines)
-      ctx.setLineDash([])
-    }
-
     // Bridges and trap doors: drawn over the water and floor, under the walls.
     for (const b of drawn) {
       const a = b.a
@@ -501,11 +523,24 @@ export default function MapCanvas({ map, mapId, showGrid, paint, selectedId, edg
       else if (a.kind === 'hatch') for (const c of a.centres) drawHatch(ctx, c, base('wood'), ink2)
     }
 
+    // Walls and fences: one continuous stroke per run of edges, along the outline they lie on.
+    for (const b of drawn) {
+      const a = b.a
+      const path = a.kind === 'edges' ? snapped.current.lines.get(a.o.id) ?? b.lines : null
+      if (a.kind !== 'edges' || !path) continue
+      const fence = a.o.type === 'fence'
+      ctx.strokeStyle = a.o.id === selectedId ? sel : a.o.gmOnly ? gm : wall
+      ctx.lineWidth = fence ? 0.1 : 0.26
+      if (fence) ctx.setLineDash([0.32, 0.12])
+      ctx.stroke(path)
+      ctx.setLineDash([])
+    }
+
     // Portals: a door or gate symbol on its edge.
     for (const b of drawn) {
       const a = b.a
       if (a.kind !== 'portal') continue
-      for (const seg of a.segments) drawPortal(ctx, seg, a.o.type, {
+      for (const seg of snapped.current.segs.get(a.o.id) ?? a.segments) drawPortal(ctx, seg, a.o.type, {
         ink: a.o.id === selectedId ? sel : a.o.gmOnly ? gm : ink,
         fill: base('wood'), accent: portal, gm, empty,
       })
