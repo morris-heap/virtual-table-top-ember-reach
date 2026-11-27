@@ -3,9 +3,10 @@
 import { parseAdventure, type AdventureDraft, type AdventureRecord, type AdventureSummary } from './adventure.ts'
 import gameData from '../../data/game.json'
 import { isMessageId, parseMessage, toMessageView, type ChatMessageRecord } from './chat.ts'
-import { FRIEND_LIMITS, toFriendLists, type FriendEdge, type FriendIdentity } from './friend.ts'
+import { FRIEND_LIMITS, toFriendLists, type FriendEdge, type FriendIdentity, type FriendPresence } from './friend.ts'
 import { parseGame, type GameDraft, type GameRecord } from './game.ts'
 import { parsePortraitUpload, PORTRAIT, type PortraitStore } from './portrait.ts'
+import { onlineIds, type PresenceRecord } from './presence.ts'
 import { isPlayerId, parseProfilePatch, type ProfilePatch, type ProfileRecord } from './profile.ts'
 import { parseSheet, ValidationError, type CharacterRecord, type CharacterSheet, type CharacterSummary } from './sheet.ts'
 
@@ -86,8 +87,21 @@ export interface FriendStore {
   remove(userId: string, otherId: string): Promise<void>
   /** True only when BOTH sides are accepted, so removing either side revokes access. */
   areFriends(a: string, b: string): Promise<boolean>
+  /** Of `friendIds`, those who have the caller as accepted on their own side too. Presence is shown for these only. */
+  mutualWith(userId: string, friendIds: string[]): Promise<string[]>
   /** Player ID and display name for many users in one read. A user with no profile is absent. */
   identities(userIds: string[]): Promise<Record<string, FriendIdentity>>
+}
+
+/**
+ * Presence (ADR 0012): the Game page a player has open right now. A heartbeat only ever writes the caller's
+ * own item, and a read is by id, so the handler decides who may see whom. Ids are Cognito ids.
+ */
+export interface PresenceStore {
+  /** Record that `userId` has `gameId` open at `nowMs`. */
+  beat(userId: string, gameId: string, nowMs: number): Promise<void>
+  /** The last heartbeat of each player who has sent one. A player who never has is absent. */
+  presenceOf(userIds: string[]): Promise<Record<string, PresenceRecord>>
 }
 
 /**
@@ -116,6 +130,7 @@ export interface Deps {
   games: GameStore
   friends: FriendStore
   chat: ChatStore
+  presence: PresenceStore
   portraits: PortraitStore
   allowedOrigins: string[]
   verifyToken: VerifyToken
@@ -254,6 +269,8 @@ async function profileRoute(req: Request, owner: string, deps: Deps, cors: Recor
 async function gameView(game: GameRecord, userId: string, deps: Deps) {
   // Each member's chosen hero, shown to the whole table read-only (VTTER-77).
   const heroIds = await deps.games.heroesOf(game.id, game.memberIds)
+  // Who is at this table right now (VTTER-73): members already see each other's names and heroes, so this adds nothing new.
+  const online = new Set(onlineIds(await deps.presence.presenceOf(game.memberIds), Date.now(), game.id))
   const members = await Promise.all(game.memberIds.map(async id => {
     const p = await deps.profiles.peek(id)
     const heroId = heroIds[id]
@@ -265,6 +282,7 @@ async function gameView(game: GameRecord, userId: string, deps: Deps) {
       // A hero the player deleted leaves the slot empty rather than a dangling id.
       hero: hero ? { id: hero.id, name: hero.name, level: hero.level, ancestry: hero.ancestry, calling: hero.calling } : null,
       mine: id === userId,
+      online: online.has(id),
     }
   }))
   // Members read the GM's own adventure through the Game. Built-in adventures ship with the app.
@@ -378,6 +396,19 @@ async function gamesRoute(req: Request, parts: string[], owner: string, deps: De
     }
   }
 
+  // /games/:id/presence — a heartbeat while the caller has this Game open (VTTER-73, ADR 0012). Members only, and it
+  // only ever writes the caller's own presence. The answer is the player IDs online at this table, so the page needs one call.
+  if (parts[2] === 'presence' && parts.length === 3) {
+    if (req.method !== 'PUT') throw new HttpError(405, 'Method not allowed')
+    const game = await games.getForMember(owner, id)
+    if (!game) throw new HttpError(404, 'Game not found')
+    const now = Date.now()
+    await deps.presence.beat(owner, id, now)
+    const here = onlineIds(await deps.presence.presenceOf(game.memberIds), now, id)
+    const who = await deps.friends.identities(here)
+    return json({ online: here.map(userId => who[userId]?.playerId).filter(Boolean) }, 200, cors)
+  }
+
   // /games/:id/hero — the caller picks or clears their own hero (VTTER-77). Never anyone else's.
   if (parts[2] === 'hero' && parts.length === 3) {
     if (req.method !== 'PUT' && req.method !== 'DELETE') throw new HttpError(405, 'Method not allowed')
@@ -445,7 +476,32 @@ async function gamesRoute(req: Request, parts: string[], owner: string, deps: De
 /** The caller's friends, incoming requests and outgoing requests, as player IDs and display names. */
 async function friendLists(owner: string, deps: Deps) {
   const edges = await deps.friends.list(owner)
-  return toFriendLists(edges, await deps.friends.identities(edges.map(e => e.userId)))
+  const who = await deps.friends.identities(edges.map(e => e.userId))
+  const accepted = edges.filter(e => e.status === 'accepted' && who[e.userId]).map(e => e.userId)
+  return toFriendLists(edges, who, await friendPresence(owner, accepted, deps))
+}
+
+/**
+ * Which of the caller's friends are online (VTTER-73). A player ID is public, so presence is only for mutual
+ * friends: both sides accepted, checked on THEIR side too, so someone who removed the caller never shows.
+ * A friend's Game is named only if the caller is a member of it, so a private Game's name never reaches an outsider.
+ * Built field by field from the player's Cognito id, which never leaves the API.
+ */
+async function friendPresence(owner: string, friendIds: string[], deps: Deps): Promise<Record<string, FriendPresence>> {
+  if (friendIds.length === 0) return {}
+  const mutual = await deps.friends.mutualWith(owner, friendIds)
+  if (mutual.length === 0) return {}
+  const seen = await deps.presence.presenceOf(mutual)
+  const here = onlineIds(seen, Date.now())
+  if (here.length === 0) return {}
+  // One list of the caller's own Games, only when someone is online, to name the ones they share.
+  const mine = await deps.games.listFor(owner)
+  const out: Record<string, FriendPresence> = {}
+  for (const id of here) {
+    const shared = mine.find(g => g.id === seen[id].gameId)
+    out[id] = { game: shared ? { id: shared.id, name: shared.name } : null }
+  }
+  return out
 }
 
 /**

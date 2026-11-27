@@ -72,4 +72,6 @@ export const gamesApi = {
   setHero: (id: string, heroId: string) => call<Game>('PUT', `/games/${id}/hero`, { heroId }),
   /** Withdraw your hero from a Game. */
   clearHero: (id: string) => call<Game>('DELETE', `/games/${id}/hero`),
+  /** Say you have this Game open (VTTER-73). Returns the player IDs of everyone online at it now. */
+  heartbeat: (id: string) => call<{ online: string[] }>('PUT', `/games/${id}/presence`),
 }

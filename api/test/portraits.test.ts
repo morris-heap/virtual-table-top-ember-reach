@@ -35,7 +35,7 @@ function setup() {
       store, portraits, allowedOrigins: [ORIGIN],
       verifyToken: async t => t.slice('token-'.length),
       // The portrait routes never touch these.
-      profiles: {} as never, adventures: {} as never, games: {} as never, friends: {} as never, chat: {} as never,
+      profiles: {} as never, adventures: {} as never, games: {} as never, friends: {} as never, chat: {} as never, presence: { presenceOf: async () => ({}), beat: async () => {} } as never,
     })
   return { call, hero, portraits }
 }

@@ -24,7 +24,7 @@ relevant ones before answering design questions or making edits:
 | [rules/gm-guide.md](rules/gm-guide.md) | Foe stat blocks, encounter budgets, starter adventure |
 | [sheets/character-sheet.md](sheets/character-sheet.md) | Character sheet template (must match the rules) |
 | [data/](data/) | Machine-readable game numbers used by the app and API (`core.json`, `character.json`, `creation.json`, `adventure.json`, `game.json`, `friends.json`, `chat.json`), and the built-in adventures in `data/adventures/`. Must match the rules files |
-| [docs/adr/](docs/adr/) | Architecture decisions: [0001](docs/adr/0001-companion-app-stack.md) app stack, [0003](docs/adr/0003-backend-dynamodb-lambda.md) backend (replaced [0002](docs/adr/0002-backend-postgres.md)), [0004](docs/adr/0004-auth-cognito.md) sign-in, [0005](docs/adr/0005-profile-and-adventures.md) profile, player ID and private adventures, [0006](docs/adr/0006-games.md) Games, [0007](docs/adr/0007-3d-dice-tray.md) 3D dice tray, [0008](docs/adr/0008-public-games-and-unique-names.md) browsing public Games and unique Game names, [0009](docs/adr/0009-friends.md) friends list, [0010](docs/adr/0010-friend-chat.md) chat between friends, [0011](docs/adr/0011-layered-map-objects.md) layered map objects, GM-only data and fog of war |
+| [docs/adr/](docs/adr/) | Architecture decisions: [0001](docs/adr/0001-companion-app-stack.md) app stack, [0003](docs/adr/0003-backend-dynamodb-lambda.md) backend (replaced [0002](docs/adr/0002-backend-postgres.md)), [0004](docs/adr/0004-auth-cognito.md) sign-in, [0005](docs/adr/0005-profile-and-adventures.md) profile, player ID and private adventures, [0006](docs/adr/0006-games.md) Games, [0007](docs/adr/0007-3d-dice-tray.md) 3D dice tray, [0008](docs/adr/0008-public-games-and-unique-names.md) browsing public Games and unique Game names, [0009](docs/adr/0009-friends.md) friends list, [0010](docs/adr/0010-friend-chat.md) chat between friends, [0011](docs/adr/0011-layered-map-objects.md) layered map objects, GM-only data and fog of war, [0012](docs/adr/0012-presence.md) who is online |
 | [docs/map-model/](docs/map-model/README.md) | The layered map object model (VTTER-86): vision, glossary, property catalog, data model, paper tests, inventory. Map work (VTTER-74, 84, 85, 90, 91) builds on it |
 | [docs/mockups/](docs/mockups/) | UI mockups: the character sheet (view and guided-creation edit mode) for VTTER-47, the dice tray, and the map editor for VTTER-86 |
 
@@ -96,7 +96,8 @@ in `app/`, then `npx wrangler deploy`); `.github/workflows/app.yml` checks pull 
   friends list (VTTER-73, `/friends`) is mutual: a request by player ID that the other player accepts. A friend can read
   an adventure whose visibility is `friends` (`/friends/<playerId>/adventures/<id>`, read-only), and `public` visibility
   stays refused ([ADR 0009](docs/adr/0009-friends.md)). Friends can also chat (VTTER-109,
-  `/friends/<playerId>/chat`): plain text, polled, never push, and **not** a chat platform ([ADR 0010](docs/adr/0010-friend-chat.md)). **Scope is locked** (2026-11-25, VTTER-92): the app automates Emberreach's own rules
+  `/friends/<playerId>/chat`): plain text, polled, never push, and **not** a chat platform ([ADR 0010](docs/adr/0010-friend-chat.md)). A friend shows **online** while a Game page is open
+  (VTTER-73, a heartbeat, mutual friends only: [ADR 0012](docs/adr/0012-presence.md)). **Scope is locked** (2026-11-25, VTTER-92): the app automates Emberreach's own rules
   deeply and is **not** a general VTT platform. Don't add dynamic lighting (light sources, bright/dim light), 3D terrain, a user
   scripting language, a system builder for other RPGs, a content marketplace or built-in video/voice. **Fog of war is
   in** (amended 2026-11-26): party or per-token vision, the GM's toggle per Game, always filtered by the API, never the
@@ -155,6 +156,10 @@ through GitHub OIDC (role `emberreach-github-deploy`, environment `aws`).
   ([ADR 0010](docs/adr/0010-friend-chat.md)). **Check `areFriends` before every chat call**, return the same 404 for every
   refusal, and never return `from` or the partition key: a message leaves only as `{ id, mine, text, createdAt }`.
   Chat items and rate-limit counters carry a `ttl` (epoch seconds) that the table expires.
+  **Presence** is one item per player (`id: presence#current`, `kind: presence`, `gameId`, `seenAt`), written only by that
+  player's own heartbeat ([ADR 0012](docs/adr/0012-presence.md)). **Show it only for mutual friends**: `mutualWith` reads THEIR
+  side of each friendship too, so someone who removed you never shows. Name a friend's Game only if the caller is a member
+  of it. There is no TTL: a stale `seenAt` reads as offline.
   **Every item is keyed `<kind>#<id>` and carries a `kind` attribute** — heroes included since VTTER-98.
   Give any new kind both, so it can be listed with `begins_with` and no query ever needs a `FilterExpression`
   over the whole partition. The prefix is storage only: strip it on the way out, as `toHero`/`toAdventure` do,

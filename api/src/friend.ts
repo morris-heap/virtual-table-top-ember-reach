@@ -25,9 +25,16 @@ export interface FriendIdentity {
   displayName: string
 }
 
-/** A friend row also says whether their chat has messages you haven't opened. */
+/** Where an online friend is, as much as the viewer may know: a Game is named only if the viewer is at that table too. */
+export interface FriendPresence {
+  game: { id: string; name: string } | null
+}
+
+/** A friend row also says whether their chat has messages you haven't opened, and whether they are online (VTTER-73). */
 export interface FriendRow extends FriendIdentity {
   unread: boolean
+  online: boolean
+  game: { id: string; name: string } | null
 }
 
 export interface FriendLists {
@@ -43,10 +50,12 @@ const byName = (a: FriendIdentity, b: FriendIdentity) =>
  * Group edges by status. An edge whose profile can't be read is dropped rather than shown as a blank row.
  * Built field by field on purpose, so a Cognito id can't ride along.
  */
-export function toFriendLists(edges: FriendEdge[], who: Record<string, FriendIdentity>): FriendLists {
+export function toFriendLists(
+  edges: FriendEdge[], who: Record<string, FriendIdentity>, presence: Record<string, FriendPresence> = {},
+): FriendLists {
   const pick = (status: FriendStatus) => edges
     .filter(e => e.status === status && who[e.userId])
-    .map(e => ({ playerId: who[e.userId].playerId, displayName: who[e.userId].displayName, unread: isUnread(e) }))
+    .map(e => ({ playerId: who[e.userId].playerId, displayName: who[e.userId].displayName, unread: isUnread(e), online: !!presence[e.userId], game: presence[e.userId]?.game ?? null }))
     .sort(byName)
   const plain = ({ playerId, displayName }: FriendRow): FriendIdentity => ({ playerId, displayName })
   return { friends: pick('accepted'), incoming: pick('incoming').map(plain), outgoing: pick('outgoing').map(plain) }

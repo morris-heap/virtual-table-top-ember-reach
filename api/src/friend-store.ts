@@ -88,6 +88,19 @@ export class DynamoFriendStore implements FriendStore {
     return mine?.status === 'accepted' && theirs?.status === 'accepted'
   }
 
+  /**
+   * Of `friendIds`, those who also have ME as accepted on their own side. My side alone can be stale (they
+   * removed me and the second delete never happened), and presence must never reach someone who isn't a friend
+   * any more, so it needs both sides, like reading an adventure does. One BatchGetItem, never a GetItem each.
+   */
+  async mutualWith(userId: string, friendIds: string[]): Promise<string[]> {
+    const items = await batchGetConsistent(
+      this.db, this.table, friendIds.map(id => ({ ownerId: id, id: FRIEND_PREFIX + userId })),
+      { expression: '#o, #s', names: { '#o': 'ownerId', '#s': 'status' } },
+    )
+    return items.filter(it => it.status === 'accepted').map(it => it.ownerId as string)
+  }
+
   async identities(userIds: string[]): Promise<Record<string, FriendIdentity>> {
     const items = await batchGetConsistent(
       this.db, this.table, userIds.map(id => ({ ownerId: id, id: PROFILE_ID })),

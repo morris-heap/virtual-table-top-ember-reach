@@ -84,7 +84,7 @@ function world() {
     if (opts.body !== undefined) headers['Content-Type'] = 'application/json'
     return handle(
       new Request(`https://api.test${path}`, { method, headers, body: opts.body === undefined ? undefined : JSON.stringify(opts.body) }),
-      { store: noHeroes, profiles, adventures, games: noGames, friends: {} as never, chat: {} as never, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken },
+      { store: noHeroes, profiles, adventures, games: noGames, friends: {} as never, chat: {} as never, presence: { presenceOf: async () => ({}), beat: async () => {} } as never, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken },
     ) as unknown as Promise<Reply>
   }
   return { profiles, adventures, call }
