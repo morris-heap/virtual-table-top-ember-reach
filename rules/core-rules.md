@@ -1,4 +1,4 @@
-# Emberreach — Core Rules (v0.3)
+# Emberreach — Core Rules (v0.4)
 
 > First pass. All numbers are placeholders until playtesting.
 
@@ -374,6 +374,15 @@ The battlefield is split into **zones** (rooms, a bridge, a balcony).
   (which uses your Action).
 
 *On a grid: 1 zone ≈ 6 squares.*
+
+**Terrain.** Some zones are hard going.
+
+- **Difficult** (mud, deep snow, rubble, thick brush): entering the zone costs **2 zones** of your Speed.
+  Difficult from several sources (mud *and* a snowstorm) still costs 2, never more.
+- **Impassable** (a solid wall, a chasm): you can't enter the zone.
+- Dash still gives you another Move, so you can cross more Difficult zones in one turn.
+
+*On a hex map: 1 hex = 1 zone.*
 
 ### 6.4 Attacking (heroes roll)
 

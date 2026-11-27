@@ -2,6 +2,7 @@ import { MemoryPortraits } from './portraits-helper.ts'
 import { describe, expect, it } from 'vitest'
 import { handle, MAX_BODY_BYTES, type CharacterStore } from '../src/handler.ts'
 import { parseSheet, type CharacterRecord, type CharacterSheet } from '../src/sheet.ts'
+import core from '../../data/core.json'
 
 const ORIGIN = 'https://emberreach.morris-heap.com'
 const A = '11111111-1111-4111-8111-111111111111'
@@ -149,7 +150,7 @@ describe('characters', () => {
     const s = new MemoryStore()
     const put = await call(s, 'PUT', `/characters/${HERO}`, { owner: A, body: kestrel })
     expect(put.status).toBe(200)
-    expect(await put.json()).toMatchObject({ id: HERO, ownerId: A, name: 'Kestrel Ashvane', rulesVersion: '0.3' })
+    expect(await put.json()).toMatchObject({ id: HERO, ownerId: A, name: 'Kestrel Ashvane', rulesVersion: core.version })
 
     const got = await body(call(s, 'GET', `/characters/${HERO}`, { owner: A }))
     expect(got.attributes.lore).toBe(3)
@@ -199,7 +200,7 @@ describe('characters', () => {
 describe('parseSheet (values from /data)', () => {
   it('fills defaults for a minimal sheet', () => {
     const s = parseSheet({ name: 'New hero' })
-    expect(s).toMatchObject({ level: 1, armor: 'none', supplyDie: 'd8', rulesVersion: '0.3', wounds: [], skills: {}, minerals: [] })
+    expect(s).toMatchObject({ level: 1, armor: 'none', supplyDie: 'd8', rulesVersion: core.version, wounds: [], skills: {}, minerals: [] })
     expect(s.attributes).toEqual({ might: 0, grace: 0, wits: 0, lore: 0, spirit: 0, presence: 0 })
   })
 

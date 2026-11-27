@@ -1,6 +1,6 @@
 {
-  "$comment": "Core resolution data. Source of truth: rules/core-rules.md §2 and §6.7. Change both together (see CLAUDE.md).",
-  "version": "0.3",
+  "$comment": "Core resolution data. Source of truth: rules/core-rules.md §2, §6.3 and §6.7. Change both together (see CLAUDE.md).",
+  "version": "0.4",
   "difficulties": [
     { "name": "Easy", "dc": 8 },
     { "name": "Standard", "dc": 12 },
@@ -16,6 +16,10 @@
   "party": {
     "min": 1,
     "recommendedMax": 5
+  },
+  "movement": {
+    "difficultCost": 2,
+    "difficultCap": 2
   },
   "attributes": ["Might", "Grace", "Wits", "Lore", "Spirit", "Presence"],
   "momentum": {
