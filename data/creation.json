@@ -160,7 +160,7 @@
       { "name": "Binding Glyph", "ember": 1, "target": "1 foe, Resolve", "effect": "Target cannot move until it passes DC 12 at the end of its turn" },
       { "name": "Blink", "ember": 1, "target": "Self", "effect": "Teleport 2 zones as a Reaction" },
       { "name": "Veil", "ember": 1, "target": "Self/ally, DC 12", "effect": "Invisible until you attack or the scene ends" },
-      { "name": "Forge Lance", "ember": 3, "target": "Line, Defense", "effect": "3d8 fire damage, ignores armor" },
+      { "name": "Forge Lance", "ember": 3, "target": "Line, Defense", "effect": "3d8 fire damage" },
       { "name": "Mindspike", "ember": 1, "target": "1 foe, Resolve", "effect": "2d6 psychic damage, target takes a Bane on its next action" },
       { "name": "Kindle", "ember": 0, "target": "Utility", "effect": "Light, small flames, warm or chill an object" }
     ],

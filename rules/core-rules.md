@@ -312,7 +312,7 @@ swallow one. It doesn't use your Action, costs no Ember and doesn't replace your
 | Binding Glyph | 1 | 1 foe, Resolve | Target cannot move until it passes DC 12 at the end of its turn |
 | Blink | 1 | Self | Teleport 2 zones as a Reaction |
 | Veil | 1 | Self/ally, DC 12 | Invisible until you attack or the scene ends |
-| Forge Lance | 3 | Line, Defense | 3d8 fire damage, ignores armor |
+| Forge Lance | 3 | Line, Defense | 3d8 fire damage |
 | Mindspike | 1 | 1 foe, Resolve | 2d6 psychic damage, target takes a Bane on its next action |
 | Kindle | 0 | Utility | Light, small flames, warm or chill an object |
 
