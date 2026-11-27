@@ -7,6 +7,7 @@ import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import type { APIGatewayProxyEventV2 } from 'aws-lambda'
 import { cognitoVerifier } from './auth.ts'
 import { handle, type Deps } from './handler.ts'
+import { DynamoChatStore } from './chat-store.ts'
 import { DynamoFriendStore } from './friend-store.ts'
 import { DynamoGameStore } from './game-store.ts'
 import { toRequest, toResult } from './http.ts'
@@ -28,6 +29,7 @@ const deps: Deps = {
   adventures: new DynamoAdventureStore(db, table),
   games: new DynamoGameStore(db, table),
   friends: new DynamoFriendStore(db, table),
+  chat: new DynamoChatStore(db, table),
   portraits: new S3PortraitStore(new S3Client({}), process.env.PORTRAIT_BUCKET ?? 'missing-portrait-bucket'),
   allowedOrigins: (process.env.ALLOWED_ORIGINS ?? '').split(',').map(s => s.trim()).filter(Boolean),
   verifyToken: cognitoVerifier(process.env.USER_POOL_ID, process.env.USER_POOL_CLIENT_ID),

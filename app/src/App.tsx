@@ -5,6 +5,7 @@ import AdventureEditor from './AdventureEditor.tsx'
 import Adventures from './Adventures.tsx'
 import AdventureView from './AdventureView.tsx'
 import BrowseGames from './BrowseGames.tsx'
+import Chat from './Chat.tsx'
 import FriendAdventure from './FriendAdventure.tsx'
 import Friends from './Friends.tsx'
 import GamePage from './GamePage.tsx'
@@ -58,6 +59,7 @@ function SignedIn({ auth, name }: { auth: Auth; name: string }) {
     case 'games': return <BrowseGames auth={auth} />
     case 'game': return <GamePage auth={auth} id={route.id} />
     case 'friends': return <Friends auth={auth} />
+    case 'chat': return <Chat auth={auth} playerId={route.playerId} />
     case 'friendAdventure': return <FriendAdventure auth={auth} playerId={route.playerId} id={route.id} />
     case 'notFound': return <GoHome />
   }

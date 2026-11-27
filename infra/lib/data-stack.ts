@@ -41,6 +41,10 @@ export class DataStack extends Stack {
       deletionProtection: true,
       pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
       removalPolicy: RemovalPolicy.RETAIN,
+      // Chat messages and their per-minute send counters carry a `ttl` (epoch seconds) and DynamoDB deletes
+      // them after it passes (VTTER-109, ADR 0010). Items without the attribute are never touched. Turning
+      // TTL on is an in-place update, not a replacement — confirm with `cdk diff`.
+      timeToLiveAttribute: 'ttl',
       // One shared, sparse index (VTTER-76, ADR 0008). Only items that write `gsi1pk` appear in it, so
       // heroes, profiles and member pointers cost nothing. Today its only writer is a public Game a GM
       // opted to list (`gsi1pk = 'game#public'`, `gsi1sk = <updatedAt>`); other kinds add their own

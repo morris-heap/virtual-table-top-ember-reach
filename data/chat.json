@@ -1,0 +1,13 @@
+{
+  "$comment": "Chat between friends (VTTER-109, docs/adr/0010-friend-chat.md). Plain text only. These are abuse and cost caps, not game rules.",
+  "limits": {
+    "maxLength": 1000,
+    "pageSize": 50,
+    "ttlDays": 90,
+    "maxPerMinute": 20
+  },
+  "pollSeconds": {
+    "thread": 5,
+    "unread": 30
+  }
+}

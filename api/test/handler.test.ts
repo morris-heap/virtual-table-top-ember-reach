@@ -49,6 +49,7 @@ const unusedStores = {
     heroesOf: async () => ({}), setHero: async () => {}, listPublic: async () => ({ games: [], cursor: null }),
   },
   friends: {} as never,
+  chat: {} as never,
   adventures: {
     list: async () => [], get: async () => null, delete: async () => false,
     save: async () => { throw new Error('unused') },

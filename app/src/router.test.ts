@@ -27,6 +27,8 @@ describe('parseRoute', () => {
     ['/friends/', { name: 'friends' }],
     [`/friends/EMBER-7K2Q9F/adventures/${ID}`, { name: 'friendAdventure', playerId: 'EMBER-7K2Q9F', id: ID }],
     [`/friends/ember-7k2q9/adventures/${ID.toUpperCase()}`, { name: 'friendAdventure', playerId: 'EMBER-7K2Q9', id: ID }],
+    ['/friends/EMBER-7K2Q9F/chat', { name: 'chat', playerId: 'EMBER-7K2Q9F' }],
+    ['/friends/ember-7k2q9/chat', { name: 'chat', playerId: 'EMBER-7K2Q9' }],
   ])('%s', (path, route) => {
     expect(parseRoute(path)).toEqual(route)
   })
@@ -37,12 +39,13 @@ describe('parseRoute', () => {
     '/games/new', `/games/${ID}/members`,
     '/friends/extra', '/friends/EMBER-7K2Q9F', `/friends/EMBER-7K2Q9F/adventures`, `/friends/EMBER-7K2Q9F/heroes/${ID}`,
     `/friends/EMBER-0O1IL/adventures/${ID}`, '/friends/EMBER-7K2Q9F/adventures/123',
+    '/friends/EMBER-0O1IL/chat', '/friends/EMBER-7K2Q9F/chat/extra', '/friends/EMBER-7K2Q9F/messages',
   ])('%s is not found', path => {
     expect(parseRoute(path)).toEqual({ name: 'notFound' })
   })
 
   it('pathFor is the inverse of parseRoute', () => {
-    for (const path of ['/', '/profile', '/roller', '/heroes', '/heroes/new', `/heroes/${ID}`, '/adventures', '/adventures/new', `/adventures/${ID}`, '/adventures/built-in/soot-kings-hearth', '/games', `/games/${ID}`, '/friends', `/friends/EMBER-7K2Q9F/adventures/${ID}`]) {
+    for (const path of ['/', '/profile', '/roller', '/heroes', '/heroes/new', `/heroes/${ID}`, '/adventures', '/adventures/new', `/adventures/${ID}`, '/adventures/built-in/soot-kings-hearth', '/games', `/games/${ID}`, '/friends', `/friends/EMBER-7K2Q9F/adventures/${ID}`, '/friends/EMBER-7K2Q9F/chat']) {
       const route = parseRoute(path)
       if (route.name === 'notFound') throw new Error(path)
       expect(pathFor(route)).toBe(path)

@@ -2,7 +2,7 @@
 // friends shared with you. A friendship is mutual and starts as a request the other player accepts.
 import { useState, type FormEvent } from 'react'
 import { friendsApi } from './api/client.ts'
-import type { FriendLists, Person } from './api/types.ts'
+import type { Friend, FriendLists, Person } from './api/types.ts'
 import type { Auth } from './auth/useAuth.ts'
 import { levelRange } from './engine/adventure.ts'
 import { FRIEND_LIMITS, personName } from './engine/friends.ts'
@@ -28,13 +28,16 @@ function SharedAdventures({ person }: { person: Person }) {
   )
 }
 
-function FriendRow({ person, busy, onRemove }: { person: Person; busy: boolean; onRemove: () => void }) {
+function FriendRow({ person, busy, onRemove }: { person: Friend; busy: boolean; onRemove: () => void }) {
   const [open, setOpen] = useState(false)
   return (
     <li className="row">
       <b>{personName(person)}</b>
       <span className="muted">{person.playerId}</span>
       <span className="row-actions">
+        <Link to={{ name: 'chat', playerId: person.playerId }} className="account-btn primary" aria-label={`Chat with ${personName(person)}`}>
+          Chat{person.unread && <span className="unread-dot" role="img" aria-label="New messages" />}
+        </Link>
         <button type="button" className="account-btn" aria-expanded={open} onClick={() => setOpen(o => !o)}>
           {open ? 'Hide adventures' : 'Adventures'}
         </button>
