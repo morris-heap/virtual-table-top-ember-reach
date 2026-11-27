@@ -8,6 +8,7 @@ import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import { cognitoVerifier } from './auth.ts'
 import { DynamoChatStore } from './chat-store.ts'
 import { DynamoFriendStore } from './friend-store.ts'
+import { DynamoPresenceStore } from './presence-store.ts'
 import { DynamoGameStore } from './game-store.ts'
 import { handle } from './handler.ts'
 import { LocalPortraitStore } from './portrait-local.ts'
@@ -26,6 +27,7 @@ const adventures = new DynamoAdventureStore(db, table)
 const games = new DynamoGameStore(db, table)
 const friends = new DynamoFriendStore(db, table)
 const chat = new DynamoChatStore(db, table)
+const presence = new DynamoPresenceStore(db, table)
 // With PORTRAIT_BUCKET set, portraits go to that S3 bucket. Without it, they stay in memory in this process.
 const local = process.env.PORTRAIT_BUCKET ? null : new LocalPortraitStore(`http://127.0.0.1:${PORT}`)
 const portraits = local ?? new S3PortraitStore(new S3Client({}), process.env.PORTRAIT_BUCKET!)
@@ -48,7 +50,7 @@ createServer(async (req, res) => {
   const hasBody = req.method !== 'GET' && req.method !== 'HEAD' && chunks.length > 0
   const out = await handle(
     new Request(`http://127.0.0.1:${PORT}${req.url}`, { method: req.method, headers, body: hasBody ? Buffer.concat(chunks) : undefined }),
-    { store, profiles, adventures, games, friends, chat, portraits, allowedOrigins, verifyToken },
+    { store, profiles, adventures, games, friends, chat, presence, portraits, allowedOrigins, verifyToken },
   )
   res.writeHead(out.status, Object.fromEntries(out.headers.entries()))
   res.end(Buffer.from(await out.arrayBuffer()))

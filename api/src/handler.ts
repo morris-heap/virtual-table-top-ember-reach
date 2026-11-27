@@ -91,6 +91,17 @@ export interface FriendStore {
 }
 
 /**
+ * Presence (VTTER-73, ADR 0012): who has a Game open right now. Ids here are Cognito ids and never leave the API.
+ * It is a heartbeat the caller sends for themselves, so the store can only ever write the caller's own item.
+ */
+export interface PresenceStore {
+  /** Record that the caller has `gameId` open right now. */
+  beat(userId: string, gameId: string, nowMs: number): Promise<void>
+  /** The last heartbeat of each player who has sent one. Absent means never seen. */
+  presenceOf(userIds: string[]): Promise<Record<string, { gameId: string; seenAt: number }>>
+}
+
+/**
  * Chat between friends (ADR 0010). Ids here are Cognito ids and never leave the API. The handler checks
  * friendship before every call, so the store never decides who may talk to whom.
  */
@@ -116,6 +127,7 @@ export interface Deps {
   games: GameStore
   friends: FriendStore
   chat: ChatStore
+  presence: PresenceStore
   portraits: PortraitStore
   allowedOrigins: string[]
   verifyToken: VerifyToken
@@ -254,6 +266,10 @@ async function profileRoute(req: Request, owner: string, deps: Deps, cors: Recor
 async function gameView(game: GameRecord, userId: string, deps: Deps) {
   // Each member's chosen hero, shown to the whole table read-only (VTTER-77).
   const heroIds = await deps.games.heroesOf(game.id, game.memberIds)
+  // Who is at this table right now, and which members are the viewer's friends (VTTER-73). A member sees
+  // whether the others are online because they share the table; friendship is the viewer's own list.
+  const online = await onlineAt(game, deps)
+  const friendIds = new Set((await deps.friends.list(userId)).filter(e => e.status === 'accepted').map(e => e.userId))
   const members = await Promise.all(game.memberIds.map(async id => {
     const p = await deps.profiles.peek(id)
     const heroId = heroIds[id]
@@ -265,6 +281,8 @@ async function gameView(game: GameRecord, userId: string, deps: Deps) {
       // A hero the player deleted leaves the slot empty rather than a dangling id.
       hero: hero ? { id: hero.id, name: hero.name, level: hero.level, ancestry: hero.ancestry, calling: hero.calling } : null,
       mine: id === userId,
+      online: online.has(id),
+      friend: friendIds.has(id),
     }
   }))
   // Members read the GM's own adventure through the Game. Built-in adventures ship with the app.
@@ -282,6 +300,13 @@ async function gameView(game: GameRecord, userId: string, deps: Deps) {
     createdAt: game.createdAt,
     updatedAt: game.updatedAt,
   }
+}
+
+/** Members whose last heartbeat is recent and was sent from this Game's page. */
+async function onlineAt(game: GameRecord, deps: Deps, nowMs = Date.now()): Promise<Set<string>> {
+  const seen = await deps.presence.presenceOf(game.memberIds)
+  const cutoff = nowMs - gameData.presence.onlineSeconds * 1000
+  return new Set(Object.entries(seen).filter(([, p]) => p.gameId === game.id && p.seenAt >= cutoff).map(([id]) => id))
 }
 
 function gameSummary(game: GameRecord, userId: string) {
@@ -379,6 +404,19 @@ async function gamesRoute(req: Request, parts: string[], owner: string, deps: De
   }
 
   // /games/:id/hero â€” the caller picks or clears their own hero (VTTER-77). Never anyone else's.
+  // /games/:id/presence — a heartbeat while the caller has this Game open (VTTER-73). Members only, and it
+  // only ever writes the caller's own presence. The answer is who is online now, so the page needs one call.
+  if (parts[2] === 'presence' && parts.length === 3) {
+    if (req.method !== 'PUT') throw new HttpError(405, 'Method not allowed')
+    const game = await games.getForMember(owner, id)
+    if (!game) throw new HttpError(404, 'Game not found')
+    const now = Date.now()
+    await deps.presence.beat(owner, id, now)
+    const online = await onlineAt(game, deps, now)
+    const ids = await Promise.all(game.memberIds.filter(m => online.has(m)).map(async m => (await deps.profiles.peek(m))?.playerId ?? ''))
+    return json({ online: ids.filter(Boolean) }, 200, cors)
+  }
+
   if (parts[2] === 'hero' && parts.length === 3) {
     if (req.method !== 'PUT' && req.method !== 'DELETE') throw new HttpError(405, 'Method not allowed')
     const game = await games.getForMember(owner, id)
@@ -445,7 +483,25 @@ async function gamesRoute(req: Request, parts: string[], owner: string, deps: De
 /** The caller's friends, incoming requests and outgoing requests, as player IDs and display names. */
 async function friendLists(owner: string, deps: Deps) {
   const edges = await deps.friends.list(owner)
-  return toFriendLists(edges, await deps.friends.identities(edges.map(e => e.userId)))
+  const who = await deps.friends.identities(edges.map(e => e.userId))
+  const lists = toFriendLists(edges, who)
+  // Presence is shown for accepted friends only: a player ID is public, so an unanswered request must never
+  // reveal when someone is online. A Game is named only if the caller is at that table too, so a private
+  // Game's name never reaches an outsider (VTTER-73, ADR 0012).
+  const accepted = edges.filter(e => e.status === 'accepted' && who[e.userId]).map(e => e.userId)
+  const seen = accepted.length ? await deps.presence.presenceOf(accepted) : {}
+  const cutoff = Date.now() - gameData.presence.onlineSeconds * 1000
+  const hereNow = accepted.filter(id => seen[id] && seen[id].seenAt >= cutoff)
+  const mine = hereNow.length ? await deps.games.listFor(owner) : []
+  const byPlayerId = new Map(hereNow.map(id => [who[id].playerId, seen[id].gameId]))
+  return {
+    ...lists,
+    friends: lists.friends.map(f => {
+      const gameId = byPlayerId.get(f.playerId)
+      const shared = gameId ? mine.find(g => g.id === gameId) : undefined
+      return { ...f, online: gameId !== undefined, game: shared ? { id: shared.id, name: shared.name } : null }
+    }),
+  }
 }
 
 /**
@@ -576,7 +632,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     const resource = parts[0]
     const maxParts = resource === 'profile' || resource === 'portraits' ? 1 : resource === 'games' || resource === 'friends' ? 4 : resource === 'characters' ? 3 : 2
-    // Three parts is only ever /games/:id/hero (VTTER-77), /characters/:id/portrait (VTTER-55) or
+    // Three parts is only ever /games/:id/hero (VTTER-77), /games/:id/presence (VTTER-73), /characters/:id/portrait (VTTER-55) or
     // /friends/:playerId/adventures (VTTER-73); gamesRoute and friendsRoute reject any other segment.
     if (!['characters', 'profile', 'adventures', 'games', 'friends', 'portraits'].includes(resource) || parts.length > maxParts
       || (parts.length === 3 && resource !== 'games' && resource !== 'friends' && !(resource === 'characters' && parts[2] === 'portrait'))) {

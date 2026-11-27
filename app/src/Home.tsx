@@ -6,6 +6,7 @@ import core from '../../data/core.json'
 import { adventuresApi, gamesApi, profileApi } from './api/client.ts'
 import type { Auth } from './auth/useAuth.ts'
 import { AdventureRows, NO_ADVENTURES } from './Adventures.tsx'
+import { FriendsOnline } from './Friends.tsx'
 import { HeroRows, NO_HEROES } from './Heroes.tsx'
 import Link from './Link.tsx'
 import { recentFirst } from './recent.ts'
@@ -66,6 +67,8 @@ export default function Home({ auth, name }: { auth: Auth; name: string }) {
               </ul>
             )}
       </section>
+
+      <FriendsOnline />
 
       <div className="home-grid">
         <section className="panel" aria-labelledby="heroes-title">

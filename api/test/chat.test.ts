@@ -4,6 +4,7 @@ import type { FriendEdge, FriendIdentity } from '../src/friend.ts'
 import { handle, type ChatStore, type FriendStore, type GameStore, type ProfileStore } from '../src/handler.ts'
 import type { ProfileRecord } from '../src/profile.ts'
 import { MemoryPortraits } from './portraits-helper.ts'
+import { noPresence } from './presence-helper.ts'
 
 const ORIGIN = 'https://emberreach.morris-heap.com'
 // Cognito ids: these must never appear in any response body.
@@ -114,7 +115,7 @@ function world(maxPerMinute?: number) {
       new Request(`https://api.test${path}`, { method, headers, body: opts.body === undefined ? undefined : JSON.stringify(opts.body) }),
       {
         store: {} as never, games: {} as GameStore, profiles: profiles as unknown as ProfileStore, adventures: {} as never,
-        friends, chat, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken,
+        friends, chat, presence: noPresence, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken,
       },
     ) as unknown as Promise<Reply>
   }

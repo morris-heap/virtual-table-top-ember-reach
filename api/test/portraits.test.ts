@@ -3,6 +3,7 @@ import { handle, type CharacterStore } from '../src/handler.ts'
 import { PORTRAIT } from '../src/portrait.ts'
 import { parseSheet, type CharacterRecord } from '../src/sheet.ts'
 import { MemoryPortraits } from './portraits-helper.ts'
+import { noPresence } from './presence-helper.ts'
 
 const ORIGIN = 'https://emberreach.morris-heap.com'
 const A = '11111111-1111-4111-8111-111111111111'
@@ -35,7 +36,7 @@ function setup() {
       store, portraits, allowedOrigins: [ORIGIN],
       verifyToken: async t => t.slice('token-'.length),
       // The portrait routes never touch these.
-      profiles: {} as never, adventures: {} as never, games: {} as never, friends: {} as never, chat: {} as never,
+      profiles: {} as never, adventures: {} as never, games: {} as never, friends: {} as never, chat: {} as never, presence: noPresence,
     })
   return { call, hero, portraits }
 }

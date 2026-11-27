@@ -7,6 +7,7 @@ import type { Auth } from './auth/useAuth.ts'
 import { levelRange } from './engine/adventure.ts'
 import { FRIEND_LIMITS, personName } from './engine/friends.ts'
 import { cleanPlayerId } from './engine/game.ts'
+import { onlineFirst, presenceText } from './engine/presence.ts'
 import Link from './Link.tsx'
 import Shell, { LoadState } from './Shell.tsx'
 import { useLoad } from './useLoad.ts'
@@ -28,12 +29,20 @@ function SharedAdventures({ person }: { person: Person }) {
   )
 }
 
+/** A green dot for "has a Game open right now" (VTTER-73, ADR 0012), with a text label for screen readers. */
+export function PresenceDot({ online }: { online: boolean }) {
+  return <span className={`presence-dot ${online ? 'online' : 'offline'}`} role="img" aria-label={online ? 'Online now' : 'Offline'} />
+}
+
 function FriendRow({ person, busy, onRemove }: { person: Friend; busy: boolean; onRemove: () => void }) {
   const [open, setOpen] = useState(false)
   return (
     <li className="row">
-      <b>{personName(person)}</b>
-      <span className="muted">{person.playerId}</span>
+      <span className="friend-line">
+        <PresenceDot online={person.online === true} />
+        <b>{personName(person)}</b>
+      </span>
+      <span className="muted">{person.playerId} · {presenceText({ online: person.online === true, game: person.game ?? null })}</span>
       <span className="row-actions">
         <Link to={{ name: 'chat', playerId: person.playerId }} className="account-btn primary" aria-label={`Chat with ${personName(person)}`}>
           Chat{person.unread && <span className="unread-dot" role="img" aria-label="New messages" />}
@@ -123,7 +132,7 @@ export function FriendsView({ lists, onChange }: { lists: FriendLists; onChange:
           ? <p className="muted">No friends yet. Send a request with their player ID, and share yours from your <Link to="/profile">Profile</Link>.</p>
           : (
             <ul className="rows">
-              {lists.friends.map(p => (
+              {onlineFirst(lists.friends).map(p => (
                 <FriendRow
                   key={p.playerId} person={p} busy={busy}
                   onRemove={() => {
@@ -152,6 +161,41 @@ export function FriendsView({ lists, onChange }: { lists: FriendLists; onChange:
         </section>
       )}
     </>
+  )
+}
+
+/** A short "who is at a table now" panel for Home. Shows nothing until the list has loaded. */
+export function FriendsOnline() {
+  const lists = useLoad(friendsApi.list)
+  if (lists.state.status !== 'ready') return null
+  const { friends, incoming } = lists.state.data
+  const here = friends.filter(f => f.online)
+  return (
+    <section className="panel" aria-labelledby="friends-online-title">
+      <div className="panel-head">
+        <h2 id="friends-online-title">Friends</h2>
+        <Link to="/friends" className="account-btn">Manage</Link>
+      </div>
+      {friends.length === 0
+        ? <p className="muted">Add friends on your <Link to="/friends">Friends</Link> page to see when they are at a table.</p>
+        : here.length === 0
+          ? <p className="muted">None of your {friends.length} {friends.length === 1 ? 'friend is' : 'friends are'} at a table right now.</p>
+          : (
+            <ul className="rows" aria-label="Friends online">
+              {here.map(f => (
+                <li key={f.playerId} className="row">
+                  <span className="friend-line"><PresenceDot online /><b>{personName(f)}</b></span>
+                  <span className="muted">{presenceText({ online: true, game: f.game ?? null })}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+      {incoming.length > 0 && (
+        <p className="notice" role="status">
+          {incoming.length} {incoming.length === 1 ? 'person wants' : 'people want'} to be your friend. <Link to="/friends">Answer on your Friends page</Link>.
+        </p>
+      )}
+    </section>
   )
 }
 

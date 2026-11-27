@@ -5,9 +5,9 @@ import { cleanPlayerId, GAME_LIMITS, gameLink, heroCount, heroCountWarning, join
 const hero = (name: string) => ({ id: name, name, level: 1, ancestry: 'Emberkin', calling: 'Hexer' })
 /** A player with a hero, unless `withHero` says otherwise. */
 const player = (n: number, withHero = true): GameMember => ({
-  playerId: `EMBER-${n}AAAA`, displayName: '', role: 'player', hero: withHero ? hero(`H${n}`) : null, mine: false,
+  playerId: `EMBER-${n}AAAA`, displayName: '', role: 'player', hero: withHero ? hero(`H${n}`) : null, mine: false, online: false, friend: false,
 })
-const gm: GameMember = { playerId: 'EMBER-GGGGG', displayName: 'Kit', role: 'gm', hero: null, mine: false }
+const gm: GameMember = { playerId: 'EMBER-GGGGG', displayName: 'Kit', role: 'gm', hero: null, mine: false, online: false, friend: false }
 const ref = { source: 'builtin' as const, id: 'soot-kings-hearth' }
 
 describe('cleanPlayerId', () => {
@@ -57,7 +57,7 @@ describe('labels', () => {
   it('names a member by display name, then player ID', () => {
     expect(memberName(gm)).toBe('Kit')
     expect(memberName(player(1))).toBe('EMBER-1AAAA')
-    expect(memberName({ playerId: '', displayName: '', role: 'player', hero: null, mine: false })).toBe('A player')
+    expect(memberName({ playerId: '', displayName: '', role: 'player', hero: null, mine: false, online: false, friend: false })).toBe('A player')
   })
 })
 

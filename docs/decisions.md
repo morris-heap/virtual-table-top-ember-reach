@@ -7,6 +7,29 @@ Format: `### YYYY-MM-DD — Title` · **Decision** · **Why** · **Affects** (fi
 
 ---
 
+### 2026-11-26 — Seeing who is at the table now (VTTER-73)
+
+**Decision:** Product rules for the companion app. No change to the d20 rules, so the rules stay at **v0.3**.
+Builds on the friends list (see *A friends list, and sharing adventures with friends*), which stays as it is: a request the other player accepts.
+
+1. **Online means "has a Game open right now."** An open Game page sends a heartbeat every 25 seconds while the
+   tab is visible, and a player counts as online for 70 seconds after the last one.
+2. **At a table you see who is online and who is your friend.** A member who is not yet a friend has an
+   **Add friend** button on the roster, which sends a request.
+3. **Only accepted friends show presence**, on the friends list and on Home. A pending or one-sided request
+   never does, because player IDs are public.
+4. **A friend's Game is named only if you are at that table too.** Otherwise the row says "In a Game".
+
+**Why:**
+- There is no live table yet (VTTER-87), so a heartbeat is the cheapest honest signal, and it is replaceable.
+- Naming only shared Games keeps a private table's name private.
+
+**Affects:** data/game.json (`presence`), api/ (`PUT /games/:id/presence`, `online` and `friend` on a Game member,
+`online` and `game` on a friend), app/ (dots and Add friend on the Game page, Friends and Home),
+docs/adr/0012-presence.md, CLAUDE.md. No rules text and no number changes.
+
+---
+
 ### 2026-11-26 — The layered map object model (VTTER-86)
 
 **Decision:** Product rules for the companion app's maps. The only game-rule change is the Terrain entry below, so

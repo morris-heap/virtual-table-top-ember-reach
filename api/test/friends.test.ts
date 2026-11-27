@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import adventureData from '../../data/adventure.json'
+import gameData from '../../data/game.json'
 import type { AdventureDraft, AdventureRecord } from '../src/adventure.ts'
 import { FRIEND_LIMITS, type FriendEdge, type FriendIdentity, type FriendStatus } from '../src/friend.ts'
 import { handle, type AdventureStore, type FriendStore, type GameStore, type ProfileStore } from '../src/handler.ts'
 import type { ProfilePatch, ProfileRecord } from '../src/profile.ts'
 import { MemoryPortraits } from './portraits-helper.ts'
+import { MemoryPresence } from './presence-helper.ts'
 
 const ORIGIN = 'https://emberreach.morris-heap.com'
 // Cognito ids: these must never appear in any response body.
@@ -96,6 +98,7 @@ function world() {
   const profiles = new MemoryProfiles()
   const friends = new MemoryFriends(profiles)
   const adventures = new MemoryAdventures()
+  const presence = new MemoryPresence()
   const call = (method: string, path: string, opts: { as?: string; body?: unknown } = {}) => {
     const headers: Record<string, string> = { Origin: ORIGIN }
     if (opts.as) headers.Authorization = `Bearer token-${opts.as}`
@@ -103,13 +106,13 @@ function world() {
     return handle(
       new Request(`https://api.test${path}`, { method, headers, body: opts.body === undefined ? undefined : JSON.stringify(opts.body) }),
       {
-        store: {} as never, games: {} as GameStore, profiles, adventures, friends, chat: {} as never,
+        store: {} as never, games: { listFor: async () => [] } as unknown as GameStore, profiles, adventures, friends, chat: {} as never, presence,
         portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken,
       },
     ) as unknown as Promise<Reply>
   }
   const idOf = async (who: string) => (await profiles.getOrCreate(who)).playerId
-  return { profiles, friends, adventures, call, idOf }
+  return { profiles, friends, adventures, presence, call, idOf }
 }
 
 const draft = (title: string, visibility: string): AdventureDraft => ({
@@ -299,5 +302,31 @@ describe('adventure visibility', () => {
     const body = { ...draft('T', 'friends'), scenes: [], hooks: [] }
     expect((await w.call('PUT', `/adventures/${ADV}`, { as: ANA, body })).status).toBe(200)
     expect((await w.call('PUT', `/adventures/${ADV}`, { as: ANA, body: { ...body, visibility: 'public' } })).status).toBe(400)
+  })
+})
+
+describe('friends: presence (VTTER-73)', () => {
+  it('shows a mutual friend as online only while their beat is fresh, and names no Game they share nothing with', async () => {
+    const w = world()
+    await befriend(w)
+    const list = async () => (await (await w.call('GET', '/friends', { as: ANA })).json()).friends[0]
+    expect((await list()).online).toBe(false)
+    w.presence.beats.set(BEN, { gameId: '11111111-1111-4111-8111-111111111111', seenAt: Date.now() })
+    expect(await list()).toMatchObject({ online: true, game: null })
+    w.presence.beats.set(BEN, { gameId: 'x', seenAt: Date.now() - (gameData.presence.onlineSeconds + 5) * 1000 })
+    expect((await list()).online).toBe(false)
+  })
+
+  it('never shows presence for a one-sided request, in either direction', async () => {
+    const w = world()
+    const ben = await w.idOf(BEN)
+    await w.call('PUT', `/friends/${ben}`, { as: ANA })
+    w.presence.beats.set(BEN, { gameId: 'g', seenAt: Date.now() })
+    w.presence.beats.set(ANA, { gameId: 'g', seenAt: Date.now() })
+    for (const who of [ANA, BEN]) {
+      const body = await (await w.call('GET', '/friends', { as: who })).json()
+      expect(body.friends).toEqual([])
+      expect(JSON.stringify(body)).not.toContain('seenAt')
+    }
   })
 })

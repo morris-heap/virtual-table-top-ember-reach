@@ -10,5 +10,7 @@
     "maxGamesPerGm": 20,
     "maxGamesPerPlayer": 50,
     "browsePageMax": 24
-  }
+  },
+  "$presenceComment": "Presence (VTTER-73, docs/adr/0011-presence.md). A player counts as online while their last heartbeat, sent by an open Game page, is newer than onlineSeconds. The beat is shorter than the window so one missed beat does not flicker the dot.",
+  "presence": { "heartbeatSeconds": 25, "onlineSeconds": 70 }
 }

@@ -1,4 +1,5 @@
 import { MemoryPortraits } from './portraits-helper.ts'
+import { noPresence } from './presence-helper.ts'
 import type { APIGatewayProxyEventV2 } from 'aws-lambda'
 import { describe, expect, it } from 'vitest'
 import type { CharacterStore } from '../src/handler.ts'
@@ -46,7 +47,7 @@ describe('Lambda adapter', () => {
   })
 
   it('returns status, CORS headers and body from the handler', async () => {
-    const h = makeHandler({ store, profiles, adventures, games, friends: {} as never, chat: {} as never, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken: async () => null })
+    const h = makeHandler({ store, profiles, adventures, games, friends: {} as never, chat: {} as never, presence: noPresence, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken: async () => null })
     const res = await h(event('GET', '/health'))
     expect(res.statusCode).toBe(200)
     expect(res.headers?.['access-control-allow-origin']).toBe(ORIGIN)
@@ -54,7 +55,7 @@ describe('Lambda adapter', () => {
   })
 
   it('answers the CORS preflight with 204', async () => {
-    const res = await makeHandler({ store, profiles, adventures, games, friends: {} as never, chat: {} as never, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken: async () => null })(event('OPTIONS', '/characters'))
+    const res = await makeHandler({ store, profiles, adventures, games, friends: {} as never, chat: {} as never, presence: noPresence, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken: async () => null })(event('OPTIONS', '/characters'))
     expect(res.statusCode).toBe(204)
     expect(res.body).toBe('')
   })

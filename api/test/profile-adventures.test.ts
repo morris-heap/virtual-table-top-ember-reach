@@ -1,6 +1,7 @@
 import bestiary from '../../data/bestiary.json'
 import npcLibrary from '../../data/npc-library.json'
 import { MemoryPortraits } from './portraits-helper.ts'
+import { noPresence } from './presence-helper.ts'
 import { describe, expect, it } from 'vitest'
 import { parseAdventure, type AdventureDraft, type AdventureRecord } from '../src/adventure.ts'
 import { handle, type AdventureStore, type CharacterStore, type GameStore, type ProfileStore } from '../src/handler.ts'
@@ -84,7 +85,7 @@ function world() {
     if (opts.body !== undefined) headers['Content-Type'] = 'application/json'
     return handle(
       new Request(`https://api.test${path}`, { method, headers, body: opts.body === undefined ? undefined : JSON.stringify(opts.body) }),
-      { store: noHeroes, profiles, adventures, games: noGames, friends: {} as never, chat: {} as never, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken },
+      { store: noHeroes, profiles, adventures, games: noGames, friends: {} as never, chat: {} as never, presence: noPresence, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken },
     ) as unknown as Promise<Reply>
   }
   return { profiles, adventures, call }

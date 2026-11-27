@@ -87,6 +87,10 @@ export interface Person {
 /** A friend, and whether their chat has messages you haven't opened (VTTER-109). */
 export interface Friend extends Person {
   unread?: boolean
+  /** Has a Game open right now (VTTER-73, ADR 0012). Only ever sent for an accepted friend. */
+  online?: boolean
+  /** The Game they are in, named only if you are at that table too. */
+  game?: { id: string; name: string } | null
 }
 
 /** One message in a chat with a friend. The API says only whether it is yours, never who sent it. */
@@ -131,6 +135,10 @@ export interface GameMember {
   hero: GameHero | null
   /** True for the signed-in member, who is the only one who can change this hero. */
   mine: boolean
+  /** Has this Game open right now (VTTER-73). Seen by everyone at the table. */
+  online: boolean
+  /** An accepted friend of the signed-in player. Always false for yourself. */
+  friend: boolean
 }
 
 /**

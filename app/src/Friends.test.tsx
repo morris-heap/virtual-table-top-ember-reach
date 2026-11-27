@@ -126,7 +126,7 @@ describe('FriendsView', () => {
 
 describe('InviteFriend (Game page)', () => {
   const seated = (...people: Person[]): GameMember[] =>
-    people.map(p => ({ ...p, role: 'player' as const, hero: null, mine: false }))
+    people.map(p => ({ ...p, role: 'player' as const, hero: null, mine: false, online: false, friend: false }))
 
   it('offers only friends who are not already at the table, and invites the one picked', async () => {
     api.list.mockResolvedValue(lists({ friends: [ana, ben] }))
@@ -150,5 +150,24 @@ describe('InviteFriend (Game page)', () => {
     const { container } = render(<InviteFriend members={[]} busy={false} onInvite={vi.fn()} />)
     await waitFor(() => expect(api.list).toHaveBeenCalledTimes(2))
     expect(container).toBeEmptyDOMElement()
+  })
+})
+
+describe('FriendsView: presence (VTTER-73)', () => {
+  it('lists online friends first, with a dot, and names a Game only when the API sent one', () => {
+    const online = { ...ben, online: true, game: { id: 'g1', name: 'Friday' } }
+    const away = { ...ana, online: false, game: null }
+    render(<FriendsView lists={lists({ friends: [away, online] })} onChange={vi.fn()} />)
+    const rows = within(screen.getByRole('region', { name: 'Friends' })).getAllByRole('listitem')
+    expect(rows[0]).toHaveTextContent('Ben')
+    expect(rows[0]).toHaveTextContent('Friday')
+    expect(rows[0].querySelector('[aria-label="Online now"]')).not.toBeNull()
+    expect(rows[1]).toHaveTextContent('Ana')
+    expect(rows[1].querySelector('[aria-label="Offline"]')).not.toBeNull()
+  })
+
+  it('shows no dot of "online" for a friend row that carries no presence at all', () => {
+    render(<FriendsView lists={lists({ friends: [ana] })} onChange={vi.fn()} />)
+    expect(screen.getByRole('region', { name: 'Friends' }).querySelector('[aria-label="Online now"]')).toBeNull()
   })
 })

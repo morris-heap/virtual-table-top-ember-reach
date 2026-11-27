@@ -54,6 +54,8 @@ export const friendsApi = {
 }
 
 export const gamesApi = {
+  /** Say you have this Game open (VTTER-73). Returns the player IDs of everyone online at it now. */
+  heartbeat: (id: string) => call<{ online: string[] }>('PUT', `/games/${id}/presence`),
   list: async () => (await call<{ games: GameSummary[] }>('GET', '/games')).games,
   /**
    * One page of public Games to browse (VTTER-76). Signed in, like every call, but needs no

@@ -1,4 +1,6 @@
 import { MemoryPortraits } from './portraits-helper.ts'
+import { MemoryPresence } from './presence-helper.ts'
+import type { FriendEdge } from '../src/friend.ts'
 import { describe, expect, it } from 'vitest'
 import type { AdventureDraft, AdventureRecord } from '../src/adventure.ts'
 import gameData from '../../data/game.json'
@@ -158,20 +160,24 @@ async function world() {
   const adventures = new MemoryAdventures()
   const games = new MemoryGames()
   const heroes = new MemoryHeroes()
+  const presence = new MemoryPresence()
+  // Each player's own friend edges, as the real FriendStore lists them.
+  const edges = new Map<string, FriendEdge[]>()
+  const friends = { list: async (me: string) => edges.get(me) ?? [] }
   const call = (method: string, path: string, owner: string | null, body?: unknown): Promise<Reply> => {
     const headers: Record<string, string> = { Origin: ORIGIN }
     if (owner) headers.Authorization = `Bearer token-${owner}`
     if (body !== undefined) headers['Content-Type'] = 'application/json'
     return handle(
       new Request(`https://api.test${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }),
-      { store: heroes, profiles, adventures, games, friends: {} as never, chat: {} as never, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken },
+      { store: heroes, profiles, adventures, games, friends: friends as never, chat: {} as never, presence, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken },
     ) as unknown as Promise<Reply>
   }
   const gm = await profiles.getOrCreate(GM)
   await profiles.update(GM, { gameMaster: true })
   const ana = await profiles.getOrCreate(ANA)
   const ben = await profiles.getOrCreate(BEN)
-  return { profiles, adventures, games, heroes, call, ids: { gm: gm.playerId, ana: ana.playerId, ben: ben.playerId } }
+  return { profiles, adventures, games, heroes, presence, edges, call, ids: { gm: gm.playerId, ana: ana.playerId, ben: ben.playerId } }
 }
 
 const table = { name: 'Friday night', adventure: { source: 'builtin', id: 'soot-kings-hearth' }, visibility: 'private' }
@@ -219,7 +225,7 @@ describe('Games: creating', () => {
   it('lists a Game for its GM with the GM as the first member, and never leaks Cognito ids', async () => {
     const { call, ids } = await world()
     const created = await (await call('PUT', `/games/${G1}`, GM, table)).json()
-    expect(created.members).toEqual([{ playerId: ids.gm, displayName: GM, role: 'gm', hero: null, mine: true }])
+    expect(created.members).toEqual([{ playerId: ids.gm, displayName: GM, role: 'gm', hero: null, mine: true, online: false, friend: false }])
     expect(JSON.stringify(created)).not.toContain('memberIds')
     expect(JSON.stringify(created)).not.toContain('ownerId')
     const list = await (await call('GET', '/games', GM)).json()
@@ -365,7 +371,7 @@ describe('a hero in a Game', () => {
     // name, so checking for the raw id itself would always match.)
     expect(JSON.stringify(seen)).not.toContain('memberIds')
     expect(JSON.stringify(seen)).not.toContain('ownerId')
-    expect(Object.keys(anaRow).sort()).toEqual(['displayName', 'hero', 'mine', 'playerId', 'role'])
+    expect(Object.keys(anaRow).sort()).toEqual(['displayName', 'friend', 'hero', 'mine', 'online', 'playerId', 'role'])
   })
 
   it("refuses a hero that is not the caller's, and a Game the caller is not in", async () => {
@@ -614,5 +620,64 @@ describe('unique Game names per GM (VTTER-76)', () => {
     expect((await call('PUT', `/games/${G2}`, GM, { ...t, name: 'Ash and Ember' })).status).toBe(200)
     expect(nameKey('  Friday   Night  ')).toBe('friday night')
     expect((await call('PUT', '/games/33333333-3333-4333-8333-333333333333', GM, { ...t, name: '   ' })).status).toBe(400)
+  })
+})
+
+describe('Games: presence (VTTER-73)', () => {
+  const G = G1
+  async function table2() {
+    const w = await world()
+    await w.call('PUT', `/games/${G}`, GM, { name: 'Friday Night', adventure: { source: 'builtin', id: 'soot-kings-hearth' }, visibility: 'private' })
+    await w.call('PUT', `/games/${G}/members/${w.ids.ana}`, GM)
+    return w
+  }
+
+  it('marks the caller online and answers who else is, by player ID', async () => {
+    const { call, ids } = await table2()
+    const res = await call('PUT', `/games/${G}/presence`, GM)
+    expect(res.status).toBe(200)
+    expect((await res.json()).online).toEqual([ids.gm])
+    const roster = (await (await call('GET', `/games/${G}`, ANA)).json()).members
+    expect(roster.find((m: { playerId: string }) => m.playerId === ids.gm).online).toBe(true)
+    expect(roster.find((m: { playerId: string }) => m.playerId === ids.ana).online).toBe(false)
+  })
+
+  it('lets a beat lapse after the online window, and ignores a beat from another Game', async () => {
+    const { call, presence, ids } = await table2()
+    const old = Date.now() - (gameData.presence.onlineSeconds + 5) * 1000
+    presence.beats.set(GM, { gameId: G, seenAt: old })
+    presence.beats.set(ANA, { gameId: G2, seenAt: Date.now() })
+    const roster = (await (await call('GET', `/games/${G}`, GM)).json()).members
+    expect(roster.every((m: { online: boolean }) => !m.online)).toBe(true)
+    expect(ids.gm).toBeTruthy()
+  })
+
+  it('refuses a non-member, other methods, and never takes a player from the request', async () => {
+    const { call } = await table2()
+    expect((await call('PUT', `/games/${G}/presence`, BEN)).status).toBe(404)
+    expect((await call('GET', `/games/${G}/presence`, GM)).status).toBe(405)
+    expect((await call('PUT', `/games/${G}/presence`, null)).status).toBe(401)
+  })
+
+  it('flags accepted friends of the viewer on the roster, and nobody else', async () => {
+    const { call, edges, ids } = await table2()
+    edges.set(GM, [{ userId: ANA, status: 'accepted' }])
+    const roster = (await (await call('GET', `/games/${G}`, GM)).json()).members
+    expect(roster.find((m: { playerId: string }) => m.playerId === ids.ana).friend).toBe(true)
+    expect(roster.find((m: { playerId: string }) => m.playerId === ids.gm).friend).toBe(false)
+    edges.set(GM, [{ userId: ANA, status: 'outgoing' }])
+    const pending = (await (await call('GET', `/games/${G}`, GM)).json()).members
+    expect(pending.find((m: { playerId: string }) => m.playerId === ids.ana).friend).toBe(false)
+  })
+
+  it('never puts a Cognito id in the roster or the heartbeat answer', async () => {
+    const { call } = await table2()
+    const beat = JSON.stringify(await (await call('PUT', `/games/${G}/presence`, GM)).json())
+    const game = JSON.stringify(await (await call('GET', `/games/${G}`, GM)).json())
+    // The test world names players after their ids, so check the shape rather than searching for the id.
+    expect(beat).not.toContain('ownerId')
+    const members = JSON.parse(game).members as Record<string, unknown>[]
+    for (const m of members) expect(Object.keys(m).sort()).toEqual(['displayName', 'friend', 'hero', 'mine', 'online', 'playerId', 'role'])
+    expect(JSON.parse(beat)).toEqual({ online: [expect.stringMatching(/^EMBER-/)] })
   })
 })

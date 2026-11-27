@@ -9,6 +9,9 @@ import { findBuiltIn } from './adventures/builtIn.ts'
 import type { Auth } from './auth/useAuth.ts'
 import { levelRange, sceneLabel } from './engine/adventure.ts'
 import { invitable, personName } from './engine/friends.ts'
+import { withOnline } from './engine/presence.ts'
+import { PresenceDot } from './Friends.tsx'
+import { usePresence } from './usePresence.ts'
 import { cleanPlayerId, gameLink, GAME_LIMITS, memberName, partyWarning } from './engine/game.ts'
 import { navigate } from './nav.ts'
 import Link from './Link.tsx'
@@ -210,6 +213,11 @@ function GameScreen({ game, myPlayerId, onChange, onGone }: {
 
   const warning = partyWarning(game.members)
 
+  // Tell the table this player is here, and keep the dots current (VTTER-73).
+  usePresence(game.id, online => onChange({ ...game, members: withOnline(game.members, online) }))
+  // Players asked this visit. A request stays pending until they accept, so the button must not offer it again.
+  const [asked, setAsked] = useState<ReadonlySet<string>>(new Set())
+
   return (
     <>
       <header>
@@ -232,9 +240,24 @@ function GameScreen({ game, myPlayerId, onChange, onGone }: {
           <ul className="rows">
             {game.members.map(m => (
               <li key={m.playerId || m.displayName} className="row">
-                <b>{memberName(m)}</b>
+                <span className="friend-line">
+                  <PresenceDot online={m.online} />
+                  <b>{memberName(m)}</b>
+                  {m.friend && <span className="chip-tag">Friend</span>}
+                  {m.online && !m.mine && <span className="muted">here now</span>}
+                </span>
                 <span className="muted">{m.role === 'gm' ? 'Game Master' : 'Player'} · {m.playerId}</span>
                 <HeroLine member={m} />
+                {!m.mine && !m.friend && m.playerId && (
+                  <span className="row-actions">
+                    <button
+                      type="button" className="account-btn" disabled={busy || asked.has(m.playerId)}
+                      onClick={() => void run(async () => { await friendsApi.request(m.playerId); setAsked(a => new Set(a).add(m.playerId)) })}
+                    >
+                      {asked.has(m.playerId) ? 'Request sent' : 'Add friend'}
+                    </button>
+                  </span>
+                )}
                 {m.role === 'player' && (isGm || m.playerId === myPlayerId) && (
                   <span className="row-actions">
                     <button

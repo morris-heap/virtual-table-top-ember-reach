@@ -1,4 +1,5 @@
 import { MemoryPortraits } from './portraits-helper.ts'
+import { noPresence } from './presence-helper.ts'
 import { describe, expect, it } from 'vitest'
 import { handle, MAX_BODY_BYTES, type CharacterStore } from '../src/handler.ts'
 import { parseSheet, type CharacterRecord, type CharacterSheet } from '../src/sheet.ts'
@@ -51,6 +52,7 @@ const unusedStores = {
   },
   friends: {} as never,
   chat: {} as never,
+  presence: noPresence,
   adventures: {
     list: async () => [], get: async () => null, delete: async () => false,
     save: async () => { throw new Error('unused') },

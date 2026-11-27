@@ -5,7 +5,7 @@ import { LIVE_VISIBILITIES, visibilityHelp, visibilityLabel } from './adventure.
 import { FRIEND_LIMITS, invitable, personName } from './friends.ts'
 
 const person = (playerId: string, displayName = ''): Person => ({ playerId, displayName })
-const member = (p: Person): GameMember => ({ ...p, role: 'player', hero: null, mine: false })
+const member = (p: Person): GameMember => ({ ...p, role: 'player', hero: null, mine: false, online: false, friend: false })
 
 describe('friends helpers', () => {
   it('takes its limits from data/friends.json', () => {
