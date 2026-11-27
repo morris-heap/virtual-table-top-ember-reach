@@ -393,7 +393,7 @@ When a foe attacks you, **you roll**:
 > **d20 + Dodge** (Grace + armor + shield) vs the foe's **Attack DC**
 
 - **Success:** you avoid it (or block it).
-- **Success at a cost:** take **half damage**.
+- **Success at a cost:** take **half damage** (round down). At 0 Grit that's still a Wound (§6.6).
 - **Failure:** take full damage.
 - **Natural 1:** take full damage, and the foe gets its "on a critical" effect.
 
@@ -408,7 +408,8 @@ Mental attacks (fear, charm) use **d20 + Will** vs the foe's **Will DC**.
 
 - Damage comes off **Grit** first.
 - When damage takes you **below 0 Grit**, set Grit to 0 and take **1 Wound**.
-  At 0 Grit, **every hit that lands deals a Wound** instead of damage.
+  At 0 Grit, **every hit that deals damage is a Wound** instead, even a half-damage hit (§6.4, §6.5).
+  A hit that halves down to 0 damage deals nothing.
 - **Each Wound** gives you a **Bane** on every Test with one Attribute. Roll **d6** to find out which:
   **1** Might · **2** Grace · **3** Wits · **4** Lore · **5** Spirit · **6** Presence. Write it down.
   A Grace Wound also hits your dodges, and a Spirit Wound hits your Will rolls.
