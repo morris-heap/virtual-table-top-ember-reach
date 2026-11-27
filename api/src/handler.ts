@@ -5,6 +5,7 @@ import gameData from '../../data/game.json'
 import { isMessageId, parseMessage, toMessageView, type ChatMessageRecord } from './chat.ts'
 import { FRIEND_LIMITS, toFriendLists, type FriendEdge, type FriendIdentity, type FriendPresence } from './friend.ts'
 import { parseGame, type GameDraft, type GameRecord } from './game.ts'
+import { MAPS_PER_USER, parseMap, type MapDraft, type MapRecord, type MapSummary } from './map.ts'
 import { parsePortraitUpload, PORTRAIT, type PortraitStore } from './portrait.ts'
 import { onlineIds, type PresenceRecord } from './presence.ts'
 import { DISPLAY_NAME_MAX, isPlayerId, NAME_SEARCH, parseProfilePatch, type FoundPlayer, type ProfilePatch, type ProfileRecord } from './profile.ts'
@@ -82,6 +83,17 @@ export interface AdventureStore {
 }
 
 /**
+ * Maps (VTTER-74, ADR 0011), keyed (owner, id) like adventures. `save` creates the map if it's new,
+ * and throws MapLimitReached when the author already has the most maps allowed.
+ */
+export interface MapStore {
+  list(ownerId: string): Promise<MapSummary[]>
+  get(ownerId: string, id: string): Promise<MapRecord | null>
+  save(ownerId: string, id: string, draft: MapDraft): Promise<MapRecord>
+  delete(ownerId: string, id: string): Promise<boolean>
+}
+
+/**
  * Friends (ADR 0009). Each player holds their own side of a friendship. Ids here are Cognito ids and
  * never leave the API: the handler turns them into player IDs and display names.
  */
@@ -137,6 +149,7 @@ export interface Deps {
   store: CharacterStore
   profiles: ProfileStore
   adventures: AdventureStore
+  maps: MapStore
   games: GameStore
   friends: FriendStore
   chat: ChatStore
@@ -159,6 +172,12 @@ export class DatabaseUnavailable extends Error {}
  * Caught centrally below, so every route that saves a Game answers 409 without repeating itself.
  */
 export class NameTaken extends Error {}
+
+/** The author already has `data/map.json` `limits.mapsPerUser` maps. Thrown by the map store, answered with a 409. */
+export class MapLimitReached extends Error {}
+
+/** A map can be up to `limits.itemBytesMax` (350 KB) stored, so its request body may be bigger than other routes'. */
+const MAX_MAP_BODY_BYTES = 400 * 1024
 
 class HttpError extends Error {
   status: number
@@ -198,11 +217,11 @@ async function ownerOf(req: Request, verify: VerifyToken): Promise<string> {
   return owner.toLowerCase()
 }
 
-async function readJson(req: Request): Promise<unknown> {
+async function readJson(req: Request, max = MAX_BODY_BYTES): Promise<unknown> {
   const len = Number(req.headers.get('Content-Length') ?? '0')
-  if (len > MAX_BODY_BYTES) throw new HttpError(413, 'Body too large')
+  if (len > max) throw new HttpError(413, 'Body too large')
   const text = await req.text()
-  if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) throw new HttpError(413, 'Body too large')
+  if (new TextEncoder().encode(text).length > max) throw new HttpError(413, 'Body too large')
   try {
     return JSON.parse(text)
   } catch {
@@ -214,6 +233,7 @@ async function readJson(req: Request): Promise<unknown> {
 async function itemRoute(
   req: Request, label: string, cors: Record<string, string>,
   ops: { get(): Promise<unknown>; save(body: unknown): Promise<unknown>; remove(): Promise<boolean> },
+  maxBody = MAX_BODY_BYTES,
 ): Promise<Response> {
   switch (req.method) {
     case 'GET': {
@@ -222,7 +242,7 @@ async function itemRoute(
       return json(item, 200, cors)
     }
     case 'PUT':
-      return json(await ops.save(await readJson(req)), 200, cors)
+      return json(await ops.save(await readJson(req, maxBody)), 200, cors)
     case 'DELETE': {
       if (!(await ops.remove())) throw new HttpError(404, `${label} not found`)
       return json(null, 204, cors)
@@ -660,7 +680,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     const maxParts = resource === 'profile' || resource === 'portraits' || resource === 'presence' || resource === 'players' ? 1 : resource === 'games' || resource === 'friends' ? 4 : resource === 'characters' ? 3 : 2
     // Three parts is only ever /games/:id/hero (VTTER-77), /characters/:id/portrait (VTTER-55) or
     // /friends/:playerId/adventures (VTTER-73); gamesRoute and friendsRoute reject any other segment.
-    if (!['characters', 'profile', 'adventures', 'games', 'friends', 'portraits', 'presence', 'players'].includes(resource) || parts.length > maxParts
+    if (!['characters', 'profile', 'adventures', 'maps', 'games', 'friends', 'portraits', 'presence', 'players'].includes(resource) || parts.length > maxParts
       || (parts.length === 3 && resource !== 'games' && resource !== 'friends' && !(resource === 'characters' && parts[2] === 'portrait'))) {
       throw new HttpError(404, 'Not found')
     }
@@ -681,13 +701,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
 
     if (parts.length === 1) {
       if (req.method !== 'GET') throw new HttpError(405, 'Method not allowed')
+      if (resource === 'maps') return json({ maps: await deps.maps.list(owner), limit: MAPS_PER_USER }, 200, cors)
       return resource === 'characters'
         ? json({ characters: await deps.store.list(owner) }, 200, cors)
         : json({ adventures: await deps.adventures.list(owner) }, 200, cors)
     }
 
     const id = parts[1].toLowerCase()
-    const label = resource === 'characters' ? 'Character' : 'Adventure'
+    const label = resource === 'characters' ? 'Character' : resource === 'maps' ? 'Map' : 'Adventure'
     if (!UUID.test(id)) throw new HttpError(400, `${label} id must be a UUID`)
 
     if (resource === 'characters') {
@@ -702,6 +723,14 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
         },
       })
     }
+    if (resource === 'maps') {
+      // A chapter's map link and the Game read path (with playerViewOfMap) arrive with chapters, VTTER-75.
+      return await itemRoute(req, label, cors, {
+        get: () => deps.maps.get(owner, id),
+        save: body => deps.maps.save(owner, id, parseMap(body)),
+        remove: () => deps.maps.delete(owner, id),
+      }, MAX_MAP_BODY_BYTES)
+    }
     return await itemRoute(req, label, cors, {
       get: () => deps.adventures.get(owner, id),
       save: body => deps.adventures.save(owner, id, parseAdventure(body)),
@@ -712,6 +741,9 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (err instanceof ValidationError) return json({ error: err.message }, 400, cors)
     if (err instanceof NameTaken) {
       return json({ error: `You already have a Game called "${err.message}". Pick another name.` }, 409, cors)
+    }
+    if (err instanceof MapLimitReached) {
+      return json({ error: `You can have ${MAPS_PER_USER} maps. Delete one to make another.` }, 409, cors)
     }
     if (err instanceof DatabaseUnavailable) {
       return json({ error: 'Database temporarily unavailable. Try again shortly.' }, 503, { ...cors, 'Retry-After': '5' })

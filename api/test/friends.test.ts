@@ -109,7 +109,7 @@ function world() {
     return handle(
       new Request(`https://api.test${path}`, { method, headers, body: opts.body === undefined ? undefined : JSON.stringify(opts.body) }),
       {
-        store: {} as never, games: {} as GameStore, profiles, adventures, friends, chat: {} as never, presence: { presenceOf: async () => ({}), beat: async () => {} } as never,
+        store: {} as never, games: {} as GameStore, profiles, adventures, friends, chat: {} as never, maps: {} as never, presence: { presenceOf: async () => ({}), beat: async () => {} } as never,
         portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken,
       },
     ) as unknown as Promise<Reply>

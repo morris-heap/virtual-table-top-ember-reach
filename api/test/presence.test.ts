@@ -97,7 +97,7 @@ async function world() {
     if (as) headers.Authorization = `Bearer token-${as}`
     return handle(new Request(`https://api.test${path}`, { method, headers }), {
       store: {} as never, profiles: profiles as unknown as ProfileStore, adventures: {} as never, games: games as unknown as GameStore,
-      friends: friends as unknown as FriendStore, chat: {} as never, presence, portraits: new MemoryPortraits(),
+      friends: friends as unknown as FriendStore, chat: {} as never, maps: {} as never, presence, portraits: new MemoryPortraits(),
       allowedOrigins: [ORIGIN], verifyToken,
     }) as unknown as Promise<Reply>
   }
