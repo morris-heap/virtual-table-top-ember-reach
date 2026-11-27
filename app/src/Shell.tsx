@@ -7,12 +7,13 @@ import Link from './Link.tsx'
 import { useRoute } from './nav.ts'
 import type { Route } from './router.ts'
 
-type Section = 'home' | 'heroes' | 'adventures'
+type Section = 'home' | 'heroes' | 'adventures' | 'friends'
 
 const SECTIONS: { section: Section; label: string; to: string }[] = [
   { section: 'home', label: 'Home', to: '/' },
   { section: 'heroes', label: 'Heroes', to: '/heroes' },
   { section: 'adventures', label: 'Adventures', to: '/adventures' },
+  { section: 'friends', label: 'Friends', to: '/friends' },
 ]
 
 /** Which top-bar link a screen belongs under, if any. */
@@ -21,6 +22,7 @@ function sectionOf(route: Route): Section | null {
     case 'home': case 'game': return 'home'
     case 'heroes': case 'hero': return 'heroes'
     case 'adventures': case 'adventure': case 'builtIn': return 'adventures'
+    case 'friends': case 'friendAdventure': return 'friends'
     default: return null
   }
 }

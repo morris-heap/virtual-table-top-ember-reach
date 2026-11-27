@@ -2,11 +2,22 @@
 // shows before saving. The API repeats every check (api/src/adventure.ts). Numbers come from /data.
 import adventureData from '../../../data/adventure.json'
 import character from '../../../data/character.json'
-import type { Adventure, AdventureDraft, Scene } from '../api/types.ts'
+import type { Adventure, AdventureDraft, Scene, Visibility } from '../api/types.ts'
 
 export const SCENE_TYPES: string[] = adventureData.sceneTypes
 export const LIMITS = adventureData.limits
 export const LEVELS = character.levels
+/** The visibilities the API accepts right now (data/adventure.json `liveVisibilities`): private and friends. */
+export const LIVE_VISIBILITIES = adventureData.liveVisibilities as Visibility[]
+
+export function visibilityLabel(v: Visibility): string {
+  return v === 'friends' ? 'Friends' : v === 'public' ? 'Public' : 'Private'
+}
+
+/** One line under the picker saying who can read the adventure. */
+export function visibilityHelp(v: Visibility): string {
+  return v === 'friends' ? 'You and your friends can read this adventure. Friends see it read-only.' : 'Only you can see this adventure.'
+}
 
 export function emptyAdventure(): AdventureDraft {
   return { title: '', summary: '', levelMin: LEVELS.min, levelMax: LEVELS.max, visibility: 'private', scenes: [], hooks: [] }

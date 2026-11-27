@@ -23,8 +23,8 @@ relevant ones before answering design questions or making edits:
 | [rules/core-rules.md](rules/core-rules.md) | Core mechanics: Tests, characters, callings, magic, combat, gear, advancement, open questions |
 | [rules/gm-guide.md](rules/gm-guide.md) | Foe stat blocks, encounter budgets, starter adventure |
 | [sheets/character-sheet.md](sheets/character-sheet.md) | Character sheet template (must match the rules) |
-| [data/](data/) | Machine-readable game numbers used by the app and API (`core.json`, `character.json`, `creation.json`, `adventure.json`, `game.json`), and the built-in adventures in `data/adventures/`. Must match the rules files |
-| [docs/adr/](docs/adr/) | Architecture decisions: [0001](docs/adr/0001-companion-app-stack.md) app stack, [0003](docs/adr/0003-backend-dynamodb-lambda.md) backend (replaced [0002](docs/adr/0002-backend-postgres.md)), [0004](docs/adr/0004-auth-cognito.md) sign-in, [0005](docs/adr/0005-profile-and-adventures.md) profile, player ID and private adventures, [0006](docs/adr/0006-games.md) Games, [0007](docs/adr/0007-3d-dice-tray.md) 3D dice tray, [0008](docs/adr/0008-public-games-and-unique-names.md) browsing public Games and unique Game names |
+| [data/](data/) | Machine-readable game numbers used by the app and API (`core.json`, `character.json`, `creation.json`, `adventure.json`, `game.json`, `friends.json`), and the built-in adventures in `data/adventures/`. Must match the rules files |
+| [docs/adr/](docs/adr/) | Architecture decisions: [0001](docs/adr/0001-companion-app-stack.md) app stack, [0003](docs/adr/0003-backend-dynamodb-lambda.md) backend (replaced [0002](docs/adr/0002-backend-postgres.md)), [0004](docs/adr/0004-auth-cognito.md) sign-in, [0005](docs/adr/0005-profile-and-adventures.md) profile, player ID and private adventures, [0006](docs/adr/0006-games.md) Games, [0007](docs/adr/0007-3d-dice-tray.md) 3D dice tray, [0008](docs/adr/0008-public-games-and-unique-names.md) browsing public Games and unique Game names, [0009](docs/adr/0009-friends.md) friends list |
 | [docs/mockups/](docs/mockups/) | Character sheet UI mockups (view and guided-creation edit mode) for VTTER-47 |
 
 ## How we establish rules (workflow)
@@ -92,7 +92,9 @@ in `app/`, then `npx wrangler deploy`); `.github/workflows/app.yml` checks pull 
   (`BUILT_IN_IDS`), so add both when you add one. Games (VTTER-72, `/games/:id`) are created from an adventure on Home,
   and each member brings one of their own heroes (VTTER-77). `/games` is the public browse list (VTTER-76): a Game
   appears there only when its GM made it public **and** ticked listing, which are two separate opt-ins. The
-  friends list is VTTER-73. **Scope is locked** (2026-11-25, VTTER-92): the app automates Emberreach's own rules
+  friends list (VTTER-73, `/friends`) is mutual: a request by player ID that the other player accepts. A friend can read
+  an adventure whose visibility is `friends` (`/friends/<playerId>/adventures/<id>`, read-only), and `public` visibility
+  stays refused ([ADR 0009](docs/adr/0009-friends.md)). **Scope is locked** (2026-11-25, VTTER-92): the app automates Emberreach's own rules
   deeply and is **not** a general VTT platform. Don't add dynamic lighting or per-token vision, 3D terrain, a user
   scripting language, a system builder for other RPGs, a content marketplace or built-in video/voice. Joining a
   GM's Game is always free to the player. **Party size has no hard cap**: `data/core.json` `party.recommendedMax` (5) is advice, so
@@ -140,6 +142,10 @@ through GitHub OIDC (role `emberreach-github-deploy`, environment `aws`).
   field by field and never spread an index row: a GSI row carries `ownerId`, the GM's Cognito `sub`. For the same
   reason its page cursor holds **only** `updatedAt`; a GSI `LastEvaluatedKey` would publish that `sub`.
   Game names are unique **per GM**, not globally (a campaign can run for years), and a clash is a 409.
+  **Friends** are one item per side (`id: friend#<other sub>`, `kind: friend`, `status` incoming / outgoing / accepted),
+  each in its own player's partition ([ADR 0009](docs/adr/0009-friends.md)). **Reading a friend's adventure needs both
+  sides `accepted`**, and every refusal there is the same 404. The adventure record carries its owner's `sub`, so strip
+  `ownerId` before it leaves, and build friend rows field by field (player ID and display name only).
   **Every item is keyed `<kind>#<id>` and carries a `kind` attribute** — heroes included since VTTER-98.
   Give any new kind both, so it can be listed with `begins_with` and no query ever needs a `FilterExpression`
   over the whole partition. The prefix is storage only: strip it on the way out, as `toHero`/`toAdventure` do,

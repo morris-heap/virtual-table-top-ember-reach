@@ -98,7 +98,10 @@ export function ProfileForm({ profile, signInName, onSaved }: { profile: Profile
 
       <section className="panel" aria-labelledby="friends-title">
         <h2 id="friends-title">Friends</h2>
-        <p className="muted">Your friends list is coming soon. Friends will find you by your player ID.</p>
+        <p className="muted">
+          Friends find you by your player ID, and can read the adventures you share with them.{' '}
+          <Link to="/friends">Open your friends list</Link>
+        </p>
       </section>
 
       {saving.status === 'error' && <p className="notice error" role="alert">{saving.message}</p>}

@@ -1,13 +1,14 @@
 // One Game (VTTER-72): its adventure, who is at the table, and the GM's controls (invite, public or private, delete).
 // Anyone who is not in the Game sees a Join button: it works for a public Game and is refused for a private one.
 import { useState, type FormEvent } from 'react'
-import { ApiError, gamesApi, profileApi } from './api/client.ts'
+import { ApiError, friendsApi, gamesApi, profileApi } from './api/client.ts'
 // Heroes come from the offline-capable repository (VTTER-56), so the picker works offline too.
 import { characterRepository, characters } from './characters/current.ts'
 import type { Game, GameDraft, GameMember, HeroSummary } from './api/types.ts'
 import { findBuiltIn } from './adventures/builtIn.ts'
 import type { Auth } from './auth/useAuth.ts'
 import { levelRange, sceneLabel } from './engine/adventure.ts'
+import { invitable, personName } from './engine/friends.ts'
 import { cleanPlayerId, gameLink, GAME_LIMITS, memberName, partyWarning } from './engine/game.ts'
 import { navigate } from './nav.ts'
 import Link from './Link.tsx'
@@ -133,6 +134,35 @@ function MyHero({ game, onChange }: { game: Game; onChange: (g: Game) => void })
   )
 }
 
+/**
+ * The GM picks someone from their friends list (VTTER-73). It calls the same invite as typing a player ID,
+ * so a friend is added right away: there is no pending state, and the picker is a convenience, not consent.
+ */
+export function InviteFriend({ members, busy, onInvite }: { members: GameMember[]; busy: boolean; onInvite: (playerId: string) => void }) {
+  const friends = useLoad(friendsApi.list)
+  const [picked, setPicked] = useState('')
+  // A failed friends load just hides the picker: typing a player ID above still works.
+  if (friends.state.status !== 'ready') return null
+  const options = invitable(friends.state.data.friends, members)
+  if (friends.state.data.friends.length === 0) {
+    return <p className="muted">Add friends on your <Link to="/friends">Friends</Link> page to invite them from a list.</p>
+  }
+  return (
+    <form className="form" onSubmit={e => { e.preventDefault(); if (picked) { onInvite(picked); setPicked('') } }}>
+      <label className="field">
+        <span>Invite a friend</span>
+        <select value={picked} disabled={busy || options.length === 0} onChange={e => setPicked(e.target.value)}>
+          <option value="">{options.length === 0 ? 'All your friends are at the table' : 'Pick a friend'}</option>
+          {options.map(f => <option key={f.playerId} value={f.playerId}>{personName(f)} · {f.playerId}</option>)}
+        </select>
+      </label>
+      <div className="form-actions">
+        <button type="submit" className="account-btn primary" disabled={busy || picked === ''}>Invite friend</button>
+      </div>
+    </form>
+  )
+}
+
 function GameScreen({ game, myPlayerId, onChange, onGone }: {
   game: Game; myPlayerId: string; onChange: (g: Game) => void; onGone: () => void
 }) {
@@ -250,6 +280,11 @@ function GameScreen({ game, myPlayerId, onChange, onGone }: {
               <button type="submit" className="account-btn primary" disabled={busy || invite.trim() === ''}>Invite</button>
             </div>
           </form>
+
+          <InviteFriend
+            members={game.members} busy={busy}
+            onInvite={playerId => void run(async () => onChange(await gamesApi.addMember(game.id, playerId)))}
+          />
 
           <label className="check">
             <input

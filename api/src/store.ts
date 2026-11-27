@@ -1,7 +1,7 @@
 // DynamoDB implementation of CharacterStore. One item per hero (docs/adr/0003-backend-dynamodb-lambda.md):
 // partition key ownerId, sort key id. Lists (skills, wounds, attacks, talents, spells, minerals) are native
 // DynamoDB lists and maps on the item, not JSON strings. A save replaces the whole sheet in one write.
-import { DeleteCommand, GetCommand, QueryCommand, UpdateCommand, type DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
+import { BatchGetCommand, DeleteCommand, GetCommand, QueryCommand, UpdateCommand, type DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import type { AdventureDraft, AdventureRecord, AdventureSummary } from './adventure.ts'
 import { DatabaseUnavailable, type AdventureStore, type CharacterStore, type ProfileStore } from './handler.ts'
 import { newPlayerId, type ProfilePatch, type ProfileRecord } from './profile.ts'
@@ -51,6 +51,43 @@ export function setExpression(fields: Record<string, unknown>) {
     sets.push(`#${k} = :${k}`)
   }
   return { names, values, sets }
+}
+
+/** BatchGetItem takes at most 100 keys per request. */
+const BATCH_MAX = 100
+
+/**
+ * Read many items by key in one request instead of one `GetItem` each. Strongly consistent, because
+ * callers must see a write that just happened.
+ *
+ * DynamoDB may return fewer items than asked for when a response grows large or a partition throttles,
+ * naming the rest in `UnprocessedKeys`; those are retried with a short backoff rather than dropped,
+ * since a dropped key reads as "that item is gone".
+ */
+export async function batchGetConsistent(
+  db: DynamoDBDocumentClient, table: string, keys: Record<string, unknown>[],
+  projection?: { expression: string; names: Record<string, string> },
+) {
+  const out: Record<string, unknown>[] = []
+  for (let i = 0; i < keys.length; i += BATCH_MAX) {
+    let pending = keys.slice(i, i + BATCH_MAX)
+    for (let attempt = 0; pending.length && attempt < 5; attempt++) {
+      const res = await guard(() => db.send(new BatchGetCommand({
+        RequestItems: {
+          [table]: {
+            Keys: pending,
+            ConsistentRead: true,
+            ...(projection ? { ProjectionExpression: projection.expression, ExpressionAttributeNames: projection.names } : {}),
+          },
+        },
+      })))
+      out.push(...(res.Responses?.[table] ?? []))
+      pending = (res.UnprocessedKeys?.[table]?.Keys ?? []) as Record<string, unknown>[]
+      if (pending.length) await new Promise(r => setTimeout(r, 2 ** attempt * 50))
+    }
+    if (pending.length) throw new DatabaseUnavailable()
+  }
+  return out
 }
 
 export class DynamoCharacterStore implements CharacterStore {

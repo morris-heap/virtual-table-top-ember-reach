@@ -55,6 +55,8 @@ sharing exists yet, so this change only has to avoid painting us into a corner.
 - **Visibility is in the model now, only `private` is live.** An adventure has `visibility`:
   `private | friends | public` (`data/adventure.json`). The API accepts only `liveVisibilities` (`private`) and
   answers 400 for the others, so nothing can be shared by accident before reads by other users are designed.
+  *Update 2026-11-26 (VTTER-73, [ADR 0009](0009-friends.md)): `friends` is now live too, so `liveVisibilities` is
+  `private` and `friends`. `public` is still refused.*
 - **Built-in adventures** ship with the app in `data/adventures/*.json` (first: *The Soot King's Hearth*, from
   `rules/gm-guide.md` §5). They are read-only, open to everyone, and shaped so a solo player can be walked through
   them later.

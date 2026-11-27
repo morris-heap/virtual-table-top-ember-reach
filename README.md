@@ -52,7 +52,8 @@ who can carry light into the dark and bring treasure back.
   characters and sign-in (Cognito, VTTER-53) are live. Signed-in players get a Home with their heroes and
   adventures, a profile with a player ID and a Game Master switch, and can write private adventures (VTTER-71).
   They can start a solo Game on a built-in adventure, and a Game Master can run a public or private Game for friends
-  (VTTER-72, up to 5 heroes recommended). Next: the character sheet with guided creation (VTTER-47) and a friends list (VTTER-73).
+  (VTTER-72, up to 5 heroes recommended). A friends list by player ID (VTTER-73) lets players share adventures with
+  friends and lets a Game Master invite from it. Next: the character sheet with guided creation (VTTER-47).
 - **Later:** the side-based combat tracker, a live shared table with a shared roll log, rolling straight from
   the sheet, simple maps with a GM layer, print layout, art direction.
 - **Scope (locked 2026-11-25):** the app automates *our* rules deeply; it is not a general VTT platform.
