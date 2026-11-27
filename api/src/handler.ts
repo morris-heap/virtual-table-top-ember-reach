@@ -2,6 +2,7 @@
 
 import { parseAdventure, type AdventureDraft, type AdventureRecord, type AdventureSummary } from './adventure.ts'
 import gameData from '../../data/game.json'
+import { FRIEND_LIMITS, toFriendLists, type FriendEdge, type FriendIdentity } from './friend.ts'
 import { parseGame, type GameDraft, type GameRecord } from './game.ts'
 import { parsePortraitUpload, PORTRAIT, type PortraitStore } from './portrait.ts'
 import { isPlayerId, parseProfilePatch, type ProfilePatch, type ProfileRecord } from './profile.ts'
@@ -69,6 +70,26 @@ export interface AdventureStore {
 }
 
 /**
+ * Friends (ADR 0009). Each player holds their own side of a friendship. Ids here are Cognito ids and
+ * never leave the API: the handler turns them into player IDs and display names.
+ */
+export interface FriendStore {
+  /** My side of every friendship and request. */
+  list(userId: string): Promise<FriendEdge[]>
+  get(userId: string, otherId: string): Promise<FriendEdge | null>
+  /** `from` asks `to`: writes `outgoing` for the sender and `incoming` for the receiver. */
+  request(fromId: string, toId: string): Promise<void>
+  /** Mark both sides accepted. */
+  accept(userId: string, otherId: string): Promise<void>
+  /** Delete both sides: declines a request, cancels one, or ends a friendship. */
+  remove(userId: string, otherId: string): Promise<void>
+  /** True only when BOTH sides are accepted, so removing either side revokes access. */
+  areFriends(a: string, b: string): Promise<boolean>
+  /** Player ID and display name for many users in one read. A user with no profile is absent. */
+  identities(userIds: string[]): Promise<Record<string, FriendIdentity>>
+}
+
+/**
  * Checks a bearer token and returns the verified user id (the Cognito `sub`), or null if the token is invalid.
  * Production uses the Cognito access-token verifier in src/auth.ts. Tests inject a fake.
  */
@@ -79,6 +100,7 @@ export interface Deps {
   profiles: ProfileStore
   adventures: AdventureStore
   games: GameStore
+  friends: FriendStore
   portraits: PortraitStore
   allowedOrigins: string[]
   verifyToken: VerifyToken
@@ -405,6 +427,86 @@ async function gamesRoute(req: Request, parts: string[], owner: string, deps: De
   return json(null, 204, cors)
 }
 
+/** The caller's friends, incoming requests and outgoing requests, as player IDs and display names. */
+async function friendLists(owner: string, deps: Deps) {
+  const edges = await deps.friends.list(owner)
+  return toFriendLists(edges, await deps.friends.identities(edges.map(e => e.userId)))
+}
+
+/**
+ * `/friends`, `/friends/:playerId`, and a friend's shared adventures (VTTER-73, ADR 0009).
+ * Reading a friend's adventure needs both sides of the friendship accepted, and every refusal there is
+ * the same 404, so nobody can tell "no such player" from "not your friend" from "not shared".
+ */
+async function friendsRoute(req: Request, parts: string[], owner: string, deps: Deps, cors: Record<string, string>): Promise<Response> {
+  const { friends } = deps
+  if (parts.length === 1) {
+    if (req.method !== 'GET') throw new HttpError(405, 'Method not allowed')
+    return json(await friendLists(owner, deps), 200, cors)
+  }
+
+  const playerId = parts[1].toUpperCase()
+  if (!isPlayerId(playerId)) throw new HttpError(400, 'That is not a player ID')
+  const target = await deps.profiles.ownerOfPlayer(playerId)
+
+  if (parts.length === 2) {
+    if (req.method !== 'PUT' && req.method !== 'DELETE') throw new HttpError(405, 'Method not allowed')
+    await deps.profiles.getOrCreate(owner) // make sure the caller has a player ID before they friend anyone
+    if (!target) throw new HttpError(404, 'No player has that ID')
+    if (target === owner) throw new HttpError(400, 'You cannot friend yourself')
+    const [mine, theirs] = await Promise.all([friends.get(owner, target), friends.get(target, owner)])
+
+    if (req.method === 'DELETE') {
+      if (!mine && !theirs) throw new HttpError(404, 'You have no friendship or request with that player')
+      await friends.remove(owner, target)
+      return json(null, 204, cors)
+    }
+
+    if (mine?.status === 'accepted' && theirs?.status === 'accepted') return json(await friendLists(owner, deps), 200, cors)
+    // They already asked me (or my request is already pending on both sides): asking back accepts.
+    if (mine?.status === 'incoming' || theirs?.status === 'outgoing') {
+      const [mineAll, theirsAll] = await Promise.all([friends.list(owner), friends.list(target)])
+      const full = (all: FriendEdge[]) => all.filter(e => e.status === 'accepted').length >= FRIEND_LIMITS.maxFriends
+      if (full(mineAll)) throw new HttpError(400, `You can have at most ${FRIEND_LIMITS.maxFriends} friends`)
+      if (full(theirsAll)) throw new HttpError(400, 'That player has as many friends as they can have')
+      await friends.accept(owner, target)
+      return json(await friendLists(owner, deps), 200, cors)
+    }
+    // My side says friends but theirs doesn't (they removed me): drop the stale side and ask afresh.
+    if (mine?.status === 'accepted') await friends.remove(owner, target)
+    if (mine?.status === 'outgoing') {
+      await friends.request(owner, target) // sending again repairs a request whose second write was lost
+      return json(await friendLists(owner, deps), 200, cors)
+    }
+    const [mineAll, theirsAll] = await Promise.all([friends.list(owner), friends.list(target)])
+    if (mineAll.filter(e => e.status === 'outgoing').length >= FRIEND_LIMITS.maxOutgoing) {
+      throw new HttpError(400, `You can have at most ${FRIEND_LIMITS.maxOutgoing} requests waiting. Cancel one first.`)
+    }
+    if (theirsAll.filter(e => e.status === 'incoming').length >= FRIEND_LIMITS.maxIncoming) {
+      throw new HttpError(400, 'That player has too many requests waiting. Try again later.')
+    }
+    await friends.request(owner, target)
+    return json(await friendLists(owner, deps), 200, cors)
+  }
+
+  // /friends/:playerId/adventures and /friends/:playerId/adventures/:id — read-only, `friends` visibility only.
+  if (parts[2] !== 'adventures' || parts.length > 4) throw new HttpError(404, 'Not found')
+  if (req.method !== 'GET') throw new HttpError(405, 'Method not allowed')
+  if (!target || !(await friends.areFriends(owner, target))) throw new HttpError(404, 'Not found')
+
+  if (parts.length === 3) {
+    const shared = (await deps.adventures.list(target)).filter(a => a.visibility === 'friends')
+    return json({ adventures: shared }, 200, cors)
+  }
+  const id = parts[3].toLowerCase()
+  if (!UUID.test(id)) throw new HttpError(400, 'Adventure id must be a UUID')
+  const adventure = await deps.adventures.get(target, id)
+  if (!adventure || adventure.visibility !== 'friends') throw new HttpError(404, 'Not found')
+  // The record carries its owner's Cognito id; it must never leave the API.
+  const { ownerId: _o, ...shared } = adventure
+  return json(shared, 200, cors)
+}
+
 export async function handle(req: Request, deps: Deps): Promise<Response> {
   const cors = corsHeaders(req.headers.get('Origin'), deps.allowedOrigins)
   try {
@@ -423,11 +525,11 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     }
 
     const resource = parts[0]
-    const maxParts = resource === 'profile' || resource === 'portraits' ? 1 : resource === 'games' ? 4 : resource === 'characters' ? 3 : 2
-    // Three parts is only ever /games/:id/hero (VTTER-77) or /characters/:id/portrait (VTTER-55);
-    // gamesRoute rejects any other games segment.
-    if (!['characters', 'profile', 'adventures', 'games', 'portraits'].includes(resource) || parts.length > maxParts
-      || (parts.length === 3 && resource !== 'games' && !(resource === 'characters' && parts[2] === 'portrait'))) {
+    const maxParts = resource === 'profile' || resource === 'portraits' ? 1 : resource === 'games' || resource === 'friends' ? 4 : resource === 'characters' ? 3 : 2
+    // Three parts is only ever /games/:id/hero (VTTER-77), /characters/:id/portrait (VTTER-55) or
+    // /friends/:playerId/adventures (VTTER-73); gamesRoute and friendsRoute reject any other segment.
+    if (!['characters', 'profile', 'adventures', 'games', 'friends', 'portraits'].includes(resource) || parts.length > maxParts
+      || (parts.length === 3 && resource !== 'games' && resource !== 'friends' && !(resource === 'characters' && parts[2] === 'portrait'))) {
       throw new HttpError(404, 'Not found')
     }
     const owner = await ownerOf(req, deps.verifyToken)
@@ -436,6 +538,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
     if (resource === 'portraits') return await portraitsRoute(req, owner, deps, cors)
     if (resource === 'profile') return await profileRoute(req, owner, deps, cors)
     if (resource === 'games') return await gamesRoute(req, parts, owner, deps, cors)
+    if (resource === 'friends') return await friendsRoute(req, parts, owner, deps, cors)
 
     if (parts.length === 1) {
       if (req.method !== 'GET') throw new HttpError(405, 'Method not allowed')

@@ -20,7 +20,7 @@ export interface Profile {
   playerId: string
 }
 
-/** Only `private` is accepted by the API for now (sharing comes with VTTER-72/73). */
+/** The API accepts `private` and `friends` (VTTER-73). `public` is in the model but still refused. */
 export type Visibility = 'private' | 'friends' | 'public'
 
 export interface Scene {
@@ -66,6 +66,19 @@ export interface GameDraft {
    * public: a private Game is never listed, whatever this says.
    */
   listed: boolean
+}
+
+/** Another player as you may see them: the public player ID and display name, never an account id. */
+export interface Person {
+  playerId: string
+  displayName: string
+}
+
+/** Your friends, requests that wait on you (`incoming`) and requests that wait on them (`outgoing`) (VTTER-73). */
+export interface FriendLists {
+  friends: Person[]
+  incoming: Person[]
+  outgoing: Person[]
 }
 
 export type GameRole = 'gm' | 'player'

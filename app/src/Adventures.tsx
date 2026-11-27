@@ -4,7 +4,7 @@ import { adventuresApi, profileApi } from './api/client.ts'
 import type { AdventureSummary } from './api/types.ts'
 import type { Auth } from './auth/useAuth.ts'
 import { BUILT_IN } from './adventures/builtIn.ts'
-import { levelRange } from './engine/adventure.ts'
+import { levelRange, visibilityLabel } from './engine/adventure.ts'
 import Link from './Link.tsx'
 import Shell, { LoadState } from './Shell.tsx'
 import StartGame from './StartGame.tsx'
@@ -17,6 +17,7 @@ export function AdventureRows({ adventures, isGm }: { adventures: AdventureSumma
         <li key={a.id} className="row">
           <Link to={{ name: 'adventure', id: a.id }}><b>{a.title}</b></Link>
           <span className="muted">{levelRange(a)}</span>
+          <span className="chip-tag">{visibilityLabel(a.visibility)}</span>
           <StartGame adventure={{ source: 'own', id: a.id }} title={a.title} canSolo={false} isGm={isGm} />
         </li>
       ))}
@@ -24,7 +25,7 @@ export function AdventureRows({ adventures, isGm }: { adventures: AdventureSumma
   )
 }
 
-export const NO_ADVENTURES = "You haven't written an adventure yet. Only you can see the ones you write."
+export const NO_ADVENTURES = "You haven't written an adventure yet. Only you can see the ones you write, until you share one with friends."
 
 export default function Adventures({ auth }: { auth: Auth }) {
   const adventures = useLoad(adventuresApi.list)
@@ -56,7 +57,7 @@ export default function Adventures({ auth }: { auth: Auth }) {
       </section>
 
       <section className="panel" aria-labelledby="yours-title">
-        <h2 id="yours-title">Yours <span className="chip-tag">Private</span></h2>
+        <h2 id="yours-title">Yours</h2>
         {adventures.state.status !== 'ready'
           ? <LoadState state={adventures.state} reload={adventures.reload} what="your adventures" />
           : adventures.state.data.length === 0

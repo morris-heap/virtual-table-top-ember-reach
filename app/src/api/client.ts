@@ -3,7 +3,7 @@
 import { apiUrl, authConfig } from '../auth/config.ts'
 import { currentUser, getAccessToken } from '../auth/session.ts'
 import { ApiError, request } from './request.ts'
-import type { Adventure, AdventureDraft, AdventureSummary, Game, GameDraft, GameSummary, Profile, PublicGamePage } from './types.ts'
+import type { Adventure, AdventureDraft, AdventureSummary, FriendLists, Game, GameDraft, GameSummary, Profile, PublicGamePage } from './types.ts'
 
 export { ApiError }
 
@@ -28,6 +28,19 @@ export const adventuresApi = {
   get: (id: string) => call<Adventure>('GET', `/adventures/${id}`),
   save: (id: string, draft: AdventureDraft) => call<Adventure>('PUT', `/adventures/${id}`, draft),
   remove: (id: string) => call<void>('DELETE', `/adventures/${id}`),
+}
+
+export const friendsApi = {
+  list: () => call<FriendLists>('GET', '/friends'),
+  /** Ask a player to be friends, or accept their request. Both are the same call. */
+  request: (playerId: string) => call<FriendLists>('PUT', `/friends/${encodeURIComponent(playerId)}`),
+  /** Decline a request, cancel one you sent, or remove a friend. */
+  remove: (playerId: string) => call<void>('DELETE', `/friends/${encodeURIComponent(playerId)}`),
+  /** Adventures this friend shared with friends. A non-friend gets 404. */
+  adventures: async (playerId: string) =>
+    (await call<{ adventures: AdventureSummary[] }>('GET', `/friends/${encodeURIComponent(playerId)}/adventures`)).adventures,
+  adventure: (playerId: string, id: string) =>
+    call<Adventure>('GET', `/friends/${encodeURIComponent(playerId)}/adventures/${id}`),
 }
 
 export const gamesApi = {

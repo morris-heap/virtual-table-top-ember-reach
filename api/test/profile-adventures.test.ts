@@ -82,7 +82,7 @@ function world() {
     if (opts.body !== undefined) headers['Content-Type'] = 'application/json'
     return handle(
       new Request(`https://api.test${path}`, { method, headers, body: opts.body === undefined ? undefined : JSON.stringify(opts.body) }),
-      { store: noHeroes, profiles, adventures, games: noGames, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken },
+      { store: noHeroes, profiles, adventures, games: noGames, friends: {} as never, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken },
     ) as unknown as Promise<Reply>
   }
   return { profiles, adventures, call }
@@ -208,12 +208,14 @@ describe('adventures', () => {
     expect((await call('GET', `/adventures/${ADV}/scenes`, { owner: A })).status).toBe(404)
   })
 
-  it('rejects sharing until it exists: only private is accepted', async () => {
+  it('accepts private and friends, and rejects public (not live yet) and unknown values', async () => {
     const { call } = world()
-    for (const visibility of ['friends', 'public']) {
+    for (const visibility of ['private', 'friends']) {
+      expect((await call('PUT', `/adventures/${ADV}`, { owner: A, body: { ...hearth, visibility } })).status).toBe(200)
+    }
+    for (const visibility of ['public', 'secret']) {
       expect((await call('PUT', `/adventures/${ADV}`, { owner: A, body: { ...hearth, visibility } })).status).toBe(400)
     }
-    expect((await call('PUT', `/adventures/${ADV}`, { owner: A, body: { ...hearth, visibility: 'secret' } })).status).toBe(400)
   })
 })
 

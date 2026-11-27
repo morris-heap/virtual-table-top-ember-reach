@@ -52,7 +52,8 @@ Choosing a hero was added by VTTER-77 (below). Playing the scenes themselves com
 
 - **An invite adds the player immediately.** There is no accept step, so a GM could add someone who didn't ask. Players can leave
   at any time, a GM needs the GM flag, and a GM is capped at 20 Games. A real invite (pending until accepted) belongs with the
-  friends list in VTTER-73.
+  friends list in VTTER-73. *Update 2026-11-26: VTTER-73 added an invite picker from the friends list
+  ([ADR 0009](0009-friends.md)), but it still adds the player right away. A pending invite is not built.*
 - **Two writes aren't atomic** (roster and pointer). Both orders are safe: a pointer without a roster entry is repaired by
   retrying the same call, and a roster entry without a pointer gives that person no access. Using `TransactWriteItems`
   would need a new IAM action, which isn't worth it at this size.

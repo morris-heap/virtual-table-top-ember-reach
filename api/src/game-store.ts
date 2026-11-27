@@ -5,11 +5,11 @@
 //   ('_game',  <id>)       a pointer from the Game id to its GM, so a public Game can be joined from its link
 // Get, BatchGet, Query, Update and Delete are used; the Lambda role grants exactly those
 // (infra/lib/api-stack.ts). Add an action there before calling anything new here.
-import { BatchGetCommand, DeleteCommand, GetCommand, QueryCommand, UpdateCommand, type DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
+import { DeleteCommand, GetCommand, QueryCommand, UpdateCommand, type DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb'
 import gameData from '../../data/game.json'
 import { nameKey, type GameDraft, type GameRecord } from './game.ts'
-import { DatabaseUnavailable, NameTaken, type GameStore } from './handler.ts'
-import { guard, isConditionFailure, setExpression } from './store.ts'
+import { NameTaken, type GameStore } from './handler.ts'
+import { batchGetConsistent, guard, isConditionFailure, setExpression } from './store.ts'
 
 export const GAME_PREFIX = 'game#'
 export const MEMBER_PREFIX = 'gm#'
@@ -41,42 +41,12 @@ function decodeCursor(cursor: string): string | undefined {
   return after && after.length <= 40 ? after : undefined
 }
 
-/** BatchGetItem takes at most 100 keys per request. Both callers here are capped well below that. */
-const BATCH_MAX = 100
-
 export class DynamoGameStore implements GameStore {
   constructor(private db: DynamoDBDocumentClient, private table: string) {}
 
-  /**
-   * Read many items by key in one request instead of one `GetItem` each. Strongly consistent, because
-   * both callers must see a write that just happened: a Game you just created or renamed, and a hero
-   * you just brought to the table.
-   *
-   * DynamoDB may return fewer items than asked for when a response grows large or a partition throttles,
-   * naming the rest in `UnprocessedKeys`; those are retried with a short backoff rather than dropped,
-   * since a dropped key here reads as "that Game is gone".
-   */
-  private async batchGet(keys: Record<string, unknown>[], projection?: { expression: string; names: Record<string, string> }) {
-    const out: Record<string, unknown>[] = []
-    for (let i = 0; i < keys.length; i += BATCH_MAX) {
-      let pending = keys.slice(i, i + BATCH_MAX)
-      for (let attempt = 0; pending.length && attempt < 5; attempt++) {
-        const res = await guard(() => this.db.send(new BatchGetCommand({
-          RequestItems: {
-            [this.table]: {
-              Keys: pending,
-              ConsistentRead: true,
-              ...(projection ? { ProjectionExpression: projection.expression, ExpressionAttributeNames: projection.names } : {}),
-            },
-          },
-        })))
-        out.push(...(res.Responses?.[this.table] ?? []))
-        pending = (res.UnprocessedKeys?.[this.table]?.Keys ?? []) as Record<string, unknown>[]
-        if (pending.length) await new Promise(r => setTimeout(r, 2 ** attempt * 50))
-      }
-      if (pending.length) throw new DatabaseUnavailable()
-    }
-    return out
+  /** Many keys in one request, never a GetItem per row (see batchGetConsistent in store.ts). */
+  private batchGet(keys: Record<string, unknown>[], projection?: { expression: string; names: Record<string, string> }) {
+    return batchGetConsistent(this.db, this.table, keys, projection)
   }
 
   private async readGame(gmId: string, id: string): Promise<GameRecord | null> {

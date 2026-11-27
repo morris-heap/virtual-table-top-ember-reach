@@ -164,7 +164,7 @@ async function world() {
     if (body !== undefined) headers['Content-Type'] = 'application/json'
     return handle(
       new Request(`https://api.test${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }),
-      { store: heroes, profiles, adventures, games, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken },
+      { store: heroes, profiles, adventures, games, friends: {} as never, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken },
     ) as unknown as Promise<Reply>
   }
   const gm = await profiles.getOrCreate(GM)

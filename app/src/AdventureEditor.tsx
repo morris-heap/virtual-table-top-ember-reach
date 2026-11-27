@@ -1,11 +1,12 @@
 // Writing an adventure (VTTER-71): a title, a level range, an ordered list of scenes and some follow-up hooks.
-// Any signed-in player can write one. It stays private to its author until sharing arrives (VTTER-72/73).
+// Any signed-in player can write one. It is private to its author until a Game Master shares it with friends (VTTER-73).
 import { useState, type FormEvent } from 'react'
 import { adventuresApi, profileApi } from './api/client.ts'
-import type { AdventureDraft } from './api/types.ts'
+import type { AdventureDraft, Visibility } from './api/types.ts'
 import type { Auth } from './auth/useAuth.ts'
 import {
-  addScene, draftOf, emptyAdventure, LEVELS, LIMITS, moveScene, problems, removeScene, SCENE_TYPES, sceneLabel, updateScene,
+  addScene, draftOf, emptyAdventure, LEVELS, LIMITS, LIVE_VISIBILITIES, moveScene, problems, removeScene, SCENE_TYPES, sceneLabel,
+  updateScene, visibilityHelp, visibilityLabel,
 } from './engine/adventure.ts'
 import Link from './Link.tsx'
 import { navigate } from './nav.ts'
@@ -90,10 +91,20 @@ function EditorForm({ initial, savedId, canShare }: { initial: AdventureDraft; s
             </select>
           </label>
         </div>
-        <p className="muted">
-          <span className="chip-tag">Private</span> Only you can see this adventure.{' '}
-          {canShare && <button type="button" className="link-btn" disabled title="Sharing is coming soon">Share… (coming soon)</button>}
-        </p>
+        <label className="field">
+          <span>Who can read it</span>
+          {/* Sharing is a Game Master feature (ADR 0005). An adventure already shared stays readable and editable. */}
+          <select
+            value={draft.visibility} disabled={!canShare && draft.visibility === 'private'}
+            onChange={e => set({ visibility: e.target.value as Visibility })}
+          >
+            {LIVE_VISIBILITIES.map(v => <option key={v} value={v}>{visibilityLabel(v)}</option>)}
+          </select>
+          <small className="muted">
+            {visibilityHelp(draft.visibility)}
+            {!canShare && draft.visibility === 'private' && <> Turn on Game Master in your <Link to="/profile">Profile</Link> to share adventures with friends.</>}
+          </small>
+        </label>
       </section>
 
       <section className="panel" aria-labelledby="scenes-title">

@@ -19,10 +19,16 @@ export type Route =
   | { name: 'games' }
   /** A Game you are in, or one you were sent the link to (VTTER-72). */
   | { name: 'game'; id: string }
+  /** Your friends and their requests (VTTER-73). */
+  | { name: 'friends' }
+  /** An adventure a friend shared with you, read-only (VTTER-73). `playerId` is theirs, upper-case. */
+  | { name: 'friendAdventure'; playerId: string; id: string }
   | { name: 'notFound' }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const SLUG = /^[a-z0-9][a-z0-9-]*$/
+// A player ID as the API accepts it (api/src/profile.ts): 5 or 6 characters, no 0 O 1 I L.
+const PLAYER_ID = /^EMBER-[A-HJKMNP-Z2-9]{5,6}$/i
 
 export function parseRoute(pathname: string): Route {
   const parts = pathname.split('/').filter(Boolean)
@@ -34,6 +40,10 @@ export function parseRoute(pathname: string): Route {
   if (first === 'heroes' && parts.length === 2 && (second === 'new' || UUID.test(second))) return { name: 'hero', id: second.toLowerCase() }
   if (parts.length === 1 && first === 'games') return { name: 'games' }
   if (first === 'games' && parts.length === 2 && UUID.test(second)) return { name: 'game', id: second.toLowerCase() }
+  if (parts.length === 1 && first === 'friends') return { name: 'friends' }
+  if (first === 'friends' && parts.length === 4 && PLAYER_ID.test(second) && third === 'adventures' && UUID.test(parts[3])) {
+    return { name: 'friendAdventure', playerId: second.toUpperCase(), id: parts[3].toLowerCase() }
+  }
   if (first === 'adventures') {
     if (parts.length === 1) return { name: 'adventures' }
     if (parts.length === 2 && (second === 'new' || UUID.test(second))) return { name: 'adventure', id: second.toLowerCase() }
@@ -54,5 +64,7 @@ export function pathFor(route: Exclude<Route, { name: 'notFound' }>): string {
     case 'builtIn': return `/adventures/built-in/${route.slug}`
     case 'games': return '/games'
     case 'game': return `/games/${route.id}`
+    case 'friends': return '/friends'
+    case 'friendAdventure': return `/friends/${route.playerId}/adventures/${route.id}`
   }
 }

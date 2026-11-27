@@ -1,0 +1,9 @@
+{
+  "$comment": "Friends list (VTTER-73, docs/adr/0009-friends.md). A friendship is mutual and starts as a request that the other player accepts. Limits are abuse caps, not game rules.",
+  "statuses": ["incoming", "outgoing", "accepted"],
+  "limits": {
+    "maxFriends": 100,
+    "maxIncoming": 50,
+    "maxOutgoing": 20
+  }
+}
