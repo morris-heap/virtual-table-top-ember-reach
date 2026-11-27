@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import mapData from '../../../data/map.json'
-import { DIRECTIONS, edgeSegment, hexAt, hexCenter, hexCount, indexOf, neighbour, ownedEdge, type Grid } from './hex.ts'
+import { DIRECTIONS, edgeHexes, edgesAround, edgeSegment, hexAt, hexCenter, hexCount, indexOf, neighbour, ownedEdge, type Grid } from './hex.ts'
 import {
-  artKey, artOf, bridgeOf, chainSegments, frameOf, relax, drawOrder, edgeChains, hasTexture, isWide, pointInRings, routeLines, scatterDecor, shapeOf,
+  artKey, artOf, BRIDGE_WIDTH, bridgeOf, chainSegments, frameOf, guideOf, relax, shapeParts, snapChain, snapSegment, type Guide, drawOrder, edgeChains, hasTexture, isWide, pointInRings, routeLines, scatterDecor, shapeOf,
   smoothLine, textureOf, traceOutline, type Pt,
 } from './mapArt.ts'
 import { generateMap } from './mapGen.ts'
@@ -334,5 +334,143 @@ describe('the art frame (VTTER-123)', () => {
   it('is filled by a shape that covers the whole map, all the way round', () => {
     const rings = shapeOf(g, Array.from({ length: hexCount(g) }, (_, i) => i), 'm|base')
     for (const [x, y] of around(frameOf(g))) expect(pointInRings(rings, x, y), `${x.toFixed(2)},${y.toFixed(2)}`).toBe(true)
+  })
+})
+
+describe('walls and doors snap to the outline (VTTER-126)', () => {
+  const hut = () => [at(6, 5), ...ring(6, 5)]
+
+  /** The edges on the boundary of a set of hexes: one side inside, the other outside or off the map. */
+  function boundary(hexes: number[]): number[] {
+    const set = new Set(hexes)
+    const out = new Set<number>()
+    for (const h of hexes) for (const e of edgesAround(g, h)) {
+      const { owner, other } = edgeHexes(g, e)
+      if (set.has(owner) !== (other !== null && set.has(other))) out.add(e)
+    }
+    return [...out]
+  }
+
+  /** How far a point is from a closed polyline. */
+  function offRing(r: Pt[], [x, y]: Pt): number {
+    let best = Infinity
+    for (let k = 0; k < r.length; k++) {
+      const [ax, ay] = r[k]
+      const [bx, by] = r[(k + 1) % r.length]
+      const l2 = (bx - ax) ** 2 + (by - ay) ** 2
+      const t = l2 ? Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / l2)) : 0
+      best = Math.min(best, Math.hypot(x - ax - t * (bx - ax), y - ay - t * (by - ay)))
+    }
+    return best
+  }
+
+  const hutParts = () => shapeParts(g, hut(), 'm|hut')
+
+  it('maps every raw corner and side of a shape onto its smoothed outline', () => {
+    const parts = hutParts()
+    const gd = guideOf([parts])
+    const [raw] = parts.raw
+    const [smooth] = parts.rings
+    expect(gd.corners.size).toBe(raw.length)
+    expect(gd.sides.size).toBe(raw.length * 2) // both directions
+    for (const p of gd.corners.values()) expect(offRing(smooth, p)).toBeLessThan(1e-9)
+    for (const pts of gd.sides.values()) for (const p of pts) expect(offRing(smooth, p)).toBeLessThan(1e-9)
+  })
+
+  it('lays a wall all the way round a round hut on its outline, as one continuous line', () => {
+    const parts = hutParts()
+    const gd = guideOf([parts])
+    const chains = edgeChains(g, boundary(hut()))
+    expect(chains).toHaveLength(1)
+    const snapped = snapChain(chains[0], [gd])
+    for (const p of snapped) expect(offRing(parts.rings[0], p)).toBeLessThan(1e-9)
+    // Far more points than the 18 raw corners: it follows the curve, not the hex edges.
+    expect(snapped.length).toBeGreaterThan(chains[0].length * 3)
+    // A closed wall stays closed.
+    expect(snapped[0]).toEqual(snapped[snapped.length - 1])
+  })
+
+  it('keeps a wall sticking out of a room straight, joined exactly to the curve', () => {
+    const parts = hutParts()
+    const gd = guideOf([parts])
+    const [raw] = parts.raw
+    // One side of the hut's boundary, then out along an edge that is not on it: the north-east edge of the hex just
+    // below the hut, which lies between two outside hexes and touches the hut at its top corner.
+    const outside = neighbour(g, neighbour(g, at(6, 5), 's')!, 's')!
+    const stubEdge = ownedEdge(g, outside, 1)
+    const { owner, other } = edgeHexes(g, stubEdge)
+    expect(hut().includes(owner) || (other !== null && hut().includes(other))).toBe(false)
+    const [s0, s1] = edgeSegment(g, stubEdge, 1)
+    const key = (p: Pt) => `${Math.round(p[0] * 1000)},${Math.round(p[1] * 1000)}`
+    const onHut = raw.findIndex(p => key(p) === key(s0) || key(p) === key(s1))
+    expect(onHut).toBeGreaterThanOrEqual(0) // the stub touches the hut
+    const joint = raw[onHut]
+    const far = key(s0) === key(joint) ? s1 : s0
+    const chain: Pt[] = [raw[(onHut + raw.length - 1) % raw.length], joint, far]
+    const snapped = snapChain(chain, [gd])
+    // The curve part ends at the joint's point on the outline, the stub starts there, and its far end is untouched.
+    expect(snapped).toContainEqual(gd.corners.get(key(joint))!)
+    expect(snapped[snapped.length - 1]).toEqual(far)
+    expect(snapped[snapped.length - 2]).toEqual(gd.corners.get(key(joint))!)
+  })
+
+  it('leaves a wall on no shape exactly where it was', () => {
+    const chain = edgeChains(g, [ownedEdge(g, at(1, 1), 0), ownedEdge(g, at(1, 1), 1)])[0]
+    expect(snapChain(chain, [guideOf([hutParts()])])).toEqual(chain)
+  })
+
+  it('centres a door on its stretch of the curve, turned to it, as long as the stretch', () => {
+    const parts = hutParts()
+    const gd = guideOf([parts])
+    const e = boundary(hut())[0]
+    const [a, b] = snapSegment(edgeSegment(g, e, 1), [gd])
+    const m: Pt = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
+    // The middle sits on the outline (to within the bend of one short stretch).
+    expect(offRing(parts.rings[0], m)).toBeLessThan(0.02)
+    const [r0, r1] = edgeSegment(g, e, 1)
+    const key = (p: Pt) => `${Math.round(p[0] * 1000)},${Math.round(p[1] * 1000)}`
+    const pts = gd.sides.get(`${key(r0)}>${key(r1)}`)!
+    const chord = Math.hypot(pts[pts.length - 1][0] - pts[0][0], pts[pts.length - 1][1] - pts[0][1])
+    expect(Math.hypot(b[0] - a[0], b[1] - a[1])).toBeCloseTo(chord)
+  })
+
+  it('prefers the first guide (the Enclosure the wall sits on) where two shapes share a side', () => {
+    const mine = guideOf([hutParts()])
+    const other: Guide = { sides: new Map([...mine.sides].map(([k, v]) => [k, v.map(([x, y]) => [x + 1, y] as Pt)])), corners: new Map() }
+    const chain = edgeChains(g, boundary(hut()))[0]
+    expect(snapChain(chain, [mine, other])).toEqual(snapChain(chain, [mine]))
+    expect(snapChain(chain, [other, mine])).not.toEqual(snapChain(chain, [mine]))
+  })
+
+  it('is the same every time', () => {
+    const chain = edgeChains(g, boundary(hut()))[0]
+    expect(snapChain(chain, [guideOf([hutParts()])])).toEqual(snapChain(chain, [guideOf([hutParts()])]))
+  })
+})
+
+describe('bridge size (VTTER-126)', () => {
+  /** True when a point is on the deck: within half its length along it and half its width across. */
+  const onDeck = (b: NonNullable<ReturnType<typeof bridgeOf>>, x: number, y: number) =>
+    Math.abs((x - b.cx) * b.ux + (y - b.cy) * b.uy) <= b.half + 1e-9 && Math.abs((x - b.cx) * -b.uy + (y - b.cy) * b.ux) <= b.width / 2 + 1e-9
+
+  it('keeps one hex, and a one-hex-wide line, at the plain width', () => {
+    expect(bridgeOf(g, [at(5, 4)], new Set())!.width).toBe(BRIDGE_WIDTH)
+    expect(bridgeOf(g, [at(3, 4), at(4, 4), at(5, 4), at(6, 4)], new Set())!.width).toBe(BRIDGE_WIDTH)
+  })
+
+  it('widens to cover a bridge painted three hexes wide', () => {
+    const river = new Set([...Array(10).keys()].flatMap(r => [at(5, r), at(6, r)]))
+    const hexes = [3, 4, 5].flatMap(r => [at(4, r), at(5, r), at(6, r), at(7, r)])
+    const br = bridgeOf(g, hexes, river)!
+    expect(br.width).toBeGreaterThan(BRIDGE_WIDTH * 3)
+    for (const h of hexes) expect(onDeck(br, centre(h).x, centre(h).y), `hex ${h}`).toBe(true)
+  })
+
+  it('lies across the river it stands over, even when painted longer along it', () => {
+    // A river straight down two columns, and a bridge block taller (along the river) than it is wide.
+    const river = new Set([...Array(10).keys()].flatMap(r => [at(5, r), at(6, r)]))
+    const hexes = [2, 3, 4, 5, 6].flatMap(r => [at(5, r), at(6, r)])
+    const br = bridgeOf(g, hexes, river)!
+    expect(Math.abs(br.uy)).toBeLessThan(0.1) // runs left to right, across the river
   })
 })

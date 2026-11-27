@@ -25,6 +25,14 @@
 - The frame sits 0.3 hex radii further in, so the rounded border notches never show.
 - **Pinch zoom follows every map app:** fingers apart zooms in, fingers together zooms out.
 
+**Amended 2026-11-27 (VTTER-126):**
+- **Walls and doors follow the shapes they lie on.** A wall edge on an Enclosure's or space's boundary is drawn along
+  that shape's smoothed outline (the Enclosure the wall sits on first, then any Enclosure, then any space), and a door
+  sits on the same curve. A wall on no boundary stays straight and meets the curve exactly. Walls still block on their
+  hex edges: only the drawing moved.
+- **A bridge over a route crosses it**, and is as wide as the hexes it was painted on. A one-hex-wide bridge keeps the
+  plain width.
+
 **Why:**
 - A field of coloured hexes reads as a spreadsheet, not a place. Keeping the hexes underneath keeps every rule exact,
   while the picture can look drawn.

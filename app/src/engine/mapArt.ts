@@ -3,7 +3,7 @@
 // seeded decoration. Pure, in world units where a hex's circumradius is 1 (multiply by the view's hex size).
 // Nothing here is stored: the same map always gives the same drawing.
 
-import { DIRECTIONS, edgeSegment, hexCenter, hexCorners, hexCount, neighbour, type Direction, type Grid } from './hex.ts'
+import { DIRECTIONS, distance, edgeSegment, hexCenter, hexCorners, hexCount, neighbour, type Direction, type Grid } from './hex.ts'
 import { seededRng } from './mapGen.ts'
 import { onEdges, type MapDoc, type MapObject } from './mapModel.ts'
 import { fillOf } from './mapView.ts'
@@ -173,11 +173,115 @@ export function smoothLine(line: Pt[], passes = 2): Pt[] {
  * left, then rounded. Corners on the map's border stay pinned, so a shape that fills to the edge still does.
  */
 export function shapeOf(g: Grid, hexes: Iterable<number>, seed: string): Ring[] {
+  return shapeParts(g, hexes, seed).rings
+}
+
+/** How many Chaikin passes outlines get. `guideOf` relies on it: each raw corner becomes 2^passes points. */
+const OUTLINE_PASSES = 2
+
+/** The smooth outline and, ring for ring, the raw hex outline it came from, so walls can follow it (`guideOf`). */
+export function shapeParts(g: Grid, hexes: Iterable<number>, seed: string): { raw: Ring[]; rings: Ring[] } {
   const border = bordersOf(g)
-  return traceOutline(g, hexes).map(r => {
+  const raw = traceOutline(g, hexes)
+  const rings = raw.map(r => {
     const pinned = r.map(p => border.has(keyOf(p)))
-    return smoothRing(relax(roughen(g, r, seed), true, k => pinned[k]))
+    return smoothRing(relax(roughen(g, r, seed), true, k => pinned[k]), OUTLINE_PASSES)
   })
+  return { raw, rings }
+}
+
+/**
+ * Where walls and doors are drawn when they lie on a shape's edge (VTTER-126): for each raw hex side on the shape's
+ * boundary, the stretch of the smoothed outline it became, and for each raw corner, the point on the outline it
+ * became. Keys are hex-corner positions, so a wall edge (`edgeSegment`) finds its side directly.
+ */
+export interface Guide {
+  /** `from>to` corner keys, in both directions, to the outline points running from `from` to `to`. */
+  sides: Map<string, Pt[]>
+  corners: Map<string, Pt>
+}
+
+const mid = (a: Pt, b: Pt): Pt => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
+
+/**
+ * A guide from shapes made by `shapeParts`. Later parts win where two shapes share a side. With two Chaikin passes a
+ * ring of n raw corners becomes exactly 4n points: corner k is cut by points 4k − 2 and 4k − 1, and side k (corner k
+ * to k + 1) runs through points 4k − 1 … 4k + 2. The corner's point is the middle of its cut, which is on the outline.
+ */
+export function guideOf(parts: { raw: Ring[]; rings: Ring[] }[]): Guide {
+  const sides = new Map<string, Pt[]>()
+  const corners = new Map<string, Pt>()
+  const per = 2 ** OUTLINE_PASSES
+  for (const { raw, rings } of parts) {
+    raw.forEach((r, ri) => {
+      const s = rings[ri]
+      const n = r.length
+      if (!s || s.length !== per * n) return
+      const at = (i: number) => s[((i % s.length) + s.length) % s.length]
+      const cornerPt = (k: number) => mid(at(per * k - 2), at(per * k - 1))
+      for (let k = 0; k < n; k++) corners.set(keyOf(r[k]), cornerPt(k))
+      for (let k = 0; k < n; k++) {
+        const a = keyOf(r[k])
+        const b = keyOf(r[(k + 1) % n])
+        const pts: Pt[] = [cornerPt(k)]
+        for (let i = per * k - 1; i <= per * k + per - 2; i++) pts.push(at(i))
+        pts.push(cornerPt(k + 1))
+        sides.set(`${a}>${b}`, pts)
+        sides.set(`${b}>${a}`, [...pts].reverse())
+      }
+    })
+  }
+  return { sides, corners }
+}
+
+/**
+ * A wall's chain of raw hex corners, laid along the first guide that has each side. Sides on no guide stay straight,
+ * between their corners' snapped points, so a wall sticking out of a room still meets its curve with no gap.
+ */
+export function snapChain(chain: Pt[], guides: Guide[]): Pt[] {
+  if (chain.length < 2) return chain
+  const keys = chain.map(keyOf)
+  const sideGuide = keys.slice(0, -1).map((a, k) => guides.find(gd => gd.sides.has(`${a}>${keys[k + 1]}`)) ?? null)
+  // A corner takes its point from the guide of a side it belongs to, so the curve and the straight bits meet exactly.
+  const pos = chain.map((p, k) => {
+    const gd = sideGuide[k - 1] ?? sideGuide[k] ?? guides.find(x => x.corners.has(keys[k]))
+    return gd?.corners.get(keys[k]) ?? p
+  })
+  const out: Pt[] = [pos[0]]
+  const push = (p: Pt) => { const l = out[out.length - 1]; if (l[0] !== p[0] || l[1] !== p[1]) out.push(p) }
+  for (let k = 0; k < chain.length - 1; k++) {
+    const gd = sideGuide[k]
+    if (gd) for (const p of gd.sides.get(`${keys[k]}>${keys[k + 1]}`)!) push(p)
+    push(pos[k + 1])
+  }
+  return out
+}
+
+/**
+ * A door's raw edge, moved onto the guide's curve: centred on the middle of its stretch of outline, turned to the
+ * curve there, and as long as the stretch's chord. An edge on no guide keeps its corners' snapped points.
+ */
+export function snapSegment([a, b]: [Pt, Pt], guides: Guide[]): [Pt, Pt] {
+  const ka = keyOf(a)
+  const kb = keyOf(b)
+  const gd = guides.find(x => x.sides.has(`${ka}>${kb}`))
+  if (!gd) {
+    const snap = (p: Pt, k: string) => guides.find(x => x.corners.has(k))?.corners.get(k) ?? p
+    return [snap(a, ka), snap(b, kb)]
+  }
+  const pts = gd.sides.get(`${ka}>${kb}`)!
+  const lens = pts.slice(1).map((p, i) => Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]))
+  let left = lens.reduce((s, l) => s + l, 0) / 2
+  let i = 0
+  while (i < lens.length - 1 && left > lens[i]) left -= lens[i++]
+  const t = lens[i] > 0 ? left / lens[i] : 0
+  const [p, q] = [pts[i], pts[i + 1]]
+  const m: Pt = [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]
+  const tl = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1
+  const [ux, uy] = [(q[0] - p[0]) / tl, (q[1] - p[1]) / tl]
+  const end = pts[pts.length - 1]
+  const half = Math.hypot(end[0] - pts[0][0], end[1] - pts[0][1]) / 2
+  return [[m[0] - ux * half, m[1] - uy * half], [m[0] + ux * half, m[1] + uy * half]]
 }
 
 /** Even-odd point-in-shape over every ring, so holes count as outside. */
@@ -360,6 +464,23 @@ export interface Bridge { cx: number; cy: number; ux: number; uy: number; half: 
 export const BRIDGE_WIDTH = 0.9
 /** How far a bridge reaches past its end hex centres, so it lands on the banks. */
 const BRIDGE_OVERHANG = 0.8
+/** Hex centres spread less than this across the bridge still make a bridge one hex wide (odd-q lines wobble by 0.43). */
+const BRIDGE_WIDE_FROM = 0.6
+/** What a wide bridge adds beyond its outermost hex centres, across. */
+const BRIDGE_EDGE = 1.3
+/** How far from a bridge (in hexes) the route under it is read for its direction. */
+const BRIDGE_LOOK = 2
+
+/** The main axis of a set of points (the larger eigenvector of their spread), as a unit vector, or null for fewer than 2. */
+function mainAxis(ps: { x: number; y: number }[]): [number, number] | null {
+  if (ps.length < 2) return null
+  const cx = ps.reduce((a, p) => a + p.x, 0) / ps.length
+  const cy = ps.reduce((a, p) => a + p.y, 0) / ps.length
+  let sxx = 0, syy = 0, sxy = 0
+  for (const p of ps) { sxx += (p.x - cx) ** 2; syy += (p.y - cy) ** 2; sxy += (p.x - cx) * (p.y - cy) }
+  const angle = 0.5 * Math.atan2(2 * sxy, sxx - syy)
+  return [Math.cos(angle), Math.sin(angle)]
+}
 
 /** Where a bridge goes and which way it runs. `under` is the fill Route hexes beneath it, if any. */
 export function bridgeOf(g: Grid, hexes: number[], under: ReadonlySet<number>): Bridge | null {
@@ -369,37 +490,27 @@ export function bridgeOf(g: Grid, hexes: number[], under: ReadonlySet<number>): 
   const cy = pts.reduce((a, p) => a + p.y, 0) / pts.length
   let ux = 1
   let uy = 0
-  if (pts.length >= 2) {
-    // The main axis of the hex centres (the larger eigenvector of their spread).
-    let sxx = 0, syy = 0, sxy = 0
-    for (const p of pts) { sxx += (p.x - cx) ** 2; syy += (p.y - cy) ** 2; sxy += (p.x - cx) * (p.y - cy) }
-    const angle = 0.5 * Math.atan2(2 * sxy, sxx - syy)
-    ux = Math.cos(angle)
-    uy = Math.sin(angle)
-  } else {
-    // Across the route: perpendicular to the way the route runs through this hex.
-    const i = hexes[0]
-    let dx = 0, dy = 0
-    for (const d of DIRECTIONS) {
-      const nb = neighbour(g, i, d)
-      if (nb === null || !under.has(nb)) continue
-      const c = hexCenter(g, nb, 1)
-      let vx = c.x - cx, vy = c.y - cy
-      // Opposite neighbours describe the same line, so fold them onto one side before adding.
-      if (vx < 0 || (vx === 0 && vy < 0)) { vx = -vx; vy = -vy }
-      dx += vx; dy += vy
-    }
-    const len = Math.hypot(dx, dy)
-    if (len > 0) { ux = -dy / len; uy = dx / len }
-  }
+  // Over a route, a bridge lies across it (VTTER-126): the route's way here is the main axis of its hexes within
+  // BRIDGE_LOOK of the bridge. With no route under it, a bridge runs along its own hexes.
+  const near = [...under].filter(r => hexes.some(h => distance(g, r, h) <= BRIDGE_LOOK)).map(i => hexCenter(g, i, 1))
+  const river = near.length >= 2 ? mainAxis(near) : null
+  if (river) { ux = -river[1]; uy = river[0] }
+  else if (pts.length >= 2) [ux, uy] = mainAxis(pts) ?? [1, 0]
   let half = 0
-  for (const p of pts) half = Math.max(half, Math.abs((p.x - cx) * ux + (p.y - cy) * uy))
-  return { cx, cy, ux, uy, half: half + BRIDGE_OVERHANG, width: BRIDGE_WIDTH }
+  let across = 0
+  for (const p of pts) {
+    half = Math.max(half, Math.abs((p.x - cx) * ux + (p.y - cy) * uy))
+    across = Math.max(across, Math.abs((p.x - cx) * -uy + (p.y - cy) * ux))
+  }
+  // A bridge one hex wide (a single hex, or a line whose centres wobble less than BRIDGE_WIDE_FROM) keeps the plain
+  // width. A wider one spans its outermost hex centres plus most of a hex (its inner width is about 1.73).
+  const width = across < BRIDGE_WIDE_FROM ? BRIDGE_WIDTH : 2 * across + BRIDGE_EDGE
+  return { cx, cy, ux, uy, half: half + BRIDGE_OVERHANG, width }
 }
 
 /** What gets drawn for one object, in world units. */
 export type Art =
-  | { kind: 'shape'; o: MapObject; texture: Texture; rings: Ring[] }
+  | { kind: 'shape'; o: MapObject; texture: Texture; rings: Ring[]; raw: Ring[] }
   | { kind: 'route'; o: MapObject; texture: Texture; lines: Pt[][]; rings: Ring[] | null }
   | { kind: 'edges'; o: MapObject; lines: Pt[][] }
   | { kind: 'portal'; o: MapObject; segments: [Pt, Pt][] }
@@ -441,7 +552,8 @@ export function artOf(g: Grid, o: MapObject, mapId: string, others: readonly Map
     const wide = isWide(g, at)
     return { kind: 'route', o, texture, lines: wide ? [] : routeLines(g, at).map(l => smoothLine(l)), rings: wide ? shapeOf(g, at, seed) : null }
   }
-  return { kind: 'shape', o, texture, rings: shapeOf(g, at, seed) }
+  const { raw, rings } = shapeParts(g, at, seed)
+  return { kind: 'shape', o, texture, rings, raw }
 }
 
 /**
