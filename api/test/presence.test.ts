@@ -56,7 +56,7 @@ class MemoryFriends implements Partial<FriendStore> {
 
 class MemoryPresence implements PresenceStore {
   seen: Record<string, PresenceRecord> = {}
-  async beat(userId: string, gameId: string, nowMs: number) { this.seen[userId] = { gameId, seenAt: nowMs } }
+  async beat(userId: string, gameId: string | null, nowMs: number) { this.seen[userId] = { gameId: gameId ?? '', seenAt: nowMs } }
   async presenceOf(userIds: string[]) {
     return Object.fromEntries(userIds.filter(id => this.seen[id]).map(id => [id, this.seen[id]]))
   }
@@ -122,6 +122,36 @@ describe('onlineIds', () => {
   })
   it('beats well inside the window, so one missed beat is not offline', () => {
     expect(gameData.presence.heartbeatSeconds * 2).toBeLessThanOrEqual(gameData.presence.onlineSeconds)
+  })
+})
+
+describe('PUT /presence', () => {
+  it('needs sign-in, refuses other methods, and writes only the caller, with no Game', async () => {
+    const w = await world()
+    expect((await w.call('PUT', '/presence')).status).toBe(401)
+    expect((await w.call('GET', '/presence', ANA)).status).toBe(405)
+    const res = await w.call('PUT', '/presence', ANA)
+    expect(res.status).toBe(204)
+    expect(w.presence.seen[ANA]).toEqual({ gameId: '', seenAt: NOW.getTime() })
+    expect(Object.keys(w.presence.seen)).toEqual([ANA])
+  })
+
+  it('shows a mutual friend as online with no Game named', async () => {
+    const w = await world()
+    w.befriend(ANA, BEN)
+    await w.call('PUT', '/presence', BEN)
+    const res = await w.call('GET', '/friends', ANA)
+    const friend = (await res.json()).friends[0]
+    expect(friend.online).toBe(true)
+    expect(friend.game).toBeNull()
+  })
+
+  it('does not show a one-sided add', async () => {
+    const w = await world()
+    w.friends.sides.set(`${ANA}/${BEN}`, 'accepted')
+    await w.call('PUT', '/presence', BEN)
+    const res = await w.call('GET', '/friends', ANA)
+    expect(JSON.stringify(await res.json())).not.toContain('"online":true')
   })
 })
 

@@ -28,6 +28,12 @@ describe('DynamoPresenceStore', () => {
     expect(input.ExpressionAttributeValues).toEqual({ ':k': 'presence', ':g': G1, ':t': 1_700_000_000_000 })
   })
 
+  it('stores an empty gameId when the player is not on a Game page', async () => {
+    ddb.on(UpdateCommand).resolves({})
+    await presence.beat(ANA, null, 1_700_000_000_000)
+    expect(ddb.commandCalls(UpdateCommand)[0].args[0].input.ExpressionAttributeValues).toEqual({ ':k': 'presence', ':g': '', ':t': 1_700_000_000_000 })
+  })
+
   it('reads many players in one BatchGetItem, strongly consistent, never a GetItem each', async () => {
     ddb.on(BatchGetCommand).resolves({
       Responses: { 'vtter-game': [{ ownerId: BEN, gameId: G1, seenAt: 1_700_000_000_000 }] },

@@ -49,7 +49,7 @@ describe('presenceText', () => {
   it('names the Game only when the API sent it', () => {
     expect(presenceText(friend('A', false))).toBe('Offline')
     expect(presenceText({})).toBe('Offline')
-    expect(presenceText(friend('A', true))).toBe('In a Game')
+    expect(presenceText(friend('A', true))).toBe('Online')
     expect(presenceText(friend('A', true, { id: 'g', name: 'Friday' }))).toContain('Friday')
   })
   it('never names a Game for someone who is offline', () => {

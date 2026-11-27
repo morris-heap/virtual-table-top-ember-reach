@@ -97,8 +97,8 @@ in `app/`, then `npx wrangler deploy`); `.github/workflows/app.yml` checks pull 
   friends list (VTTER-73, `/friends`) is mutual: a request by player ID that the other player accepts. A friend can read
   an adventure whose visibility is `friends` (`/friends/<playerId>/adventures/<id>`, read-only), and `public` visibility
   stays refused ([ADR 0009](docs/adr/0009-friends.md)). Friends can also chat (VTTER-109,
-  `/friends/<playerId>/chat`): plain text, polled, never push, and **not** a chat platform ([ADR 0010](docs/adr/0010-friend-chat.md)). A friend shows **online** while a Game page is open
-  (VTTER-73, a heartbeat, mutual friends only: [ADR 0012](docs/adr/0012-presence.md)). **Scope is locked** (2026-11-25, VTTER-92): the app automates Emberreach's own rules
+  `/friends/<playerId>/chat`): plain text, polled, never push, and **not** a chat platform ([ADR 0010](docs/adr/0010-friend-chat.md)). A friend shows **online** while the app is open and visible
+  (VTTER-73, a heartbeat from every page, mutual friends only: [ADR 0012](docs/adr/0012-presence.md)). **Scope is locked** (2026-11-25, VTTER-92): the app automates Emberreach's own rules
   deeply and is **not** a general VTT platform. Don't add dynamic lighting (light sources, bright/dim light), 3D terrain, a user
   scripting language, a system builder for other RPGs, a content marketplace or built-in video/voice. **Fog of war is
   in** (amended 2026-11-26): party or per-token vision, the GM's toggle per Game, always filtered by the API, never the

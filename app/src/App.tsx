@@ -16,6 +16,7 @@ import Landing, { Logo } from './Landing.tsx'
 import { navigate, useRoute } from './nav.ts'
 import Profile from './Profile.tsx'
 import Roller from './Roller.tsx'
+import { useAppPresence } from './usePresence.ts'
 import { useAuth, type Auth } from './auth/useAuth.ts'
 import Link from './Link.tsx'
 
@@ -47,6 +48,7 @@ function GoHome() {
 /** The screens for a signed-in player (VTTER-71). */
 function SignedIn({ auth, name }: { auth: Auth; name: string }) {
   const route = useRoute()
+  useAppPresence(route.name !== 'game')
   switch (route.name) {
     case 'home': return <Home auth={auth} name={name} />
     case 'profile': return <Profile auth={auth} name={name} />

@@ -12,8 +12,11 @@ own store) was dropped when the friends list and chat merged first. This builds 
 
 ## Decision
 
-- **Presence is a heartbeat, not a connection.** While a Game page is open and the tab is visible, the app sends
-  `PUT /games/:id/presence` every `presence.heartbeatSeconds` (25, in `data/game.json`). The API checks the caller is a
+- **Presence is a heartbeat, not a connection.** While the app is open and the tab is visible, it sends a beat every
+  `presence.heartbeatSeconds` (25, in `data/game.json`): a Game page sends
+  `PUT /games/:id/presence`, and every other page sends `PUT /presence` (amended 2026-11-27, so a signed-in friend is not
+  Offline). The two never run at once. The Game beat is below.
+- **The Game beat.** `PUT /games/:id/presence` every `presence.heartbeatSeconds` (25, in `data/game.json`). The API checks the caller is a
   member, writes **their own** presence item, and answers with the player IDs online at that table.
 - **One item per player, overwritten:** `ownerId` = the player, `id: presence#current`, `kind: presence`, `gameId` and
   `seenAt` (epoch ms). No new table, no new index, no TTL and no cleanup job: a stale `seenAt` simply reads as offline.
@@ -27,10 +30,10 @@ own store) was dropped when the friends list and chat merged first. This builds 
   - **On the friends list**, presence is for **mutual friends only**. The API reads the other side of each friendship
     (`mutualWith`, one `BatchGetItem`), because a player ID is public and my own side can be stale: if a friend removed
     me and the second delete never happened, I must not keep seeing when they are online.
-  - **A friend's Game is named only if the viewer is a member of it too.** Otherwise the row says "In a Game", so a private
+  - **A friend's Game is named only if the viewer is a member of it too.** Otherwise the row says "Online", so a private
     Game's name never reaches an outsider.
 - **No new IAM actions:** the role already has `UpdateItem` and `BatchGetItem` ([ADR 0003](0003-backend-dynamodb-lambda.md)).
-- **The app** shows a dot next to each member at a table, a dot and a line on each friend ("Offline", "In a Game", or the
+- **The app** shows a dot next to each member at a table, a dot and a line on each friend ("Offline", "Online", or the
   Game's name with an Open link), and a **Friends online** panel on Home that appears only when someone is online. The
   Friends screen and the Home panel re-read the friends list every heartbeat while the tab is visible. Chat stays one
   click away from an online friend.

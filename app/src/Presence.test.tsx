@@ -2,20 +2,21 @@
 import { act, cleanup, render, renderHook, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { FriendsOnline, FriendsView } from './Friends.tsx'
-import { friendsApi, gamesApi } from './api/client.ts'
+import { friendsApi, gamesApi, presenceApi } from './api/client.ts'
 import type { Friend, FriendLists } from './api/types.ts'
 import { HEARTBEAT_MS } from './engine/presence.ts'
-import { usePresence } from './usePresence.ts'
+import { useAppPresence, usePresence } from './usePresence.ts'
 
 vi.mock('./api/client.ts', () => ({
   friendsApi: { list: vi.fn(), request: vi.fn(), remove: vi.fn(), adventures: vi.fn(), adventure: vi.fn() },
-  gamesApi: { heartbeat: vi.fn() },
+  gamesApi: { heartbeat: vi.fn() }, presenceApi: { heartbeat: vi.fn() },
   profileApi: {}, adventuresApi: {},
   ApiError: class extends Error {},
 }))
 
 const friends = vi.mocked(friendsApi)
 const games = vi.mocked(gamesApi)
+const app = vi.mocked(presenceApi)
 const ana: Friend = { playerId: 'EMBER-AAAAB', displayName: 'Ana', online: true, game: { id: 'g-1', name: 'Friday' } }
 const ben: Friend = { playerId: 'EMBER-AAAAC', displayName: 'Ben', online: true, game: null }
 const cal: Friend = { playerId: 'EMBER-AAAAD', displayName: 'Cal', online: false, game: null }
@@ -34,6 +35,24 @@ afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
   vi.useRealTimers()
+})
+
+describe('useAppPresence', () => {
+  it('beats on any page while enabled, skips a hidden tab, and stops when disabled', async () => {
+    app.heartbeat.mockResolvedValue(undefined)
+    const { rerender } = renderHook(({ on }) => useAppPresence(on), { initialProps: { on: true } })
+    await settle()
+    expect(app.heartbeat).toHaveBeenCalledTimes(1)
+    await tick(HEARTBEAT_MS)
+    expect(app.heartbeat).toHaveBeenCalledTimes(2)
+    setVisibility('hidden')
+    await tick(HEARTBEAT_MS * 2)
+    expect(app.heartbeat).toHaveBeenCalledTimes(2)
+    setVisibility('visible')
+    rerender({ on: false }) // a Game page takes over, so this one stops
+    await tick(HEARTBEAT_MS * 3)
+    expect(app.heartbeat).toHaveBeenCalledTimes(2)
+  })
 })
 
 describe('usePresence', () => {
@@ -84,7 +103,7 @@ describe('the Friends list', () => {
     expect(within(rows[0]).getByRole('img', { name: 'Online now' })).toBeVisible()
     expect(rows[0]).toHaveTextContent('At the table in “Friday”')
     expect(within(rows[0]).getByRole('link', { name: 'Open' })).toHaveAttribute('href', '/games/g-1')
-    expect(rows[1]).toHaveTextContent('In a Game')
+    expect(rows[1]).toHaveTextContent('Online')
     expect(within(rows[1]).queryByRole('link', { name: 'Open' })).toBeNull()
     expect(within(rows[2]).getByRole('img', { name: 'Offline' })).toBeVisible()
     expect(rows[2]).toHaveTextContent('Offline')

@@ -1,5 +1,5 @@
 // DynamoDB implementation of PresenceStore (docs/adr/0012-presence.md). Same table as everything else:
-//   (me, presence#current)   where I am right now: kind 'presence', `gameId` and `seenAt` (epoch ms).
+//   (me, presence#current)   where I am right now: kind 'presence', `gameId` ('' off a Game page) and `seenAt` (epoch ms).
 // One item per player, overwritten by every heartbeat. There is no TTL and no cleanup job: a stale `seenAt`
 // simply reads as offline. UpdateItem and BatchGetItem are used, which the Lambda role already grants
 // (infra/lib/api-stack.ts). Add an action there before calling anything new here.
@@ -13,13 +13,13 @@ export const PRESENCE_ID = 'presence#current'
 export class DynamoPresenceStore implements PresenceStore {
   constructor(private db: DynamoDBDocumentClient, private table: string) {}
 
-  async beat(userId: string, gameId: string, nowMs: number) {
+  async beat(userId: string, gameId: string | null, nowMs: number) {
     await guard(() => this.db.send(new UpdateCommand({
       TableName: this.table,
       Key: { ownerId: userId, id: PRESENCE_ID },
       UpdateExpression: 'SET #kind = :k, #g = :g, #seen = :t',
       ExpressionAttributeNames: { '#kind': 'kind', '#g': 'gameId', '#seen': 'seenAt' },
-      ExpressionAttributeValues: { ':k': 'presence', ':g': gameId, ':t': nowMs },
+      ExpressionAttributeValues: { ':k': 'presence', ':g': gameId ?? '', ':t': nowMs },
     })))
   }
 
