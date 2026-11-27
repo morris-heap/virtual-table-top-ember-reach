@@ -229,3 +229,6 @@ No plan is needed beyond one line, because nothing here can lose work: the branc
 3. `git -C "$MAIN" fetch --prune origin`, and `git -C "$MAIN" worktree prune`.
 4. Move the Jira item to **Done** if it isn't already, and add a comment with the merged PR link.
 5. Mention the deploy: `gh run list --branch main --limit 3`. Report it if a run failed. Don't fix it here.
+6. **Prompt the user to run `/clear`.** End the report with one line, for example "VTTER-<n> is done: run `/clear`
+   before the next ticket." Say it only here, once the PR is merged and the item is Done, not after In Review.
+   You can't run `/clear` yourself, so ask; don't try.
