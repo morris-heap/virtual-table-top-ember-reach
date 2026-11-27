@@ -41,6 +41,8 @@ export function Editor({ initial, onSave }: { initial: MapDoc; onSave(map: Omit<
   const [history, setHistory] = useState<MapDoc[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [tool, setTool] = useState<Tool>('select')
+  // The grid is hidden for viewing and shows while painting; this keeps it on all the time.
+  const [gridOn, setGridOn] = useState(false)
   const [kind, setKind] = useState<Kind>('space')
   const [type, setType] = useState(typesOfKind('space')[0].id)
   const [save, setSave] = useState<SaveState>({ status: 'saved' })
@@ -219,6 +221,10 @@ export function Editor({ initial, onSave }: { initial: MapDoc; onSave(map: Omit<
               </button>
             ))}
           </div>
+          <button type="button" className="account-btn" aria-pressed={gridOn} onClick={() => setGridOn(g => !g)}
+            title="The grid shows while you paint. Turn it on to see it all the time.">
+            Grid
+          </button>
         </div>
         {tool !== 'select' && !selected && <p className="notice" role="status">Add or select an object first, then paint its hexes.</p>}
         {tool !== 'select' && selected && (
@@ -229,7 +235,7 @@ export function Editor({ initial, onSave }: { initial: MapDoc; onSave(map: Omit<
       {!narrow && <aside className="panel map-side" aria-label="Layers"><h2>Layers</h2>{layers}</aside>}
 
       <section className="panel map-stage" aria-label="Map">
-        <MapCanvas map={doc} paint={paint} selectedId={selectedId} edgeTarget={edgeTarget} tool={tool}
+        <MapCanvas map={doc} mapId={doc.id} showGrid={gridOn || tool !== 'select'} paint={paint} selectedId={selectedId} edgeTarget={edgeTarget} tool={tool}
           onStroke={onStroke} onStrokeEnd={onStrokeEnd} onPick={onPick} />
         <p className="muted map-foot">
           {doc.objects.length} of {MAP_LIMITS.objects} objects · {Math.ceil(bytes / 1000)} KB of {MAP_LIMITS.itemBytesMax / 1000} KB

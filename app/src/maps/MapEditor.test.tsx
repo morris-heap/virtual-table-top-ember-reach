@@ -1,5 +1,6 @@
 // The map editor (VTTER-74): adding objects, the layer tree, editing properties, GM-only, and saving.
-// The canvas itself isn't drawn in jsdom; painting is covered by the engine tests (mapModel.paint, mapView).
+// The canvas itself isn't drawn in jsdom; painting is covered by the engine tests (mapModel.paint, mapView), and
+// the art drawn over the hexes by mapArt.test.ts (VTTER-119).
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { newMap, type MapDoc } from '../engine/mapModel.ts'
@@ -100,6 +101,22 @@ describe('the map editor', () => {
     addKind('Environment space', 'mud')
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     expect(screen.queryByRole('tree', { name: 'Layers' })).toBeNull()
+  })
+
+  it('keeps the grid off for viewing, and the Grid toggle turns it on whatever the tool (VTTER-119)', () => {
+    open()
+    const grid = screen.getByRole('button', { name: 'Grid' })
+    expect(grid).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(grid)
+    expect(grid).toHaveAttribute('aria-pressed', 'true')
+    // Painting shows the grid by itself; switching tools never changes the author's toggle.
+    fireEvent.click(screen.getByRole('button', { name: 'Paint' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Select' }))
+    expect(grid).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(grid)
+    expect(grid).toHaveAttribute('aria-pressed', 'false')
+    // The canvas is still the map either way.
+    expect(screen.getByRole('img', { name: /Hex map/ })).toBeInTheDocument()
   })
 
   it('removes an object, moving what sat on it down a layer', () => {

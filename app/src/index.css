@@ -555,19 +555,25 @@ a.toast-text:hover strong { text-decoration: underline; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
 @media (prefers-reduced-motion: reduce) { .toast { animation: none; } }
 
-/* --- Maps (VTTER-74). Colours from docs/mockups/map-editor.html. --- */
+/* --- Maps (VTTER-74). Colours from docs/mockups/map-editor.html. Texture bases (VTTER-119) from --map-earth on. --- */
 :root {
-  --map-empty: #f1ebe4; --map-grid: rgba(42, 36, 32, .10); --map-floor: #e9e1d6; --map-room: #e2d6c6; --map-rock: #8f8377;
+  --map-empty: #f1ebe4; --map-grid: rgba(42, 36, 32, .22); --map-floor: #e9e1d6; --map-room: #e2d6c6; --map-rock: #8f8377;
   --map-rough: #b9ab9b; --map-water: #9cc3dc; --map-fire: #f2c3ae; --map-forest: #9fbf8f; --map-mud: #a99677; --map-snow: #f4f6f8;
   --map-road: #d8c49c; --map-bridge: #c79a64; --map-wall: #3b302a; --map-portal: #d9531e; --map-gm: #6b4fa3; --map-gm-soft: #ece6f6;
   --map-mark: #ffffff; --map-foe: #a3322a; --map-npc: #2f7d4f;
+  --map-earth: #c9b08c; --map-grass: #a9c58a; --map-sand: #e8d6a8; --map-swamp: #8f9a6e; --map-cave: #b3a796; --map-stone: #cfc6b8;
+  --map-wood: #c79a64; --map-iron: #8d9298; --map-glass: #cfe3e8; --map-ice: #d6eaf2; --map-shallows: #b6d6e6; --map-deep: #6f9fc0;
+  --map-steam: #e4e0dc; --map-chasm: #3b3430;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --map-empty: #1d1714; --map-grid: rgba(241, 232, 224, .08); --map-floor: #5d5249; --map-room: #4f453d; --map-rock: #2b2420;
+    --map-empty: #1d1714; --map-grid: rgba(241, 232, 224, .18); --map-floor: #5d5249; --map-room: #4f453d; --map-rock: #2b2420;
     --map-rough: #3b322c; --map-water: #2c4f66; --map-fire: #7a3f28; --map-forest: #33502c; --map-mud: #4d4031; --map-snow: #8a929a;
     --map-road: #6b5a3b; --map-bridge: #7a5a36; --map-wall: #f1e8e0; --map-portal: #ff7a3d; --map-gm: #b49bea; --map-gm-soft: #2c2340;
     --map-mark: #221b17; --map-foe: #ff8a80; --map-npc: #6fd39a;
+    --map-earth: #5a4a36; --map-grass: #3d5630; --map-sand: #6e6142; --map-swamp: #3a4230; --map-cave: #4a423a; --map-stone: #57504a;
+    --map-wood: #6e5232; --map-iron: #464b51; --map-glass: #3e5258; --map-ice: #4e6670; --map-shallows: #335a6e; --map-deep: #1f3a4f;
+    --map-steam: #5a5652; --map-chasm: #0f0c0b;
   }
 }
 main.full { max-width: 1400px; }
