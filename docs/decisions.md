@@ -65,6 +65,7 @@ The app **deeply automates Emberreach's own rules**. It is **not** a general VTT
 
 | Date | Decision (ticket) | Locked rule in one line | Full entry |
 |---|---|---|---|
+| 11-27 | Maps drawn as art (VTTER-119) | Hexes are the invisible rules layer; each object is drawn as one smooth, textured shape. Textures are generated in code per type id, decoration is seeded and never stored, and the grid shows while painting or on demand. | [file](decisions/2026-11-27-maps-drawn-as-art.md) |
 | 11-27 | Find a player by display name (VTTER-108) | Opt-in, off by default. Whole-name match only, never a prefix. A result is a display name and player ID, nothing else. At most 10 matches, 12 searches a minute. | [file](decisions/2026-11-27-find-players-by-name.md) |
 | 11-27 | Maps ship before chapters (VTTER-74) | Maps are made, generated, saved and deleted on their own; the chapter link and the Game map route come with VTTER-75. 3 maps per author. A player's view drops GM-only objects (and what sits on them), Entities and notes. Doors let you through walls; windows don't. | [file](decisions/2026-11-27-maps-before-chapters.md) |
 | 11-26 | Friends show when they are online (VTTER-73) | Heartbeat every 25 s from any page (a Game page also names its Game), online for 70 s. Mutual friends only, never a pending request. A friend's Game is named only if you are at that table too. | [file](decisions/2026-11-26-friends-online.md) |
