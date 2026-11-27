@@ -32,6 +32,21 @@ export function unreadCount(friends: Friend[]): number {
   return friends.filter(f => f.unread).length
 }
 
+/** The player IDs of friends with messages waiting, for comparing one poll with the next. */
+export function unreadIds(friends: Friend[]): Set<string> {
+  return new Set(friends.filter(f => f.unread).map(f => f.playerId))
+}
+
+/**
+ * Friends whose chat just went from read to unread since the last poll, so each new arrival gets one toast.
+ * `previous` is null on the first poll, when anything already waiting is old news. A chat that is open
+ * is skipped, because its messages are on screen.
+ */
+export function newlyUnread(previous: ReadonlySet<string> | null, friends: Friend[], openChat?: string): Friend[] {
+  if (previous === null) return []
+  return friends.filter(f => f.unread && !previous.has(f.playerId) && f.playerId !== openChat)
+}
+
 /** Whether any message in the thread came from the friend, i.e. whether opening the thread has something to mark as read. */
 export function hasFromThem(messages: ChatMessage[]): boolean {
   return messages.some(m => !m.mine)

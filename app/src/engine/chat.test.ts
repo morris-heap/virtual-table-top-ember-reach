@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ChatMessage, Friend } from '../api/types.ts'
-import { canSend, charsLeft, CHAT_LIMITS, hasFromThem, mergeMessages, newestId, unreadCount } from './chat.ts'
+import { canSend, charsLeft, CHAT_LIMITS, hasFromThem, mergeMessages, newestId, newlyUnread, unreadCount, unreadIds } from './chat.ts'
 
 const msg = (second: number, mine = false, text = `m${second}`): ChatMessage => ({
   id: `2026-11-26T12:00:${String(second).padStart(2, '0')}.000Z#aaaaaaaa`, mine, text, createdAt: `2026-11-26T12:00:${String(second).padStart(2, '0')}.000Z`,
@@ -53,6 +53,26 @@ describe('unread', () => {
     ]
     expect(unreadCount(friends)).toBe(1)
     expect(unreadCount([])).toBe(0)
+  })
+  describe('newlyUnread', () => {
+    const ana: Friend = { playerId: 'EMBER-AAAAB', displayName: 'Ana', unread: true }
+    const ben: Friend = { playerId: 'EMBER-AAAAC', displayName: 'Ben', unread: true }
+    it('reports nothing on the first poll, whatever is waiting', () => {
+      expect(newlyUnread(null, [ana, ben])).toEqual([])
+    })
+    it('reports a friend whose chat went from read to unread', () => {
+      expect(newlyUnread(new Set(), [ana])).toEqual([ana])
+      expect(newlyUnread(unreadIds([{ ...ana, unread: false }]), [ana])).toEqual([ana])
+    })
+    it('does not repeat a chat that was already unread', () => {
+      expect(newlyUnread(new Set([ana.playerId]), [ana, ben])).toEqual([ben])
+    })
+    it('skips the chat that is open', () => {
+      expect(newlyUnread(new Set(), [ana, ben], ana.playerId)).toEqual([ben])
+    })
+    it('ignores friends with nothing waiting', () => {
+      expect(newlyUnread(new Set(), [{ ...ana, unread: false }, { playerId: 'EMBER-AAAAD', displayName: 'Cal' }])).toEqual([])
+    })
   })
   it('knows whether a thread has anything from the friend to mark as read', () => {
     expect(hasFromThem([msg(1, true), msg(2, true)])).toBe(false)
