@@ -72,7 +72,7 @@ says **replace** on the table or the user pool.
 **Rules ripple check.** When `rules/`, `sheets/`, `data/`, or `docs/decisions.md` changed, check these
 (CLAUDE.md › How we establish rules):
 
-- A new or changed rule has a dated entry at the top of `docs/decisions.md`, in the same branch.
+- A new or changed rule has a dated file in `docs/decisions/` and a row at the top of `docs/decisions.md`, in the same branch.
 - The numbers agree across `rules/core-rules.md`, `rules/gm-guide.md`, `sheets/character-sheet.md`, `README.md`, and `data/*.json`.
   Grep for each number that changed.
 - The rules file's version in its title went up by a minor step for a batch of rule changes, and the decision entry mentions it.
@@ -152,8 +152,8 @@ git -C "$WT" diff --name-only --diff-filter=U
 
 **Both sides appended to a list or log.** Keep both entries, in the file's own order:
 
-- `docs/decisions.md` — both added a dated entry. Keep both, **newest first**. Never drop one: each
-  records an approval that happened.
+- `docs/decisions.md` — both added a table row. Keep both rows, **newest first**, and make sure both files in
+  `docs/decisions/` exist. Never drop one: each records an approval that happened.
 - `docs/adr/` — if both branches claimed the same ADR number, renumber **yours** to the next free one
   (check `origin/main`, not the local branch) and update every link to it.
 - `README.md` / `*/README.md` tables and lists, `MEMORY.md` — keep both rows.

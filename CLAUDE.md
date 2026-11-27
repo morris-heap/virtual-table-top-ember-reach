@@ -32,8 +32,9 @@ relevant ones before answering design questions or making edits:
 
 1. **Proposal:** new ideas go to the user first, or into *Open questions* at the end of
    `rules/core-rules.md`.
-2. **Decision:** when the user approves a rule, add a dated entry to `docs/decisions.md`
-   (newest at the top) **and** update the rules file it affects, in the same change.
+2. **Decision:** when the user approves a rule, write a dated file in `docs/decisions/` and add its one-line row at
+   the top of the table in `docs/decisions.md` (the index loaded into every session), **and** update the rules file
+   it affects, in the same change.
 3. **Ripple check:** when a rule changes, search for every place it's referenced and update all of them:
    the core rules, GM guide stat blocks and number tables, the character sheet, and the README.
    Numbers must agree everywhere (DCs, Grit formulas, Momentum costs, and so on).
