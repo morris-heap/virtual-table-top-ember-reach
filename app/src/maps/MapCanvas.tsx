@@ -6,10 +6,10 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { edgeAt, hexAt, hexCenter, hexCorners, indexOf, type Grid } from '../engine/hex.ts'
 import {
-  artKey, artOf, boundsOf, drawOrder, scatterDecor, smoothRing, traceOutline, type Art, type Decor, type Pt, type Ring, type Texture,
+  artKey, artOf, boundsOf, drawOrder, frameOf, type Bridge, scatterDecor, smoothRing, traceOutline, type Art, type Decor, type Pt, type Ring, type Texture,
 } from '../engine/mapArt.ts'
 import type { MapDoc } from '../engine/mapModel.ts'
-import { fitView, markOf, panBy, visibleRange, zoomAt, type Paint, type View } from '../engine/mapView.ts'
+import { fitView, markOf, panBy, pinchStep, visibleRange, zoomAt, type Paint, type View } from '../engine/mapView.ts'
 import { decodeRuns } from '../engine/runs.ts'
 import { baseColor, shade, TextureBank } from './textures.ts'
 
@@ -61,15 +61,72 @@ function build(a: Art, key: string): Built {
     addLines(lines, a.lines)
     let shape: Path2D | null = null
     if (a.rings) { shape = new Path2D(); addRings(shape, a.rings) }
-    const b = boundsOf(a.lines)
-    return { key, a, shape, lines, bbox: { x0: b.x0 - 1, y0: b.y0 - 1, x1: b.x1 + 1, y1: b.y1 + 1 } }
+    const b = boundsOf([...a.lines, ...(a.rings ?? [])])
+    return { key, a, shape, lines: a.lines.length ? lines : null, bbox: { x0: b.x0 - 1, y0: b.y0 - 1, x1: b.x1 + 1, y1: b.y1 + 1 } }
   }
   if (a.kind === 'edges') {
     const lines = new Path2D()
     addLines(lines, a.lines)
     return { key, a, shape: null, lines, bbox: boundsOf(a.lines) }
   }
+  if (a.kind === 'bridge') {
+    const { cx, cy, half } = a.bridge
+    return { key, a, shape: null, lines: null, bbox: { x0: cx - half - 1, y0: cy - half - 1, x1: cx + half + 1, y1: cy + half + 1 } }
+  }
+  if (a.kind === 'hatch') {
+    const b = boundsOf([a.centres])
+    return { key, a, shape: null, lines: null, bbox: { x0: b.x0 - 1, y0: b.y0 - 1, x1: b.x1 + 1, y1: b.y1 + 1 } }
+  }
   return { key, a, shape: null, lines: null, bbox: boundsOf(a.segments) }
+}
+
+/** A bridge: a plank deck laid across the route, with a rail and posts along each side. World units. */
+function drawBridge(ctx: CanvasRenderingContext2D, b: Bridge, wood: string, ink: string) {
+  ctx.save()
+  ctx.translate(b.cx, b.cy)
+  ctx.rotate(Math.atan2(b.uy, b.ux))
+  const w = b.width / 2
+  // A soft shadow on the water, then the deck.
+  ctx.fillStyle = 'rgba(0, 0, 0, .18)'
+  ctx.fillRect(-b.half + 0.06, -w + 0.1, b.half * 2, b.width)
+  ctx.fillStyle = wood
+  ctx.fillRect(-b.half, -w, b.half * 2, b.width)
+  // Planks run across the deck.
+  ctx.strokeStyle = shade(wood, -0.35, 0.8)
+  ctx.lineWidth = 0.025
+  ctx.beginPath()
+  for (let x = -b.half + 0.16; x < b.half; x += 0.16) { ctx.moveTo(x, -w); ctx.lineTo(x, w) }
+  ctx.stroke()
+  // Rails along both sides, with posts.
+  ctx.strokeStyle = ink
+  ctx.lineWidth = 0.07
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  for (const y of [-w, w]) { ctx.moveTo(-b.half, y); ctx.lineTo(b.half, y) }
+  ctx.stroke()
+  ctx.fillStyle = ink
+  for (let x = -b.half; x <= b.half + 1e-6; x += Math.max(0.4, (b.half * 2) / Math.max(1, Math.round(b.half * 2 / 0.6)))) {
+    for (const y of [-w, w]) { ctx.beginPath(); ctx.arc(x, y, 0.06, 0, Math.PI * 2); ctx.fill() }
+  }
+  ctx.restore()
+}
+
+/** A trap door: a square hatch with planks and a ring, on each of its hexes. World units. */
+function drawHatch(ctx: CanvasRenderingContext2D, [x, y]: Pt, wood: string, ink: string) {
+  const h = 0.42
+  ctx.fillStyle = wood
+  ctx.fillRect(x - h, y - h, h * 2, h * 2)
+  ctx.strokeStyle = shade(wood, -0.35, 0.8)
+  ctx.lineWidth = 0.025
+  ctx.beginPath()
+  for (let k = 1; k < 4; k++) { const px = x - h + (k * h * 2) / 4; ctx.moveTo(px, y - h); ctx.lineTo(px, y + h) }
+  ctx.stroke()
+  ctx.strokeStyle = ink
+  ctx.lineWidth = 0.06
+  ctx.strokeRect(x - h, y - h, h * 2, h * 2)
+  ctx.beginPath()
+  ctx.arc(x + h * 0.45, y, 0.09, 0, Math.PI * 2)
+  ctx.stroke()
 }
 
 type DecorKind = 'tuft' | 'tree' | 'pebble' | 'dot' | 'ripple' | 'reed' | 'flame' | 'puff'
@@ -321,11 +378,11 @@ export default function MapCanvas({ map, mapId, showGrid, paint, selectedId, edg
     const live = new Set<string>()
     for (const o of order) {
       live.add(o.id)
-      const key = artKey(o, mapId)
+      const key = artKey(o, mapId, map.objects)
       const had = art.current.get(o.id)
       if (had?.key === key && had.a.o === o) continue
       if (had?.key === key) { art.current.set(o.id, { ...had, a: { ...had.a, o } as Art }); continue }
-      const a = artOf(grid, o, mapId)
+      const a = artOf(grid, o, mapId, map.objects)
       if (a) art.current.set(o.id, build(a, key))
     }
     for (const id of [...art.current.keys()]) if (!live.has(id)) art.current.delete(id)
@@ -347,10 +404,10 @@ export default function MapCanvas({ map, mapId, showGrid, paint, selectedId, edg
     ctx.lineCap = 'round'
     // The art stops at a straight frame inside the map's zigzag hex border, so the map reads as a drawn sheet.
     // Only the drawing is clipped: the border hexes are still there, and the grid still shows them whole.
-    const H = Math.sqrt(3)
     ctx.save()
     ctx.beginPath()
-    ctx.rect(0.5, H / 2, 1.5 * grid.width - 0.5, H * grid.height - H / 2)
+    const f = frameOf(grid)
+    ctx.rect(f.x0, f.y0, f.x1 - f.x0, f.y1 - f.y0)
     ctx.clip()
     for (const b of drawn) {
       const a = b.a
@@ -436,6 +493,14 @@ export default function MapCanvas({ map, mapId, showGrid, paint, selectedId, edg
       ctx.setLineDash([])
     }
 
+    // Bridges and trap doors: drawn over the water and floor, under the walls.
+    for (const b of drawn) {
+      const a = b.a
+      const ink2 = a.o.id === selectedId ? sel : a.o.gmOnly ? gm : shade(base('wood'), -0.55)
+      if (a.kind === 'bridge') drawBridge(ctx, a.bridge, base('wood'), ink2)
+      else if (a.kind === 'hatch') for (const c of a.centres) drawHatch(ctx, c, base('wood'), ink2)
+    }
+
     // Portals: a door or gate symbol on its edge.
     for (const b of drawn) {
       const a = b.a
@@ -499,8 +564,8 @@ export default function MapCanvas({ map, mapId, showGrid, paint, selectedId, edg
 
   // Pointers: one paints or pans, two pinch.
   const pointers = useRef(new Map<number, { x: number; y: number }>())
-  const gesture = useRef<{ kind: 'pan' | 'paint' | 'pinch' | 'none'; startX: number; startY: number; moved: boolean; last: number | null; dist: number }>(
-    { kind: 'none', startX: 0, startY: 0, moved: false, last: null, dist: 0 })
+  const gesture = useRef<{ kind: 'pan' | 'paint' | 'pinch' | 'none'; startX: number; startY: number; moved: boolean; last: number | null }>(
+    { kind: 'none', startX: 0, startY: 0, moved: false, last: null })
 
   const local = (e: { clientX: number; clientY: number }) => {
     const rect = canvas.current!.getBoundingClientRect()
@@ -524,12 +589,11 @@ export default function MapCanvas({ map, mapId, showGrid, paint, selectedId, edg
     const g = gesture.current
     if (pointers.current.size === 2) {
       if (g.kind === 'paint') onStrokeEnd()
-      const [a, b] = [...pointers.current.values()]
-      gesture.current = { kind: 'pinch', startX: 0, startY: 0, moved: true, last: null, dist: Math.hypot(a.x - b.x, a.y - b.y) }
+      gesture.current = { kind: 'pinch', startX: 0, startY: 0, moved: true, last: null }
       return
     }
     const painting = (tool === 'paint' || tool === 'erase') && e.button === 0 && selectedId !== null
-    gesture.current = { kind: painting ? 'paint' : 'pan', startX: p.x, startY: p.y, moved: false, last: null, dist: 0 }
+    gesture.current = { kind: painting ? 'paint' : 'pan', startX: p.x, startY: p.y, moved: false, last: null }
     if (painting) stroke(p.x, p.y)
   }
 
@@ -540,13 +604,9 @@ export default function MapCanvas({ map, mapId, showGrid, paint, selectedId, edg
     pointers.current.set(e.pointerId, p)
     const g = gesture.current
     if (g.kind === 'pinch' && pointers.current.size === 2) {
-      const [a, b] = [...pointers.current.values()]
-      const dist = Math.hypot(a.x - b.x, a.y - b.y)
-      const mx = (a.x + b.x) / 2
-      const my = (a.y + b.y) / 2
-      // Pan by half this pointer's move (the midpoint moves half as far), then zoom about the midpoint.
-      setView(v => zoomAt(panBy(v, (p.x - prev.x) / 2, (p.y - prev.y) / 2), g.dist ? dist / g.dist : 1, mx, my))
-      g.dist = dist
+      const other = [...pointers.current.entries()].find(([id]) => id !== e.pointerId)?.[1]
+      // Everything the step needs is copied now: React runs the updater later, after more moves.
+      if (other) { const o = { ...other }; setView(v => pinchStep(v, prev, p, o)) }
       return
     }
     if (Math.hypot(p.x - g.startX, p.y - g.startY) > TAP_SLOP) g.moved = true
@@ -589,6 +649,7 @@ export default function MapCanvas({ map, mapId, showGrid, paint, selectedId, edg
         style={{ width: box.width, height: box.height, cursor: tool === 'select' ? 'grab' : 'crosshair' }}
         role="img"
         aria-label={`Hex map, ${map.width} by ${map.height}`}
+        data-zoom={view.size.toFixed(2)}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}

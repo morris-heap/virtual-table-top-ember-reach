@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { gridPixels, hexAt, hexCenter } from './hex.ts'
 import { newMap, type MapObject } from './mapModel.ts'
-import { fillOf, fitView, markOf, MAX_HEX, MIN_HEX, paintOf, panBy, visibleRange, zoomAt } from './mapView.ts'
+import { fillOf, fitView, markOf, MAX_HEX, MIN_HEX, paintOf, panBy, pinchStep, visibleRange, zoomAt } from './mapView.ts'
 
 const large = { width: 100, height: 100 }
 
@@ -102,5 +102,37 @@ describe('what each hex looks like', () => {
     expect(fillOf({ ...o('rubble'), props: { difficult: false } })).toBe('floor')
     expect(markOf(o('start', 'static'))).toBe('S')
     expect(markOf(o('foe', 'entity'))).toBe('F')
+  })
+})
+
+describe('pinch zoom (VTTER-123)', () => {
+  const v = { size: 10, x: 0, y: 0 }
+  const other = { x: 100, y: 200 }
+
+  it('zooms in when the fingers spread apart, by how much further apart they are', () => {
+    // One finger moves from 50 px away to 100 px away: twice as far, so twice the hex size.
+    const z = pinchStep(v, { x: 150, y: 200 }, { x: 200, y: 200 }, other)
+    expect(z.size).toBeCloseTo(20)
+  })
+
+  it('zooms out when the fingers pinch together', () => {
+    const z = pinchStep(v, { x: 200, y: 200 }, { x: 150, y: 200 }, other)
+    expect(z.size).toBeCloseTo(5)
+  })
+
+  it('keeps the map under the point between the fingers', () => {
+    const to = { x: 200, y: 200 }
+    const mid = { x: (to.x + other.x) / 2, y: (to.y + other.y) / 2 }
+    const before = pinchStep(v, { x: 150, y: 200 }, { x: 150, y: 200 }, other)
+    const after = pinchStep(v, { x: 150, y: 200 }, to, other)
+    // The world point under the new midpoint is the one that was under it after the plain pan.
+    const world = (w: typeof v) => ({ x: (mid.x - w.x) / w.size, y: (mid.y - w.y) / w.size })
+    expect(world(after).x).toBeCloseTo(world(panBy(before, 25, 0)).x)
+    expect(world(after).y).toBeCloseTo(world(panBy(before, 25, 0)).y)
+  })
+
+  it('does nothing when the finger does not move, and survives two fingers on one spot', () => {
+    expect(pinchStep(v, { x: 150, y: 200 }, { x: 150, y: 200 }, other)).toEqual(v)
+    expect(pinchStep(v, other, { x: 120, y: 200 }, other).size).toBe(10)
   })
 })

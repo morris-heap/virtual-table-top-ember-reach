@@ -30,6 +30,21 @@ export function zoomAt(v: View, factor: number, px: number, py: number): View {
 
 export const panBy = (v: View, dx: number, dy: number): View => ({ ...v, x: v.x + dx, y: v.y + dy })
 
+type Point = { x: number; y: number }
+
+/**
+ * One step of a two-finger pinch: one finger moved from `from` to `to` while the other stayed at `other`.
+ * Fingers apart zooms in, fingers together zooms out, about the point between them, and the map follows the
+ * midpoint (which moves half as far as the finger). Takes plain numbers so the factor is fixed when the finger
+ * moves, never read later from mutable gesture state (VTTER-123: that read made the pinch run backwards).
+ */
+export function pinchStep(v: View, from: Point, to: Point, other: Point): View {
+  const before = Math.hypot(from.x - other.x, from.y - other.y)
+  const after = Math.hypot(to.x - other.x, to.y - other.y)
+  const factor = before > 0 ? after / before : 1
+  return zoomAt(panBy(v, (to.x - from.x) / 2, (to.y - from.y) / 2), factor, (to.x + other.x) / 2, (to.y + other.y) / 2)
+}
+
 /** The columns and rows with any part on screen (inclusive), clamped to the grid. Empty when the map is off screen. */
 export function visibleRange(g: Grid, v: View, width: number, height: number) {
   const h = Math.sqrt(3) * v.size

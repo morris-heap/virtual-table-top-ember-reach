@@ -17,6 +17,14 @@
 7. **Zoomed far out, the map draws flat colours** (no textures, outlines or decoration), so a 100×100 map stays quick
    on a phone. Shapes are built once per object and rebuilt only when that object's type or hexes change.
 
+**Amended 2026-11-27 (VTTER-123):**
+- Outlines are also relaxed (Taubin smoothing, which keeps a shape's size), so a 7-hex Hut reads as round and a river
+  or trail two hexes wide is one smooth band, not a hex staircase.
+- **A Bridge is a plank deck with rails**, laid along its own hexes, or across the route under it when it is one hex.
+  A Trap door is a square hatch on each of its hexes. Other hex Portals keep the smooth shape.
+- The frame sits 0.3 hex radii further in, so the rounded border notches never show.
+- **Pinch zoom follows every map app:** fingers apart zooms in, fingers together zooms out.
+
 **Why:**
 - A field of coloured hexes reads as a spreadsheet, not a place. Keeping the hexes underneath keeps every rule exact,
   while the picture can look drawn.

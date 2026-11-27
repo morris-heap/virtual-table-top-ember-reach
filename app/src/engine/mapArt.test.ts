@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import mapData from '../../../data/map.json'
-import { DIRECTIONS, edgeSegment, hexCenter, hexCount, indexOf, neighbour, ownedEdge, type Grid } from './hex.ts'
+import { DIRECTIONS, edgeSegment, hexAt, hexCenter, hexCount, indexOf, neighbour, ownedEdge, type Grid } from './hex.ts'
 import {
-  artKey, artOf, chainSegments, drawOrder, edgeChains, hasTexture, isWide, pointInRings, routeLines, scatterDecor, shapeOf,
+  artKey, artOf, bridgeOf, chainSegments, frameOf, relax, drawOrder, edgeChains, hasTexture, isWide, pointInRings, routeLines, scatterDecor, shapeOf,
   smoothLine, textureOf, traceOutline, type Pt,
 } from './mapArt.ts'
 import { generateMap } from './mapGen.ts'
@@ -35,6 +35,8 @@ const SETS: Record<string, number[]> = {
   'two separate blobs': [at(1, 1), at(2, 1), at(9, 8), at(10, 8)],
   'hexes on the map border': [at(0, 0), at(1, 0), at(0, 1), at(11, 9), at(11, 8)],
   'a zigzag': [at(1, 5), at(2, 5), at(3, 4), at(4, 4), at(5, 5), at(6, 5), at(7, 4)],
+  'a two-hex-wide diagonal band': [3, 4, 5, 6, 7, 8].flatMap(k => [at(k, k - 2), at(k, k - 1)]),
+  'a hex and its six neighbours (a hut)': [at(6, 5), ...ring(6, 5)],
 }
 
 describe('outlines', () => {
@@ -188,7 +190,8 @@ describe('what each object draws', () => {
     expect(artOf(g, obj({ kind: 'enclosure', type: 'room' }), 'm')?.kind).toBe('shape')
     expect(artOf(g, obj({ kind: 'route', type: 'wall', line: 'edge', at: [ownedEdge(g, at(2, 2), 0), 1] }), 'm')?.kind).toBe('edges')
     expect(artOf(g, obj({ kind: 'portal', type: 'door', at: [ownedEdge(g, at(2, 2), 0), 1] }), 'm')?.kind).toBe('portal')
-    expect(artOf(g, obj({ kind: 'portal', type: 'bridge' }), 'm')?.kind).toBe('shape')
+    expect(artOf(g, obj({ kind: 'portal', type: 'bridge' }), 'm')?.kind).toBe('bridge')
+    expect(artOf(g, obj({ kind: 'portal', type: 'trap-door' }), 'm')?.kind).toBe('hatch')
     expect(artOf(g, obj({ kind: 'static', type: 'tree' }), 'm')).toBeNull()
   })
 
@@ -226,5 +229,110 @@ describe('performance', () => {
     for (const o of big.objects) artOf(grid, o, 'perf')
     // A generous budget for CI; locally this takes a few tens of milliseconds.
     expect(performance.now() - t0).toBeLessThan(2000)
+  })
+})
+
+describe('smoothing (VTTER-123)', () => {
+  /** How far each point of the outline is from the shape's middle, as max ÷ min. A circle is 1. */
+  function roundness(hexes: number[]) {
+    const [r] = shapeOf(g, hexes, 'm|hut')
+    const cx = r.reduce((a, p) => a + p[0], 0) / r.length
+    const cy = r.reduce((a, p) => a + p[1], 0) / r.length
+    const d = r.map(p => Math.hypot(p[0] - cx, p[1] - cy))
+    return Math.max(...d) / Math.min(...d)
+  }
+
+  const hut = () => [at(6, 5), ...ring(6, 5)]
+
+  it('turns a 7-hex hut round rather than a flower of hexes', () => {
+    // The raw outline swings between the outer corners (radius ≈ 2.65) and the notches (≈ 1.73): a ratio near 1.5.
+    expect(roundness(hut())).toBeLessThan(1.15)
+  })
+
+  it('keeps the shape its size, unlike plain averaging', () => {
+    const [r] = shapeOf(g, hut(), 'm|hut')
+    let area = 0
+    for (let k = 0; k < r.length; k++) { const a = r[k], b = r[(k + 1) % r.length]; area += a[0] * b[1] - b[0] * a[1] }
+    // Seven hexes of radius 1 cover 7 × 2.598 ≈ 18.2.
+    expect(Math.abs(area / 2)).toBeGreaterThan(18.2 * 0.85)
+    expect(Math.abs(area / 2)).toBeLessThan(18.2 * 1.15)
+  })
+
+  it('removes a hex zigzag and leaves pinned points where they are', () => {
+    const zigzag: Pt[] = Array.from({ length: 12 }, (_, k) => [k, k % 2 ? 0.5 : 0] as Pt)
+    const out = relax(zigzag, false)
+    expect(out[0]).toEqual(zigzag[0])
+    expect(out[11]).toEqual(zigzag[11])
+    const inner = out.slice(3, 9).map(p => p[1])
+    expect(Math.max(...inner) - Math.min(...inner)).toBeLessThan(0.1)
+    const pinned = relax([[0, 0], [1, 1], [2, 0], [1, -1]], true, k => k === 1)
+    expect(pinned[1]).toEqual([1, 1])
+  })
+
+  it('draws a wide route as one band with no centre lines, and a thin one as lines', () => {
+    const wide = artOf(g, { id: 'r', kind: 'route', type: 'river', line: 'fill', at: encodeRuns(SETS['a two-hex-wide diagonal band']) }, 'm')
+    expect(wide?.kind === 'route' && wide.rings?.length).toBe(1)
+    expect(wide?.kind === 'route' && wide.lines).toEqual([])
+    const thin = artOf(g, { id: 'r', kind: 'route', type: 'river', line: 'fill', at: encodeRuns(SETS['a line']) }, 'm')
+    expect(thin?.kind === 'route' && thin.lines.length).toBeGreaterThan(0)
+  })
+})
+
+describe('bridges (VTTER-123)', () => {
+  it('run along their own hexes when they have two or more', () => {
+    const a = at(4, 4)
+    const b = neighbour(g, a, 'se')!
+    const br = bridgeOf(g, [a, b], new Set())!
+    const len = Math.hypot(centre(b).x - centre(a).x, centre(b).y - centre(a).y)
+    const along = (br.ux * (centre(b).x - centre(a).x) + br.uy * (centre(b).y - centre(a).y)) / len
+    expect(Math.abs(along)).toBeCloseTo(1)
+    // It reaches past both hex centres onto the banks.
+    expect(br.half).toBeGreaterThan(len / 2)
+  })
+
+  it('lie across the river under a one-hex bridge', () => {
+    // A river running straight down one column: the bridge must run left to right.
+    const river = new Set([1, 2, 3, 4, 5, 6, 7].map(r => at(5, r)))
+    const br = bridgeOf(g, [at(5, 4)], river)!
+    expect(Math.abs(br.uy)).toBeLessThan(0.01)
+    expect(Math.abs(br.ux)).toBeCloseTo(1)
+    expect([br.cx, br.cy]).toEqual([centre(at(5, 4)).x, centre(at(5, 4)).y])
+  })
+
+  it('find the route under a one-hex bridge on the map, and rebuild when that route changes', () => {
+    const riverAt = [1, 2, 3, 4, 5].map(r => at(5, r))
+    const river: MapObject = { id: 'riv', kind: 'route', type: 'river', line: 'fill', at: encodeRuns(riverAt) }
+    const bridge: MapObject = { id: 'b', kind: 'portal', type: 'bridge', at: encodeRuns([at(5, 3)]) }
+    const art = artOf(g, bridge, 'm', [river, bridge])
+    expect(art?.kind === 'bridge' && Math.abs(art.bridge.uy)).toBeLessThan(0.01)
+    const moved = { ...river, at: encodeRuns([...riverAt, at(6, 3)]) }
+    expect(artKey(bridge, 'm', [river, bridge])).not.toBe(artKey(bridge, 'm', [moved, bridge]))
+  })
+})
+
+describe('the art frame (VTTER-123)', () => {
+  /** Points every 1/200 of the way round the frame. */
+  function around(f: { x0: number; y0: number; x1: number; y1: number }): Pt[] {
+    const out: Pt[] = []
+    for (let k = 0; k <= 200; k++) {
+      const t = k / 200
+      const x = f.x0 + (f.x1 - f.x0) * t
+      const y = f.y0 + (f.y1 - f.y0) * t
+      out.push([x, f.y0], [x, f.y1], [f.x0, y], [f.x1, y])
+    }
+    return out
+  }
+
+  it('sits inside the map hexes on all four sides, so no border notch shows', () => {
+    for (const grid of [g, { width: 30, height: 20 }, { width: 5, height: 5 }]) {
+      for (const [x, y] of around(frameOf(grid))) {
+        expect(hexAt(grid, x, y, 1), `${grid.width}×${grid.height} at ${x.toFixed(2)},${y.toFixed(2)}`).not.toBeNull()
+      }
+    }
+  })
+
+  it('is filled by a shape that covers the whole map, all the way round', () => {
+    const rings = shapeOf(g, Array.from({ length: hexCount(g) }, (_, i) => i), 'm|base')
+    for (const [x, y] of around(frameOf(g))) expect(pointInRings(rings, x, y), `${x.toFixed(2)},${y.toFixed(2)}`).toBe(true)
   })
 })
