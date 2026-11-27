@@ -92,6 +92,9 @@ export const typeDef = (id: string) => TYPE_BY_ID.get(id)
 export const typesOfKind = (kind: Kind) => TYPES.filter(t => t.kind === kind)
 export const sizeDef = (id: string) => SIZES.find(s => s.id === id)
 
+/** What the editor calls an object: the author's name, else its type's label. */
+export const objectLabel = (o: Pick<MapObject, 'name' | 'type'>) => o.name || typeDef(o.type)?.label || o.type
+
 /** True when an object's `at` lists edge indexes rather than hexes: an edge Route, or a Portal placed on an edge. */
 export function onEdges(o: Pick<MapObject, 'kind' | 'type' | 'line'>): boolean {
   if (o.kind === 'route') return o.line === 'edge'

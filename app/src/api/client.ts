@@ -3,6 +3,7 @@
 import { apiUrl, authConfig } from '../auth/config.ts'
 import { currentUser, getAccessToken } from '../auth/session.ts'
 import { ApiError, request } from './request.ts'
+import type { MapDoc, MapSummary } from '../engine/mapModel.ts'
 import type { Adventure, AdventureDraft, AdventureSummary, ChatMessage, ChatPage, FriendLists, Game, GameDraft, GameSummary, Person, Profile, PublicGamePage } from './types.ts'
 
 export { ApiError }
@@ -39,6 +40,14 @@ export const adventuresApi = {
 /** Say you have the app open on a page that is not a Game (VTTER-73). Writes only your own presence. */
 export const presenceApi = {
   heartbeat: () => call<void>('PUT', '/presence'),
+}
+
+/** Maps (VTTER-74). PUT creates or replaces; a new map past the cap is a 409 with the message to show. */
+export const mapsApi = {
+  list: () => call<{ maps: MapSummary[]; limit: number }>('GET', '/maps'),
+  get: (id: string) => call<MapDoc>('GET', `/maps/${id}`),
+  save: (id: string, map: Omit<MapDoc, 'id' | 'updatedAt'>) => call<MapDoc>('PUT', `/maps/${id}`, map),
+  remove: (id: string) => call<void>('DELETE', `/maps/${id}`),
 }
 
 export const friendsApi = {
