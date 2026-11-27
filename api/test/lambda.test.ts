@@ -24,7 +24,7 @@ const store: CharacterStore = {
 }
 
 const unused = async () => { throw new Error('unused') }
-const profiles = { getOrCreate: unused, update: unused, peek: async () => null, ownerOfPlayer: async () => null }
+const profiles = { getOrCreate: unused, update: unused, peek: async () => null, ownerOfPlayer: async () => null, findByName: async () => [], allowSearch: async () => true }
 const adventures = { list: async () => [], get: async () => null, save: unused, delete: async () => false }
 const games = {
   getForMember: async () => null, listFor: async () => [], countOwned: async () => 0, countJoined: async () => 0,

@@ -4,11 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { FriendsView } from './Friends.tsx'
 import { InviteFriend } from './GamePage.tsx'
 import type { FriendLists, GameMember, Person } from './api/types.ts'
-import { friendsApi } from './api/client.ts'
-import { FRIEND_LIMITS } from './engine/friends.ts'
+import { friendsApi, playersApi } from './api/client.ts'
+import { FRIEND_LIMITS, NAME_SEARCH } from './engine/friends.ts'
 
 vi.mock('./api/client.ts', () => ({
   friendsApi: { list: vi.fn(), request: vi.fn(), remove: vi.fn(), adventures: vi.fn(), adventure: vi.fn() },
+  playersApi: { find: vi.fn() },
   gamesApi: {}, profileApi: {}, adventuresApi: {},
   ApiError: class extends Error {},
 }))
@@ -16,6 +17,7 @@ vi.mock('./api/client.ts', () => ({
 vi.mock('./characters/current.ts', () => ({ characters: {}, characterRepository: () => ({}) }))
 
 const api = vi.mocked(friendsApi)
+const players = vi.mocked(playersApi)
 const ana: Person = { playerId: 'EMBER-AAAAB', displayName: 'Ana' }
 const ben: Person = { playerId: 'EMBER-AAAAC', displayName: 'Ben' }
 const cal: Person = { playerId: 'EMBER-AAAAD', displayName: '' } // no display name: shows the player ID
@@ -150,5 +152,71 @@ describe('InviteFriend (Game page)', () => {
     const { container } = render(<InviteFriend members={[]} busy={false} onInvite={vi.fn()} />)
     await waitFor(() => expect(api.list).toHaveBeenCalledTimes(2))
     expect(container).toBeEmptyDOMElement()
+  })
+})
+
+describe('FriendsView: find by display name (VTTER-108)', () => {
+  const search = (name: string) => {
+    fireEvent.change(screen.getByLabelText(/find them by display name/), { target: { value: name } })
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+  }
+
+  it('searches with the name tidied up, and lists every match with its player ID so you can pick', async () => {
+    players.find.mockResolvedValue([ana, { playerId: 'EMBER-AAAAE', displayName: 'Ana' }])
+    render(<FriendsView lists={lists()} onChange={vi.fn()} />)
+    search('  Ana   ')
+    const results = await screen.findByRole('list', { name: 'Search results' })
+    expect(players.find).toHaveBeenCalledWith('Ana')
+    // Same name twice: the player ID is what tells them apart.
+    expect(within(results).getByText('EMBER-AAAAB')).toBeVisible()
+    expect(within(results).getByText('EMBER-AAAAE')).toBeVisible()
+    expect(within(results).getAllByRole('button')).toHaveLength(2)
+  })
+
+  it('sends the request for the one you pick', async () => {
+    const after = lists({ outgoing: [ana] })
+    players.find.mockResolvedValue([ana])
+    api.request.mockResolvedValue(after)
+    const onChange = vi.fn()
+    render(<FriendsView lists={lists()} onChange={onChange} />)
+    search('Ana')
+    fireEvent.click(await screen.findByRole('button', { name: 'Send request to Ana (EMBER-AAAAB)' }))
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith(after))
+    expect(api.request).toHaveBeenCalledWith('EMBER-AAAAB')
+  })
+
+  it('says where a match already stands instead of offering a second request', async () => {
+    players.find.mockResolvedValue([ana, ben, cal])
+    render(<FriendsView lists={lists({ friends: [ana], outgoing: [ben], incoming: [cal] })} onChange={vi.fn()} />)
+    search('x')
+    const results = await screen.findByRole('list', { name: 'Search results' })
+    expect(within(results).getByText('Already friends')).toBeVisible()
+    expect(within(results).getByText('Request sent')).toBeVisible()
+    // Someone who already asked you is answered by accepting.
+    expect(within(results).getByRole('button', { name: /^Accept/ })).toBeVisible()
+    expect(within(results).queryByRole('button', { name: /^Send request/ })).toBeNull()
+  })
+
+  it('says so when no one is found', async () => {
+    players.find.mockResolvedValue([])
+    render(<FriendsView lists={lists()} onChange={vi.fn()} />)
+    search('Nobody')
+    expect(await screen.findByText(/No one found called/)).toHaveTextContent('Nobody')
+  })
+
+  it('shows the API message, such as the rate limit, and keeps the search box', async () => {
+    players.find.mockRejectedValue(new Error('You are searching too fast. Wait a moment.'))
+    render(<FriendsView lists={lists()} onChange={vi.fn()} />)
+    search('Ana')
+    expect(await screen.findByRole('alert')).toHaveTextContent('searching too fast')
+    expect(screen.getByLabelText(/find them by display name/)).toHaveValue('Ana')
+  })
+
+  it('tells you the result cap from /data, and does not search for blank text', () => {
+    render(<FriendsView lists={lists()} onChange={vi.fn()} />)
+    expect(screen.getByText(new RegExp(`up to ${NAME_SEARCH.maxResults} matches`))).toBeVisible()
+    fireEvent.change(screen.getByLabelText(/find them by display name/), { target: { value: '   ' } })
+    expect(screen.getByRole('button', { name: 'Search' })).toBeDisabled()
+    expect(players.find).not.toHaveBeenCalled()
   })
 })

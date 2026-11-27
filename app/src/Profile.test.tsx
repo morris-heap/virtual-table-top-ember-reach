@@ -7,10 +7,13 @@
 // What it does prove is that whatever the API returns reaches the screen
 // unaltered: not truncated, not reformatted, and with no leading or trailing
 // space that would break a copy-and-paste invite.
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { profileApi } from './api/client.ts'
 import { ProfileForm } from './Profile.tsx'
 import type { Profile } from './api/types.ts'
+
+vi.mock('./api/client.ts', () => ({ profileApi: { update: vi.fn() } }))
 
 const profile = (playerId: string): Profile => ({ displayName: '', gameMaster: false, playerId })
 
@@ -50,5 +53,29 @@ describe('Profile player ID', () => {
     // Players share the ID by copying it, so the control must be present.
     show('EMBER-7K2Q9F')
     expect(screen.getByRole('button', { name: 'Copy' })).toBeVisible()
+  })
+})
+
+describe('Profile: being found by name (VTTER-108)', () => {
+  const box = () => screen.getByRole('checkbox', { name: /find me by my display name/ })
+
+  it('is off for a profile that has never turned it on', () => {
+    render(<ProfileForm profile={profile('EMBER-7K2Q9F')} signInName="Kit" onSaved={vi.fn()} />)
+    expect(box()).not.toBeChecked()
+  })
+
+  it('saves the choice, and shows what the API sent back', async () => {
+    const saved: Profile = { ...profile('EMBER-7K2Q9F'), displayName: 'Kit', findable: true }
+    vi.mocked(profileApi.update).mockResolvedValue(saved)
+    const onSaved = vi.fn()
+    render(<ProfileForm profile={{ ...saved, findable: false }} signInName="Kit" onSaved={onSaved} />)
+    fireEvent.click(box())
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(saved))
+    expect(profileApi.update).toHaveBeenCalledWith({ findable: true })
+  })
+
+  it('warns that it does nothing without a display name', () => {
+    render(<ProfileForm profile={{ ...profile('EMBER-7K2Q9F'), findable: true }} signInName="Kit" onSaved={vi.fn()} />)
+    expect(screen.getByText(/no one can find you until you set one/)).toBeVisible()
   })
 })

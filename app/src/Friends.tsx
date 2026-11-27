@@ -1,11 +1,11 @@
 // Your friends (VTTER-73): add a player by their player ID, answer requests, and read the adventures
 // friends shared with you. A friendship is mutual and starts as a request the other player accepts.
 import { useEffect, useState, type FormEvent } from 'react'
-import { friendsApi } from './api/client.ts'
+import { friendsApi, playersApi } from './api/client.ts'
 import type { Friend, FriendLists, Person } from './api/types.ts'
 import type { Auth } from './auth/useAuth.ts'
 import { levelRange } from './engine/adventure.ts'
-import { FRIEND_LIMITS, personName } from './engine/friends.ts'
+import { DISPLAY_NAME_MAX, FRIEND_LIMITS, foundState, NAME_SEARCH, personName, searchName } from './engine/friends.ts'
 import { cleanPlayerId } from './engine/game.ts'
 import { HEARTBEAT_MS, onlineFirst, presenceText } from './engine/presence.ts'
 import Link from './Link.tsx'
@@ -54,6 +54,81 @@ function FriendRow({ person, busy, onRemove }: { person: Friend; busy: boolean; 
       </span>
       {open && <div className="row-detail"><SharedAdventures person={person} /></div>}
     </li>
+  )
+}
+
+const FOUND_TEXT = { friend: 'Already friends', requested: 'Request sent' } as const
+
+/**
+ * Find a player by display name (VTTER-108). Names are not unique, so every match is listed with its player ID
+ * and you pick one. Only players who allow it can be found, and only by their whole name.
+ */
+function FindByName({ lists, busy, onAsk }: { lists: FriendLists; busy: boolean; onAsk: (playerId: string) => void }) {
+  const [name, setName] = useState('')
+  const [looking, setLooking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  // null until a search has run, so "no one found" is not shown before the first search.
+  const [found, setFound] = useState<{ searched: string; players: Person[] } | null>(null)
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault()
+    const wanted = searchName(name)
+    if (!wanted) return setError('Type the whole display name to look for.')
+    setLooking(true)
+    setError(null)
+    try {
+      setFound({ searched: wanted, players: await playersApi.find(wanted) })
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLooking(false)
+    }
+  }
+
+  return (
+    <form className="form" onSubmit={e => void onSubmit(e)} aria-label="Find by name">
+      <label className="field">
+        <span>Or find them by display name</span>
+        <input value={name} maxLength={DISPLAY_NAME_MAX} autoComplete="off" onChange={e => setName(e.target.value)} />
+        <small className="muted">
+          Type their whole display name. You only find players who allow it on their Profile, and you see up to {NAME_SEARCH.maxResults} matches.
+        </small>
+      </label>
+      <div className="form-actions">
+        <button type="submit" className="account-btn" disabled={looking || name.trim() === ''}>Search</button>
+        <span role="status" className="muted">{looking && 'Searching…'}</span>
+      </div>
+      {error && <p className="notice error" role="alert">{error}</p>}
+      {found && found.players.length === 0 && (
+        <p className="muted">No one found called “{found.searched}”. They may not allow it, or you can ask for their player ID.</p>
+      )}
+      {found && found.players.length > 0 && (
+        <ul className="rows" aria-label="Search results">
+          {found.players.map(p => {
+            const state = foundState(lists, p.playerId)
+            return (
+              <li key={p.playerId} className="row">
+                <b>{personName(p)}</b>
+                <span className="muted">{p.playerId}</span>
+                <span className="row-actions">
+                  {state === 'new' || state === 'asked-you'
+                    ? (
+                      <button
+                        type="button" className="account-btn primary" disabled={busy}
+                        aria-label={`${state === 'new' ? 'Send request to' : 'Accept'} ${personName(p)} (${p.playerId})`}
+                        onClick={() => onAsk(p.playerId)}
+                      >
+                        {state === 'new' ? 'Send request' : 'Accept'}
+                      </button>
+                    )
+                    : <span className="muted">{FOUND_TEXT[state]}</span>}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </form>
   )
 }
 
@@ -106,6 +181,7 @@ export function FriendsView({ lists, onChange }: { lists: FriendLists; onChange:
           </div>
         </form>
         {error && <p className="notice error" role="alert">{error}</p>}
+        <FindByName lists={lists} busy={busy} onAsk={id => void ask(id)} />
       </section>
 
       {lists.incoming.length > 0 && (

@@ -4,6 +4,7 @@ import type { FriendEdge, FriendIdentity } from '../src/friend.ts'
 import { handle, type ChatStore, type FriendStore, type GameStore, type ProfileStore } from '../src/handler.ts'
 import type { ProfileRecord } from '../src/profile.ts'
 import { MemoryPortraits } from './portraits-helper.ts'
+import { findInMemory, searchAllowance } from './profile-search-helper.ts'
 
 const ORIGIN = 'https://emberreach.morris-heap.com'
 // Cognito ids: these must never appear in any response body.
@@ -27,6 +28,8 @@ class MemoryProfiles {
   async ownerOfPlayer(playerId: string) {
     return [...this.rows].find(([, r]) => r.playerId === playerId)?.[0] ?? null
   }
+  async findByName(name: string, except: string, limit: number) { return findInMemory(this.rows, name, except, limit) }
+  allowSearch = searchAllowance(3)
 }
 
 type Side = { status: FriendEdge['status']; lastMessageAt?: string; lastReadAt?: string }

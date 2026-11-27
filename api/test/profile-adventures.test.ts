@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { parseAdventure, type AdventureDraft, type AdventureRecord } from '../src/adventure.ts'
 import { handle, type AdventureStore, type CharacterStore, type GameStore, type ProfileStore } from '../src/handler.ts'
 import { isPlayerId, newPlayerId, parseProfilePatch, type ProfilePatch, type ProfileRecord } from '../src/profile.ts'
+import { findInMemory, searchAllowance } from './profile-search-helper.ts'
 
 const ORIGIN = 'https://emberreach.morris-heap.com'
 const A = '11111111-1111-4111-8111-111111111111'
@@ -34,6 +35,8 @@ class MemoryProfiles implements ProfileStore {
   async ownerOfPlayer(playerId: string) {
     return [...this.rows].find(([, r]) => r.playerId === playerId)?.[0] ?? null
   }
+  async findByName(name: string, except: string, limit: number) { return findInMemory(this.rows, name, except, limit) }
+  allowSearch = searchAllowance(3)
 }
 
 // The Games routes have their own tests (games.test.ts); these tests never reach them.

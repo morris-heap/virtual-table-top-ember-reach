@@ -1,0 +1,10 @@
+{
+  "$comment": "Profile and finding players by display name (VTTER-108). Limits for the API and app. They are abuse and display caps, not game rules.",
+  "displayNameMax": 40,
+  "$searchComment": "A name search matches the whole name (case and spacing folded) among players who opted in, and returns at most maxResults rows. It reads the shared sparse index gsi1 under the gsi1pk value `player#` + indexKey.",
+  "search": {
+    "maxResults": 10,
+    "perMinute": 12,
+    "indexKey": "name"
+  }
+}

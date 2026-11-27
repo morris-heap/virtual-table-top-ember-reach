@@ -41,7 +41,7 @@ const unusedStores = {
   portraits: new MemoryPortraits(),
   profiles: {
     getOrCreate: async () => { throw new Error('unused') }, update: async () => { throw new Error('unused') },
-    peek: async () => null, ownerOfPlayer: async () => null,
+    peek: async () => null, ownerOfPlayer: async () => null, findByName: async () => [], allowSearch: async () => true,
   },
   games: {
     getForMember: async () => null, listFor: async () => [], countOwned: async () => 0, countJoined: async () => 0,

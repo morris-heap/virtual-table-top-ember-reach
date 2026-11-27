@@ -3,7 +3,7 @@
 import { apiUrl, authConfig } from '../auth/config.ts'
 import { currentUser, getAccessToken } from '../auth/session.ts'
 import { ApiError, request } from './request.ts'
-import type { Adventure, AdventureDraft, AdventureSummary, ChatMessage, ChatPage, FriendLists, Game, GameDraft, GameSummary, Profile, PublicGamePage } from './types.ts'
+import type { Adventure, AdventureDraft, AdventureSummary, ChatMessage, ChatPage, FriendLists, Game, GameDraft, GameSummary, Person, Profile, PublicGamePage } from './types.ts'
 
 export { ApiError }
 
@@ -20,7 +20,13 @@ export async function call<T>(method: string, path: string, body?: unknown, expe
 
 export const profileApi = {
   get: () => call<Profile>('GET', '/profile'),
-  update: (patch: Partial<Pick<Profile, 'displayName' | 'gameMaster'>>) => call<Profile>('PUT', '/profile', patch),
+  update: (patch: Partial<Pick<Profile, 'displayName' | 'gameMaster' | 'findable'>>) => call<Profile>('PUT', '/profile', patch),
+}
+
+export const playersApi = {
+  /** Players who turned on "let people find me by name" and whose name matches yours in full (VTTER-108). A 429 means slow down. */
+  find: async (name: string) =>
+    (await call<{ players: Person[] }>('GET', `/players?name=${encodeURIComponent(name)}`)).players,
 }
 
 export const adventuresApi = {

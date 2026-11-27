@@ -16,6 +16,8 @@ export interface Profile {
   /** Empty until the user sets one: show their sign-in name instead. */
   displayName: string
   gameMaster: boolean
+  /** Whether other players can find you by display name when adding a friend (VTTER-108). Off until turned on. */
+  findable?: boolean
   /** Public, shareable, never changes. For example EMBER-7K2Q9F. New IDs are 6 characters; older ones are 5. */
   playerId: string
 }
