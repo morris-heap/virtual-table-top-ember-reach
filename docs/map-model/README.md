@@ -51,7 +51,9 @@ the [core rules](../../rules/core-rules.md). A property never invents a new kind
 - The **acting** properties for movement: `difficult`, `impassable`, and `edge` Routes that block crossing.
 - All other properties stored and shown as **describing** text, so an author can write them now.
 - `gmOnly` on any object, stripped from players' responses by the API.
-- Save, load, rename and delete; one map per chapter.
+- Save, load, rename and delete; at most 3 maps per author.
+- Attaching a map to a chapter (one map per chapter), and reading a Game's map through the Game, come with
+  chapters in VTTER-75 ([decision](../decisions/2026-11-27-maps-before-chapters.md)). The API's player-view filter is built now.
 
 ### Later (backlog stories under VTTER-46)
 

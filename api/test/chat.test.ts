@@ -120,7 +120,7 @@ function world(maxPerMinute?: number) {
       new Request(`https://api.test${path}`, { method, headers, body: opts.body === undefined ? undefined : JSON.stringify(opts.body) }),
       {
         store: {} as never, games: {} as GameStore, profiles: profiles as unknown as ProfileStore, adventures: {} as never,
-        friends, chat, presence: { presenceOf: async () => ({}), beat: async () => {} } as never, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken,
+        friends, chat, maps: {} as never, presence: { presenceOf: async () => ({}), beat: async () => {} } as never, portraits: new MemoryPortraits(), allowedOrigins: [ORIGIN], verifyToken,
       },
     ) as unknown as Promise<Reply>
   }

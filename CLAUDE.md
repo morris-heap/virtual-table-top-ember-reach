@@ -23,7 +23,7 @@ relevant ones before answering design questions or making edits:
 | [rules/core-rules.md](rules/core-rules.md) | Core mechanics: Tests, characters, callings, magic, combat, gear, advancement, open questions |
 | [rules/gm-guide.md](rules/gm-guide.md) | Foe stat blocks, encounter budgets, starter adventure |
 | [sheets/character-sheet.md](sheets/character-sheet.md) | Character sheet template (must match the rules) |
-| [data/](data/) | Machine-readable game numbers used by the app and API (`core.json`, `character.json`, `creation.json`, `adventure.json`, `game.json`, `friends.json`, `chat.json`), and the built-in adventures in `data/adventures/`. Must match the rules files |
+| [data/](data/) | Machine-readable game numbers used by the app and API (`core.json`, `character.json`, `creation.json`, `adventure.json`, `game.json`, `friends.json`, `chat.json`, `map.json`), and the built-in adventures in `data/adventures/`. Must match the rules files |
 | [docs/adr/](docs/adr/) | Architecture decisions: [0001](docs/adr/0001-companion-app-stack.md) app stack, [0003](docs/adr/0003-backend-dynamodb-lambda.md) backend (replaced [0002](docs/adr/0002-backend-postgres.md)), [0004](docs/adr/0004-auth-cognito.md) sign-in, [0005](docs/adr/0005-profile-and-adventures.md) profile, player ID and private adventures, [0006](docs/adr/0006-games.md) Games, [0007](docs/adr/0007-3d-dice-tray.md) 3D dice tray, [0008](docs/adr/0008-public-games-and-unique-names.md) browsing public Games and unique Game names, [0009](docs/adr/0009-friends.md) friends list, [0010](docs/adr/0010-friend-chat.md) chat between friends, [0011](docs/adr/0011-layered-map-objects.md) layered map objects, GM-only data and fog of war, [0012](docs/adr/0012-presence.md) who is online |
 | [docs/map-model/](docs/map-model/README.md) | The layered map object model (VTTER-86): vision, glossary, property catalog, data model, paper tests, inventory. Map work (VTTER-74, 84, 85, 90, 91) builds on it |
 | [docs/mockups/](docs/mockups/) | UI mockups: the character sheet (view and guided-creation edit mode) for VTTER-47, the dice tray, and the map editor for VTTER-86 |
@@ -164,6 +164,14 @@ through GitHub OIDC (role `emberreach-github-deploy`, environment `aws`).
   player's own heartbeat ([ADR 0012](docs/adr/0012-presence.md)). **Show it only for mutual friends**: `mutualWith` reads THEIR
   side of each friendship too, so someone who removed you never shows. Name a friend's Game only if the caller is a member
   of it. There is no TTL: a stale `seenAt` reads as offline.
+  **Maps** are one item per map under the author (`id: map#<uuid>`, `kind: map`, objects as a native list), plus one
+  counter per author (`id: count#map`, `kind: count`) that enforces `data/map.json` `limits.mapsPerUser`
+  ([ADR 0011](docs/adr/0011-layered-map-objects.md), VTTER-74). The counter only increments while below the cap,
+  is bumped **before** a create and dropped **after** a delete, and a save that hits the cap recounts the real maps, so
+  it can only drift high and then repairs itself. `parseMap` rebuilds every object field by field against
+  `data/map.json`: never store a spread of the request. **A player never receives a map unfiltered:** any route that
+  serves a map to someone other than its author goes through `playerViewOfMap` (no GM-only objects or what sits on
+  them, no Entities, no `note`). That route arrives with chapters (VTTER-75).
   **Every item is keyed `<kind>#<id>` and carries a `kind` attribute** — heroes included since VTTER-98.
   Give any new kind both, so it can be listed with `begins_with` and no query ever needs a `FilterExpression`
   over the whole partition. The prefix is storage only: strip it on the way out, as `toHero`/`toAdventure` do,

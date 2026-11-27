@@ -13,6 +13,7 @@ import { DynamoPresenceStore } from './presence-store.ts'
 import { handle } from './handler.ts'
 import { LocalPortraitStore } from './portrait-local.ts'
 import { S3PortraitStore } from './portrait-store.ts'
+import { DynamoMapStore } from './map-store.ts'
 import { DynamoAdventureStore, DynamoCharacterStore, DynamoProfileStore } from './store.ts'
 
 const PORT = Number(process.env.PORT ?? 8787)
@@ -24,6 +25,7 @@ const table = process.env.TABLE_NAME ?? 'vtter-game'
 const store = new DynamoCharacterStore(db, table)
 const profiles = new DynamoProfileStore(db, table)
 const adventures = new DynamoAdventureStore(db, table)
+const maps = new DynamoMapStore(db, table)
 const games = new DynamoGameStore(db, table)
 const friends = new DynamoFriendStore(db, table)
 const chat = new DynamoChatStore(db, table)
@@ -50,7 +52,7 @@ createServer(async (req, res) => {
   const hasBody = req.method !== 'GET' && req.method !== 'HEAD' && chunks.length > 0
   const out = await handle(
     new Request(`http://127.0.0.1:${PORT}${req.url}`, { method: req.method, headers, body: hasBody ? Buffer.concat(chunks) : undefined }),
-    { store, profiles, adventures, games, friends, chat, presence, portraits, allowedOrigins, verifyToken },
+    { store, profiles, adventures, maps, games, friends, chat, presence, portraits, allowedOrigins, verifyToken },
   )
   res.writeHead(out.status, Object.fromEntries(out.headers.entries()))
   res.end(Buffer.from(await out.arrayBuffer()))

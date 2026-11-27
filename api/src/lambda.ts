@@ -13,6 +13,7 @@ import { DynamoGameStore } from './game-store.ts'
 import { DynamoPresenceStore } from './presence-store.ts'
 import { toRequest, toResult } from './http.ts'
 import { S3PortraitStore } from './portrait-store.ts'
+import { DynamoMapStore } from './map-store.ts'
 import { DynamoAdventureStore, DynamoCharacterStore, DynamoProfileStore } from './store.ts'
 
 export { toRequest, toResult } from './http.ts'
@@ -28,6 +29,7 @@ const deps: Deps = {
   store: new DynamoCharacterStore(db, table),
   profiles: new DynamoProfileStore(db, table),
   adventures: new DynamoAdventureStore(db, table),
+  maps: new DynamoMapStore(db, table),
   games: new DynamoGameStore(db, table),
   friends: new DynamoFriendStore(db, table),
   chat: new DynamoChatStore(db, table),
