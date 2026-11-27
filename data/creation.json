@@ -1,6 +1,6 @@
 {
   "$comment": "Hero creation data for the character sheet UI (VTTER-47). Source of truth: rules/core-rules.md §3 (making a hero, ancestries, backgrounds, derived numbers), §4 (callings, §4.7 minerals), §5.3 (starting spells), §7.3 (kits). Change both together (see CLAUDE.md).",
-  "version": "0.3",
+  "version": "0.4",
   "attributeArray": [3, 2, 1, 1, 0, -1],
   "ancestryCapAtLevel1": 4,
   "freeSkillRanks": 2,

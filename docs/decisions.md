@@ -103,7 +103,7 @@ docs/map-model/. Amends the 2026-11-25 "Automate our own rules" entry, item 2's 
 - The cap keeps stacked map layers from making a zone cost more than a whole Move, which would strand a Speed 2
   hero without Dash. The user chose the cap over "+1 per Difficult layer".
 
-**Affects:** rules/core-rules.md (§6.3, title v0.4), data/core.json (`version` 0.4, `movement`),
+**Affects:** rules/core-rules.md (§6.3, title v0.4), data/core.json (`version` 0.4, `movement`), data/character.json and data/creation.json (`version` 0.4),
 app/src/engine/hero.test.ts and api/test/handler.test.ts (read `core.version` instead of a hard-coded `0.3`), README.md (status and roadmap).
 No sheet or GM guide numbers change: the soot pits in the GM guide §5 keep their Bane on movement.
 
