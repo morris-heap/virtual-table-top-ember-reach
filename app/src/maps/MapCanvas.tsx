@@ -6,9 +6,9 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { edgeAt, hexAt, hexCenter, hexCorners, indexOf, type Grid } from '../engine/hex.ts'
 import {
-  artKey, artOf, boundsOf, bridgeDeck, drawOrder, frameOf, guideOf, portalLength, portalSize, TOKEN_RADIUS, WALL_WIDTH, scatterDecor, snapChain, snapSegment, type Bridge, type Guide, smoothRing, traceOutline, type Art, type Decor, type Pt, type Ring, type Texture,
+  artKey, artOf, boundsOf, bridgeDeck, drawOrder, frameOf, guideOf, openLeaf, portalLength, portalSize, TOKEN_RADIUS, WALL_WIDTH, scatterDecor, snapChain, snapSegment, type Bridge, type Guide, smoothRing, traceOutline, type Art, type Decor, type Pt, type Ring, type Texture,
 } from '../engine/mapArt.ts'
-import type { MapDoc } from '../engine/mapModel.ts'
+import { effectiveProps, isTrap, startsOpen, type MapDoc } from '../engine/mapModel.ts'
 import { fitView, markOf, panBy, pinchStep, visibleRange, zoomAt, type Paint, type View } from '../engine/mapView.ts'
 import { decodeRuns } from '../engine/runs.ts'
 import { baseColor, shade, TextureBank } from './textures.ts'
@@ -117,8 +117,20 @@ function drawBridge(ctx: CanvasRenderingContext2D, b: Bridge, wood: string, ink:
 }
 
 /** A trap door: a square hatch with planks and a ring, on each of its hexes. World units. */
-function drawHatch(ctx: CanvasRenderingContext2D, [x, y]: Pt, wood: string, ink: string) {
+function drawHatch(ctx: CanvasRenderingContext2D, [x, y]: Pt, wood: string, ink: string, open = false) {
   const h = 0.42
+  if (open) {
+    // Starting open (VTTER-129): a dark square hole, with its lid laid back beside it.
+    ctx.fillStyle = 'rgba(15, 10, 8, .85)'
+    ctx.fillRect(x - h, y - h, h * 2, h * 2)
+    ctx.strokeStyle = ink
+    ctx.lineWidth = 0.06
+    ctx.strokeRect(x - h, y - h, h * 2, h * 2)
+    ctx.fillStyle = wood
+    ctx.fillRect(x + h, y - h, h * 0.5, h * 2)
+    ctx.strokeRect(x + h, y - h, h * 0.5, h * 2)
+    return
+  }
   ctx.fillStyle = wood
   ctx.fillRect(x - h, y - h, h * 2, h * 2)
   ctx.strokeStyle = shade(wood, -0.35, 0.8)
@@ -219,7 +231,7 @@ function drawDecor(ctx: CanvasRenderingContext2D, items: Decor[], kind: DecorKin
 }
 
 /** A door, gate, window or opening drawn across its edge, in world units. */
-function drawPortal(ctx: CanvasRenderingContext2D, [a, b]: [Pt, Pt], type: string, c: { ink: string; fill: string; accent: string; gm: string; empty: string }) {
+function drawPortal(ctx: CanvasRenderingContext2D, [a, b]: [Pt, Pt], type: string, c: { ink: string; fill: string; accent: string; gm: string; empty: string }, open = false) {
   const mx = (a[0] + b[0]) / 2
   const my = (a[1] + b[1]) / 2
   const angle = Math.atan2(b[1] - a[1], b[0] - a[0])
@@ -233,6 +245,50 @@ function drawPortal(ctx: CanvasRenderingContext2D, [a, b]: [Pt, Pt], type: strin
   const t = thick / 2
   ctx.lineWidth = 0.05
   ctx.strokeStyle = c.ink
+  // Starting open (VTTER-129): a door or gate has swung 90° on its hinge, leaving the doorway clear between two
+  // jambs; a portcullis is raised, shown as a faint dashed line where its bars come down.
+  if (open && (type === 'door' || type === 'secret-door' || type === 'gate')) {
+    const leaf = openLeaf(half * 2)
+    ctx.lineCap = 'round'
+    ctx.strokeStyle = type === 'secret-door' ? c.gm : c.ink
+    ctx.lineWidth = 0.07
+    ctx.beginPath()
+    for (const x of [-half, half]) { ctx.moveTo(x, -t); ctx.lineTo(x, t) }
+    ctx.stroke()
+    ctx.setLineDash([0.06, 0.06])
+    ctx.lineWidth = 0.025
+    ctx.beginPath()
+    ctx.arc(leaf.arc.cx, leaf.arc.cy, leaf.arc.r, leaf.arc.from, leaf.arc.to)
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.lineWidth = type === 'gate' ? 0.07 : thick * 0.6
+    ctx.strokeStyle = type === 'gate' ? c.ink : c.fill
+    ctx.beginPath()
+    ctx.moveTo(leaf.hinge[0], leaf.hinge[1])
+    ctx.lineTo(leaf.tip[0], leaf.tip[1])
+    ctx.stroke()
+    if (type !== 'gate') {
+      ctx.strokeStyle = c.ink
+      ctx.lineWidth = 0.03
+      ctx.stroke()
+    }
+    ctx.restore()
+    return
+  }
+  if (open && type === 'portcullis') {
+    ctx.strokeStyle = c.ink
+    ctx.globalAlpha = 0.45
+    ctx.setLineDash([0.08, 0.08])
+    ctx.lineWidth = 0.05
+    ctx.beginPath()
+    ctx.moveTo(-half, 0)
+    ctx.lineTo(half, 0)
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.globalAlpha = 1
+    ctx.restore()
+    return
+  }
   switch (type) {
     case 'door':
     case 'secret-door':
@@ -533,7 +589,7 @@ export default function MapCanvas({ map, mapId, showGrid, paint, selectedId, edg
       const a = b.a
       const ink2 = a.o.id === selectedId ? sel : a.o.gmOnly ? gm : shade(base('wood'), -0.55)
       if (a.kind === 'bridge') drawBridge(ctx, a.bridge, base('wood'), ink2)
-      else if (a.kind === 'hatch') for (const c of a.centres) drawHatch(ctx, c, base('wood'), ink2)
+      else if (a.kind === 'hatch') for (const c of a.centres) drawHatch(ctx, c, base('wood'), ink2, startsOpen(a.o))
     }
 
     // Walls and fences: one continuous stroke per run of edges, along the outline they lie on.
@@ -556,7 +612,7 @@ export default function MapCanvas({ map, mapId, showGrid, paint, selectedId, edg
       for (const seg of snapped.current.segs.get(a.o.id) ?? a.segments) drawPortal(ctx, seg, a.o.type, {
         ink: a.o.id === selectedId ? sel : a.o.gmOnly ? gm : ink,
         fill: base('wood'), accent: portal, gm, empty,
-      })
+      }, startsOpen(a.o))
     }
 
     // The selected object's hexes, tinted: painting is still per hex.
@@ -597,15 +653,45 @@ export default function MapCanvas({ map, mapId, showGrid, paint, selectedId, edg
         const row = Math.floor(hex / grid.width)
         if (col < r.col0 || col > r.col1 || row < r.row0 || row > r.row1) continue
         const { x, y } = hexCenter(grid, hex, s)
+        const px = x + view.x
+        const py = y + view.y
+        if (o.kind === 'static' && isTrap(o)) {
+          // A trap (VTTER-129): a warning triangle, dashed while Hidden, because players don't see it until it's spotted.
+          const r2 = s * TOKEN_RADIUS * 1.1
+          ctx.beginPath()
+          ctx.moveTo(px, py - r2)
+          ctx.lineTo(px + r2 * 0.95, py + r2 * 0.65)
+          ctx.lineTo(px - r2 * 0.95, py + r2 * 0.65)
+          ctx.closePath()
+          ctx.fillStyle = o.id === selectedId ? sel : portal
+          ctx.fill()
+          ctx.strokeStyle = o.gmOnly || effectiveProps(o).hidden !== undefined ? gm : ink
+          ctx.lineWidth = 1.5
+          if (effectiveProps(o).hidden !== undefined) ctx.setLineDash([Math.max(2, s / 8), Math.max(2, s / 10)])
+          ctx.stroke()
+          ctx.setLineDash([])
+          ctx.fillStyle = '#fff'
+          ctx.fillText('!', px, py + s * 0.12)
+          continue
+        }
         ctx.beginPath()
-        ctx.arc(x + view.x, y + view.y, s * TOKEN_RADIUS, 0, Math.PI * 2)
+        ctx.arc(px, py, s * TOKEN_RADIUS, 0, Math.PI * 2)
         ctx.fillStyle = o.id === selectedId ? sel : o.kind === 'entity' ? color(o.type === 'foe' ? 'foe' : 'npc', '#a3322a') : color('mark', '#fff')
         ctx.fill()
         ctx.strokeStyle = o.gmOnly ? gm : ink
         ctx.lineWidth = 1.5
         ctx.stroke()
         ctx.fillStyle = o.kind === 'entity' || o.id === selectedId ? '#fff' : ink
-        ctx.fillText(markOf(o), x + view.x, y + view.y + 1)
+        ctx.fillText(markOf(o), px, py + 1)
+        if (o.kind === 'static' && startsOpen(o)) {
+          // Something that opens and starts open (a chest, VTTER-129): its lid stands up behind it.
+          ctx.beginPath()
+          ctx.rect(px - s * 0.5, py - s * TOKEN_RADIUS - s * 0.32, s, s * 0.22)
+          ctx.fillStyle = color('mark', '#fff')
+          ctx.fill()
+          ctx.strokeStyle = ink
+          ctx.stroke()
+        }
       }
     }
   }, [map, paint, view, box, selectedId, edgeTarget, order, gmShape, gridAlpha, mapId])

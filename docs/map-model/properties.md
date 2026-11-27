@@ -68,6 +68,7 @@ GM-only objects still act. A hidden trap fires on a hero who hasn't spotted it. 
 | `blocks-sight` | yes | Later (fog of war) | always · the party's sight | Sight stops at this hex or edge. Hexes behind it stay in fog of war until a hero sees them (in per-token vision, that hero's player only) | Move round it; open the door | `max` | Fog of war (decisions 2026-11-26). No dice |
 | `obscured` | yes | Later | always · anyone looking into or through the hex | **Bane** on ranged attacks and on Notice Tests that rely on sight | Get to Reach; wait for it to clear | `max` (one Bane, however many layers) | Core §2 Boons/Banes; needs a rule to make it automatic |
 | `cover` | yes | Later | always · an Entity in the hex | You can **Hide** here. Talents that need "cover nearby" (Vanish) work | — | `max` | Core §6.2 Hide, §4.6 Vanish |
+| `open` (Starts open) | yes | Later (with fog of war) | from the start · the party's sight | Only on a type that opens (Door, Secret door, Trap door, Gate, Portcullis, Chest). The type's `whenOpen` changes apply: an open Door, Secret door or Trap door no longer blocks sight. A Gate or Portcullis never blocks sight, open or shut. **Movement is unchanged**: you go through a Portal that opens either way, and opening and shutting during play is table state (VTTER-87) | — | `top` | Decisions 2026-11-27 (VTTER-129). No dice |
 
 ### Weather and shelter
 
@@ -97,8 +98,12 @@ GM-only objects still act. A hidden trap fires on a hero who hasn't spotted it. 
 | Environment space | `difficult`, `impassable`, `deep-water`, `hazard`, `burning`, `hidden`, `blocks-sight`, `obscured`, `cover` |
 | Enclosure | `weather`, `shelter`, `blocks-sight`. Its walls are `edge` Routes with `blocks` |
 | Route | `blocks` (edge), `deep-water` (a river), `patrol`, `difficult` (a scree slope) |
-| Portal | `covers`, `hidden` (a secret door), `hazard` (a trapped door), `blocks` while shut |
-| Static Object | `use`, `cover`, `impassable`, `blocks-sight`, `hidden`, `hazard` |
+| Portal | `covers`, `hidden` (a secret door), `hazard` (a trapped door), `blocks` while shut, `open` (starts open) |
+| Static Object | `use`, `cover`, `impassable`, `blocks-sight`, `hidden`, `hazard`, `open` (a Chest). The trap types (Pressure plate, Spike pit, Snare, Dart trap, Falling block) bring `hazard` and `hidden` |
+
+**What a player receives** (`playerViewOfMap`, the API): no GM-only object, no Entity, no note, and **no Hidden object**
+(its own `hidden` or its type's, such as a trap or a secret door), nor anything layered on one. Spotting is table
+state (VTTER-87); until it exists, a Hidden object never reaches a player.
 | Entity | none from this catalog. An Entity has its own sheet or stat block, plus `sight` (zones) for fog of war |
 
 The type catalog gives each type its default properties (a Swamp is `difficult`; a Wall is an `edge` Route with

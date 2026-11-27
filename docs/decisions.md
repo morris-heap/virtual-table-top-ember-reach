@@ -65,6 +65,7 @@ The app **deeply automates Emberreach's own rules**. It is **not** a general VTT
 
 | Date | Decision (ticket) | Locked rule in one line | Full entry |
 |---|---|---|---|
+| 11-27 | Traps and a starting open or closed state (VTTER-129) | Five trap Static Objects bring `hazard` + `hidden` defaults (fire with VTTER-110). Starts open goes only on things that open; it changes sight (open door stops blocking it, bars never block it) and the drawing, never movement. A player never receives a Hidden object. | [file](decisions/2026-11-27-traps-and-open-state.md) |
 | 11-27 | Maps drawn as art (VTTER-119) | Hexes are the invisible rules layer; each object is drawn as one smooth, textured shape. Textures are generated in code per type id, decoration is seeded and never stored, and the grid shows while painting or on demand. | [file](decisions/2026-11-27-maps-drawn-as-art.md) |
 | 11-27 | Find a player by display name (VTTER-108) | Opt-in, off by default. Whole-name match only, never a prefix. A result is a display name and player ID, nothing else. At most 10 matches, 12 searches a minute. | [file](decisions/2026-11-27-find-players-by-name.md) |
 | 11-27 | Maps ship before chapters (VTTER-74) | Maps are made, generated, saved and deleted on their own; the chapter link and the Game map route come with VTTER-75. 3 maps per author. A player's view drops GM-only objects (and what sits on them), Entities and notes. Doors let you through walls; windows don't. | [file](decisions/2026-11-27-maps-before-chapters.md) |
